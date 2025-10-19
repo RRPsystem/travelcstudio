@@ -465,7 +465,7 @@ Deno.serve(async (req: Request) => {
           );
         }
 
-        if (claims.brand_id !== data.brand_id) {
+        if (!data.is_template && claims.brand_id !== data.brand_id) {
           return new Response(
             JSON.stringify({ error: "Unauthorized" }),
             { status: 403, headers: corsHeaders() }
