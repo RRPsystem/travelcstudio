@@ -178,19 +178,33 @@ export function DomainSettings() {
 
   return (
     <div className="p-8">
-      <div className="mb-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Domein Instellingen</h1>
-          <p className="text-gray-600 mt-1">Koppel je eigen domein aan je website</p>
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Domein Instellingen</h1>
+            <p className="text-gray-600 mt-1">Koppel je eigen domein aan je website</p>
+          </div>
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="flex items-center gap-2 px-4 py-2 text-white rounded-lg font-medium transition-colors hover:bg-orange-700"
+            style={{ backgroundColor: '#ff7700' }}
+          >
+            <Plus className="w-5 h-5" />
+            Domein Toevoegen
+          </button>
         </div>
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="flex items-center gap-2 px-4 py-2 text-white rounded-lg font-medium transition-colors hover:bg-orange-700"
-          style={{ backgroundColor: '#ff7700' }}
-        >
-          <Plus className="w-5 h-5" />
-          Domein Toevoegen
-        </button>
+
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <Globe className="w-5 h-5 text-blue-600 mt-0.5" />
+            <div className="flex-1">
+              <h4 className="text-sm font-medium text-blue-900 mb-1">Huidige URL</h4>
+              <p className="text-sm text-blue-700 font-mono">
+                https://{user?.brand_id || 'jouw-brand'}.ai-travelstudio.nl
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {showAddForm && (
@@ -301,12 +315,44 @@ export function DomainSettings() {
                     </div>
 
                     <div className="bg-white rounded p-3">
-                      <div className="text-xs font-medium text-gray-700 mb-1">A Record (Website)</div>
-                      <div className="font-mono text-xs text-gray-600">
-                        Host: @ of {domain.domain}
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium text-gray-700">A Record (Website)</span>
+                        <button
+                          onClick={() => copyToClipboard('185.199.108.153')}
+                          className="text-gray-600 hover:text-gray-900"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
                       </div>
                       <div className="font-mono text-xs text-gray-600">
-                        Value: [IP adres van support]
+                        Host: @ (of laat leeg)
+                      </div>
+                      <div className="font-mono text-xs text-gray-600">
+                        Value: 185.199.108.153
+                      </div>
+                      <div className="font-mono text-xs text-gray-600 mt-1">
+                        TTL: 3600 (1 uur)
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium text-gray-700">CNAME Record (www)</span>
+                        <button
+                          onClick={() => copyToClipboard(`${user?.brand_id}.ai-travelstudio.nl`)}
+                          className="text-gray-600 hover:text-gray-900"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="font-mono text-xs text-gray-600">
+                        Host: www
+                      </div>
+                      <div className="font-mono text-xs text-gray-600">
+                        Value: {user?.brand_id}.ai-travelstudio.nl
+                      </div>
+                      <div className="font-mono text-xs text-gray-600 mt-1">
+                        TTL: 3600 (1 uur)
                       </div>
                     </div>
                   </div>
