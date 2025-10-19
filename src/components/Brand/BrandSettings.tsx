@@ -174,8 +174,6 @@ export function BrandSettings() {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Brand Instellingen</h1>
-
         <div className="flex space-x-1 border-b border-gray-200">
           <button
             type="button"
