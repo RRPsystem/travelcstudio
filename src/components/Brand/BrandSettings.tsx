@@ -212,270 +212,270 @@ export function BrandSettings() {
       ) : (
         <div className="bg-white rounded-lg shadow-sm border">
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-800">{error}</p>
-            </div>
-          )}
-
-          {success && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <p className="text-sm text-green-800">{success}</p>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Brand Name
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Slug (URL identifier)
-              </label>
-              <input
-                type="text"
-                value={formData.slug}
-                disabled
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
-              />
-              <p className="text-xs text-gray-500 mt-1">Slug cannot be changed after creation</p>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => handleInputChange('description', e.target.value)}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Business Type
-              </label>
-              <select
-                value={formData.business_type}
-                onChange={(e) => handleInputChange('business_type', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              >
-                <option value="custom_travel_agency">Custom Travel Agency</option>
-                <option value="tour_operator">Tour Operator</option>
-                <option value="travel_agent">Travel Agent</option>
-                <option value="destination_management">Destination Management</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Logo
-              </label>
-              <div className="flex items-center space-x-3">
-                {formData.logo_url && (
-                  <img
-                    src={formData.logo_url}
-                    alt="Logo"
-                    className="w-12 h-12 object-contain rounded border border-gray-300"
-                  />
-                )}
-                <label className="flex-1 cursor-pointer">
-                  <div className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                    <Upload size={16} className="mr-2" />
-                    <span className="text-sm text-gray-700">
-                      {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
-                    </span>
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                    className="hidden"
-                    disabled={uploadingLogo}
-                  />
-                </label>
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-800">{error}</p>
               </div>
-            </div>
-          </div>
+            )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Primary Color
-              </label>
-              <div className="flex items-center space-x-3">
-                <input
-                  type="color"
-                  value={formData.primary_color}
-                  onChange={(e) => handleInputChange('primary_color', e.target.value)}
-                  className="w-12 h-10 rounded border border-gray-300 cursor-pointer"
-                />
-                <input
-                  type="text"
-                  value={formData.primary_color}
-                  onChange={(e) => handleInputChange('primary_color', e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                />
+            {success && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <p className="text-sm text-green-800">{success}</p>
               </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Secondary Color
-              </label>
-              <div className="flex items-center space-x-3">
-                <input
-                  type="color"
-                  value={formData.secondary_color}
-                  onChange={(e) => handleInputChange('secondary_color', e.target.value)}
-                  className="w-12 h-10 rounded border border-gray-300 cursor-pointer"
-                />
-                <input
-                  type="text"
-                  value={formData.secondary_color}
-                  onChange={(e) => handleInputChange('secondary_color', e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-200 pt-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Contact Person
+                  Brand Name
                 </label>
                 <input
                   type="text"
-                  value={formData.contact_person}
-                  onChange={(e) => handleInputChange('contact_person', e.target.value)}
+                  value={formData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  required
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Contact Email
-                </label>
-                <input
-                  type="email"
-                  value={formData.contact_email}
-                  onChange={(e) => handleInputChange('contact_email', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone
-                </label>
-                <input
-                  type="tel"
-                  value={formData.contact_phone}
-                  onChange={(e) => handleInputChange('contact_phone', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Website URL
-                </label>
-                <input
-                  type="url"
-                  value={formData.website_url}
-                  onChange={(e) => handleInputChange('website_url', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-200 pt-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Address</h3>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Street Address
+                  Slug (URL identifier)
                 </label>
                 <input
                   type="text"
-                  value={formData.street_address}
-                  onChange={(e) => handleInputChange('street_address', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  value={formData.slug}
+                  disabled
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
                 />
+                <p className="text-xs text-gray-500 mt-1">Slug cannot be changed after creation</p>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Description
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => handleInputChange('description', e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Business Type
+                </label>
+                <select
+                  value={formData.business_type}
+                  onChange={(e) => handleInputChange('business_type', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                >
+                  <option value="custom_travel_agency">Custom Travel Agency</option>
+                  <option value="tour_operator">Tour Operator</option>
+                  <option value="travel_agent">Travel Agent</option>
+                  <option value="destination_management">Destination Management</option>
+                </select>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Logo
+                </label>
+                <div className="flex items-center space-x-3">
+                  {formData.logo_url && (
+                    <img
+                      src={formData.logo_url}
+                      alt="Logo"
+                      className="w-12 h-12 object-contain rounded border border-gray-300"
+                    />
+                  )}
+                  <label className="flex-1 cursor-pointer">
+                    <div className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                      <Upload size={16} className="mr-2" />
+                      <span className="text-sm text-gray-700">
+                        {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
+                      </span>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                      disabled={uploadingLogo}
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Primary Color
+                </label>
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="color"
+                    value={formData.primary_color}
+                    onChange={(e) => handleInputChange('primary_color', e.target.value)}
+                    className="w-12 h-10 rounded border border-gray-300 cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={formData.primary_color}
+                    onChange={(e) => handleInputChange('primary_color', e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Secondary Color
+                </label>
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="color"
+                    value={formData.secondary_color}
+                    onChange={(e) => handleInputChange('secondary_color', e.target.value)}
+                    className="w-12 h-10 rounded border border-gray-300 cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={formData.secondary_color}
+                    onChange={(e) => handleInputChange('secondary_color', e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    City
+                    Contact Person
                   </label>
                   <input
                     type="text"
-                    value={formData.city}
-                    onChange={(e) => handleInputChange('city', e.target.value)}
+                    value={formData.contact_person}
+                    onChange={(e) => handleInputChange('contact_person', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Postal Code
+                    Contact Email
                   </label>
                   <input
-                    type="text"
-                    value={formData.postal_code}
-                    onChange={(e) => handleInputChange('postal_code', e.target.value)}
+                    type="email"
+                    value={formData.contact_email}
+                    onChange={(e) => handleInputChange('contact_email', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Country
+                    Phone
                   </label>
                   <input
-                    type="text"
-                    value={formData.country}
-                    onChange={(e) => handleInputChange('country', e.target.value)}
+                    type="tel"
+                    value={formData.contact_phone}
+                    onChange={(e) => handleInputChange('contact_phone', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Website URL
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.website_url}
+                    onChange={(e) => handleInputChange('website_url', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   />
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="flex justify-end pt-6 border-t border-gray-200">
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-white"
-              style={{ backgroundColor: '#ff7700' }}
-            >
-              <Save size={16} />
-              <span>{saving ? 'Saving...' : 'Save Changes'}</span>
-            </button>
-          </div>
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Address</h3>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Street Address
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.street_address}
+                    onChange={(e) => handleInputChange('street_address', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      City
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.city}
+                      onChange={(e) => handleInputChange('city', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Postal Code
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.postal_code}
+                      onChange={(e) => handleInputChange('postal_code', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Country
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.country}
+                      onChange={(e) => handleInputChange('country', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-6 border-t border-gray-200">
+              <button
+                type="submit"
+                disabled={saving}
+                className="flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-white"
+                style={{ backgroundColor: '#ff7700' }}
+              >
+                <Save size={16} />
+                <span>{saving ? 'Saving...' : 'Save Changes'}</span>
+              </button>
+            </div>
         </form>
       </div>
       )}

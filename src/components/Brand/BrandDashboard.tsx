@@ -2,12 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/supabase';
 import { AIContentGenerator } from './AIContentGenerator';
-import { NewPage } from './WebsiteManagement/NewPage';
-import PageManagementView from './WebsiteManagement/PageManagementView';
-import MenuBuilderView from './WebsiteManagement/MenuBuilderView';
-import FooterBuilderView from './WebsiteManagement/FooterBuilderView';
-import { TemplateGallery } from './WebsiteManagement/TemplateGallery';
-import { NewsApproval } from './ContentManagement/NewsApproval';
 import { TravelBro } from './AITools/TravelBro';
 import { SocialMedia } from './AITools/SocialMedia';
 import { BrandSettings } from './BrandSettings';
@@ -544,18 +538,42 @@ export function BrandDashboard() {
             </div>
           )}
 
-          {activeSection === 'template-gallery' && user?.brand_id && (
-            <TemplateGallery
-              brandId={user.brand_id}
-              onTemplateSelected={() => setActiveSection('pages')}
-            />
+          {activeSection === 'template-gallery' && (
+            <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
+              <Layout className="mx-auto h-16 w-16 text-gray-400 mb-4" />
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Template Gallery</h2>
+              <p className="text-gray-600">Kies uit professionele website templates (Binnenkort beschikbaar)</p>
+            </div>
           )}
-          {activeSection === 'new-page' && <NewPage brandId={user?.brand_id} onPageCreated={() => setActiveSection('pages')} />}
-          {activeSection === 'pages' && <PageManagementView />}
-          {activeSection === 'menus' && <MenuBuilderView />}
-          {activeSection === 'footers' && <FooterBuilderView />}
+          {activeSection === 'pages' && (
+            <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
+              <FileText className="mx-auto h-16 w-16 text-gray-400 mb-4" />
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Pagina Beheer</h2>
+              <p className="text-gray-600">Beheer alle pagina's van je website (Binnenkort beschikbaar)</p>
+            </div>
+          )}
+          {activeSection === 'menus' && (
+            <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
+              <Layout className="mx-auto h-16 w-16 text-gray-400 mb-4" />
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Menu Builder</h2>
+              <p className="text-gray-600">Beheer menu's en hun structuur (Binnenkort beschikbaar)</p>
+            </div>
+          )}
+          {activeSection === 'footers' && (
+            <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
+              <Layout className="mx-auto h-16 w-16 text-gray-400 mb-4" />
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Footer Builder</h2>
+              <p className="text-gray-600">Beheer footer layouts voor je website (Binnenkort beschikbaar)</p>
+            </div>
+          )}
           {activeSection === 'settings' && <BrandSettings />}
-          {activeSection === 'nieuwsbeheer' && <NewsApproval />}
+          {activeSection === 'nieuwsbeheer' && (
+            <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
+              <Newspaper className="mx-auto h-16 w-16 text-gray-400 mb-4" />
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Nieuws Beheer</h2>
+              <p className="text-gray-600">Beheer en publiceer je nieuwsberichten (Binnenkort beschikbaar)</p>
+            </div>
+          )}
           {activeSection === 'ai-content' && <AIContentGenerator />}
           {activeSection === 'ai-travelbro' && <TravelBro />}
           {activeSection === 'social-media' && <SocialMedia />}
