@@ -70,22 +70,21 @@ export function PageManagement() {
         mode: 'page',
       });
 
-      const builderBaseUrl = 'https://www.ai-websitestudio.nl';
-      const apiBaseUrl = jwtResponse.api_url || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+      const apiBase = jwtResponse.api_url || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
       const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const returnUrl = 'https://www.ai-travelstudio.nl/#/brand/website/pages';
+      const jwt = jwtResponse.token;
 
-      const deeplink = `${builderBaseUrl}/?api=${encodeURIComponent(apiBaseUrl)}&brand_id=${user.brand_id}&token=${jwtResponse.token}&apikey=${encodeURIComponent(apiKey)}&content_type=page&return_url=${encodeURIComponent(returnUrl)}`;
+      const url = `/builder/index.html?brand_id=${user.brand_id}&api=${encodeURIComponent(apiBase)}&token=${jwt}&apikey=${encodeURIComponent(apiKey)}&content_type=page`;
 
-      console.log('🔗 Opening page builder deeplink:', deeplink);
+      console.log('🔗 Opening page builder:', url);
 
-      const newWindow = window.open(deeplink, '_blank');
+      const newWindow = window.open(url, '_blank');
       if (!newWindow) {
-        navigator.clipboard.writeText(deeplink);
+        navigator.clipboard.writeText(url);
         alert('Pop-up geblokkeerd! URL is gekopieerd naar clipboard. Plak in nieuwe tab.');
       }
     } catch (err) {
-      console.error('Error generating deeplink:', err);
+      console.error('Error generating builder link:', err);
       alert('Failed to generate builder link');
     }
   };
@@ -103,22 +102,21 @@ export function PageManagement() {
         mode: 'page',
       });
 
-      const builderBaseUrl = 'https://www.ai-websitestudio.nl';
-      const apiBaseUrl = jwtResponse.api_url || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+      const apiBase = jwtResponse.api_url || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
       const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const returnUrl = 'https://www.ai-travelstudio.nl/#/brand/website/pages';
+      const jwt = jwtResponse.token;
 
-      const deeplink = `${builderBaseUrl}?api=${encodeURIComponent(apiBaseUrl)}&brand_id=${user.brand_id}&token=${jwtResponse.token}&apikey=${encodeURIComponent(apiKey)}&page_id=${page.id}&content_type=page&return_url=${encodeURIComponent(returnUrl)}`;
+      const url = `/builder/index.html?brand_id=${user.brand_id}&page_id=${page.id}&api=${encodeURIComponent(apiBase)}&token=${jwt}&apikey=${encodeURIComponent(apiKey)}&content_type=page`;
 
-      console.log('🔗 Opening page edit deeplink:', deeplink);
+      console.log('🔗 Opening page edit:', url);
 
-      const newWindow = window.open(deeplink, '_blank');
+      const newWindow = window.open(url, '_blank');
       if (!newWindow) {
-        navigator.clipboard.writeText(deeplink);
+        navigator.clipboard.writeText(url);
         alert('Pop-up geblokkeerd! URL is gekopieerd naar clipboard. Plak in nieuwe tab.');
       }
     } catch (err) {
-      console.error('Error generating deeplink:', err);
+      console.error('Error generating builder link:', err);
       alert('Failed to generate builder link');
     }
   };
@@ -128,29 +126,24 @@ export function PageManagement() {
 
     setPublishingId(pageId);
     try {
-      const { data: page } = await supabase
-        .from('pages')
-        .select('content_json')
-        .eq('id', pageId)
-        .maybeSingle();
+      const jwtResponse = await generateBuilderJWT(user!.brand_id, user!.id, ['content:write']);
+      const jwt = jwtResponse.token;
 
-      if (!page?.content_json?.htmlSnapshot) {
-        alert('Deze pagina heeft nog geen content. Bewerk de pagina eerst in de builder.');
-        return;
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pages-api/${pageId}/publish`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${jwt}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({})
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to publish');
       }
 
-      const { error } = await supabase
-        .from('pages')
-        .update({
-          status: 'published',
-          published_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', pageId);
-
-      if (error) throw error;
-
-      alert('Pagina succesvol gepubliceerd!');
+      alert('✅ Pagina gepubliceerd!');
       loadPages();
     } catch (error) {
       console.error('Error publishing page:', error);
