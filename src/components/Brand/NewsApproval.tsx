@@ -203,10 +203,111 @@ export function NewsApproval() {
     );
   }
 
+  const handleCreateNew = async () => {
+    try {
+      const { data: website } = await supabase
+        .from('websites')
+        .select('id')
+        .eq('brand_id', user?.brand_id)
+        .maybeSingle();
+
+      if (!website) {
+        alert('Maak eerst een website aan voordat je nieuws kunt toevoegen.');
+        return;
+      }
+
+      const newSlug = `nieuws-${Date.now()}`;
+
+      const { data: newPage, error: pageError } = await supabase
+        .from('website_pages')
+        .insert({
+          website_id: website.id,
+          title: 'Nieuw Nieuwsbericht',
+          slug: newSlug,
+          content_type: 'news',
+          is_published: false,
+          page_data: {
+            title: 'Nieuw Nieuwsbericht',
+            excerpt: '',
+            featured_image: '',
+            tags: []
+          }
+        })
+        .select('id')
+        .single();
+
+      if (pageError) {
+        console.error('Error creating page:', pageError);
+        alert('Kon geen pagina aanmaken');
+        return;
+      }
+
+      const { data: newsItem, error: newsError } = await supabase
+        .from('news_items')
+        .insert({
+          title: 'Nieuw Nieuwsbericht',
+          slug: newSlug,
+          excerpt: '',
+          content: '',
+          featured_image: '',
+          is_mandatory: false,
+          tags: []
+        })
+        .select('id')
+        .single();
+
+      if (newsError) {
+        console.error('Error creating news item:', newsError);
+        alert('Kon geen nieuwsbericht aanmaken');
+        return;
+      }
+
+      const { error: assignmentError } = await supabase
+        .from('news_brand_assignments')
+        .insert({
+          news_id: newsItem.id,
+          brand_id: user?.brand_id,
+          status: 'brand',
+          is_published: false,
+          page_id: newPage.id
+        });
+
+      if (assignmentError) {
+        console.error('Error creating assignment:', assignmentError);
+        alert('Kon geen toewijzing aanmaken');
+        return;
+      }
+
+      loadAssignments();
+
+      const returnUrl = `${window.location.origin}${window.location.pathname}#/brand/content/news`;
+
+      const jwtResponse = await generateBuilderJWT({
+        page_id: newPage.id,
+        return_url: returnUrl,
+        scopes: ['content:read', 'content:write'],
+        mode: 'edit'
+      });
+
+      if (jwtResponse.url) {
+        window.open(jwtResponse.url, '_blank');
+      }
+    } catch (error) {
+      console.error('Error creating new news item:', error);
+      alert('Er ging iets mis bij het aanmaken van het nieuwsbericht');
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">Nieuwsbeheer</h2>
+      <div className="flex justify-end items-center">
+        <button
+          onClick={handleCreateNew}
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        >
+          <Plus className="h-5 w-5 mr-2" />
+          Nieuw Bericht
+        </button>
       </div>
 
       {assignments.length === 0 ? (
