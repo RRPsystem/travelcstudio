@@ -8,6 +8,7 @@ import { BrandSettings } from './BrandSettings';
 import { HelpBot } from '../shared/HelpBot';
 import { NewsManagement as AdminNewsManagement } from '../Admin/NewsManagement';
 import { PageManagement } from './PageManagement';
+import { NewPage } from './NewPage';
 import { Users, Settings, Plus, Bot, Sparkles, Import as FileImport, ChevronDown, ChevronRight, LayoutGrid as Layout, FileText, Globe, Newspaper, MapPin, Plane, Share2, Map, ArrowRight } from 'lucide-react';
 import RoadmapBoard from './RoadmapBoard';
 
@@ -554,6 +555,7 @@ export function BrandDashboard() {
               <p className="text-gray-600">Kies uit professionele website templates (Binnenkort beschikbaar)</p>
             </div>
           )}
+          {activeSection === 'new-page' && <NewPage />}
           {activeSection === 'pages' && <PageManagement />}
           {activeSection === 'menus' && (
             <div className="bg-white rounded-lg shadow-sm border p-8 text-center">

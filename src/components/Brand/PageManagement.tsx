@@ -1,229 +1,388 @@
 import React, { useState, useEffect } from 'react';
-import { Grid3x3, Wrench, Search, Plus, Eye } from 'lucide-react';
+import { CreditCard as Edit, Copy, Trash2, Eye, Plus, RefreshCw, Upload, FileX } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 import { generateBuilderJWT, generateBuilderDeeplink } from '../../lib/jwtHelper';
 import { useAuth } from '../../contexts/AuthContext';
 
-const templateCategories = [
-  { id: 'all', label: 'All Templates', count: 1 },
-  { id: 'landing', label: 'Landing Pages', count: 1 },
-  { id: 'about', label: 'About Pages', count: 0 },
-  { id: 'contact', label: 'Contact Pages', count: 0 },
-  { id: 'services', label: 'Services', count: 0 },
-  { id: 'galleries', label: 'Galleries', count: 0 },
-  { id: 'blog', label: 'Blog Pages', count: 0 },
-];
-
-const templates = [
-  {
-    id: 1,
-    name: 'Home 1',
-    category: 'landing',
-    description: 'Professionele travel homepage geïnspireerd door Gowilds design met hero slider, bestemmingen showcase en tour highlights',
-    image: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&h=300&fit=crop',
-    tags: ['gowilds', 'hero-slider', 'tours', '+2'],
-    isPopular: true
-  }
-];
+interface Page {
+  id: string;
+  title: string;
+  slug: string;
+  status: string;
+  updated_at: string;
+  published_at: string | null;
+  body_html?: string;
+  show_in_menu: boolean;
+  menu_order: number;
+  parent_slug: string | null;
+}
 
 export function PageManagement() {
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [initialPageCount, setInitialPageCount] = useState<number | null>(null);
   const { user } = useAuth();
+  const [pages, setPages] = useState<Page[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user?.brand_id) return;
+    if (user?.brand_id) {
+      loadPages(user.brand_id);
+    }
+  }, [user?.brand_id]);
 
-    const loadPageCount = async () => {
-      try {
-        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pages-api?brand_id=${user.brand_id}`;
-        const response = await fetch(apiUrl, {
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-        });
+  const loadPages = async (brandId: string, showLoading = true) => {
+    try {
+      if (showLoading) setLoading(true);
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pages-api?brand_id=${brandId}`;
 
-        if (response.ok) {
-          const data = await response.json();
-          const count = data.items?.length || 0;
+      const response = await fetch(apiUrl, {
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-          if (initialPageCount === null) {
-            setInitialPageCount(count);
-          } else if (count > initialPageCount) {
-            console.log('New page detected!');
-          }
-        }
-      } catch (error) {
-        console.error('Error loading page count:', error);
+      if (!response.ok) {
+        throw new Error('Failed to load pages');
       }
-    };
 
-    loadPageCount();
-    const interval = setInterval(loadPageCount, 3000);
-
-    return () => clearInterval(interval);
-  }, [user?.brand_id, initialPageCount]);
-
-  const handleOpenPageBuilder = async () => {
-    if (!user || !user.brand_id) return;
-
-    const token = await generateBuilderJWT(user.brand_id, user.id);
-    const deeplink = generateBuilderDeeplink(user.brand_id, token);
-
-    window.open(deeplink, '_blank');
+      const data = await response.json();
+      setPages(data.items || []);
+    } catch (error) {
+      console.error('Error loading pages:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleUseTemplate = async (templateId: number) => {
+  const openInBuilder = async (pageId: string) => {
+    if (!user || !user.brand_id) {
+      console.error('Missing user or brand_id:', { user });
+      alert('Gebruiker of brand ID ontbreekt');
+      return;
+    }
+
+    try {
+      console.log('Opening builder for page:', pageId);
+      const token = await generateBuilderJWT(user.brand_id, user.id);
+      const deeplink = generateBuilderDeeplink(user.brand_id, token, { pageId });
+
+      const newWindow = window.open(deeplink, '_blank');
+      if (!newWindow) {
+        alert('Popup geblokkeerd! Sta popups toe voor deze website.');
+      }
+    } catch (error) {
+      console.error('Error generating deeplink:', error);
+      alert('Kon de website builder niet openen: ' + error);
+    }
+  };
+
+  const createNewPage = async () => {
     if (!user || !user.brand_id) return;
 
-    const token = await generateBuilderJWT(user.brand_id, user.id);
-    const deeplink = generateBuilderDeeplink(user.brand_id, token, {
-      templateId: templateId.toString()
-    });
+    try {
+      const token = await generateBuilderJWT(user.brand_id, user.id);
+      const deeplink = generateBuilderDeeplink(user.brand_id, token);
+      window.open(deeplink, '_blank');
+    } catch (error) {
+      console.error('Error generating deeplink:', error);
+    }
+  };
 
-    window.open(deeplink, '_blank');
+  const duplicatePage = async (pageId: string) => {
+    if (!user?.brand_id) return;
+
+    try {
+      const { data: originalPage } = await supabase
+        .from('pages')
+        .select('*')
+        .eq('id', pageId)
+        .single();
+
+      if (originalPage) {
+        await supabase.from('pages').insert({
+          brand_id: originalPage.brand_id,
+          owner_user_id: originalPage.owner_user_id,
+          title: `${originalPage.title} (kopie)`,
+          slug: `${originalPage.slug}-copy-${Date.now()}`,
+          status: 'draft',
+          content_json: originalPage.content_json,
+        });
+
+        await loadPages(user.brand_id);
+      }
+    } catch (error) {
+      console.error('Error duplicating page:', error);
+    }
+  };
+
+  const deletePage = async (pageId: string) => {
+    if (!confirm('Weet je zeker dat je deze pagina wilt verwijderen?')) return;
+    if (!user?.brand_id) return;
+
+    try {
+      const token = await generateBuilderJWT(user.brand_id, user.id);
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pages-api/${pageId}`;
+
+      const response = await fetch(apiUrl, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete page');
+      }
+
+      await loadPages(user.brand_id);
+    } catch (error) {
+      console.error('Error deleting page:', error);
+    }
+  };
+
+  const publishPage = async (pageId: string) => {
+    if (!confirm('Weet je zeker dat je deze pagina wilt publiceren?')) return;
+    if (!user?.brand_id) return;
+
+    try {
+      const token = await generateBuilderJWT(user.brand_id, user.id);
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pages-api/publish`;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          brand_id: user.brand_id,
+          page_id: pageId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to publish page');
+      }
+
+      await loadPages(user.brand_id, false);
+    } catch (error) {
+      console.error('Error publishing page:', error);
+    }
+  };
+
+  const unpublishPage = async (pageId: string) => {
+    if (!confirm('Weet je zeker dat je deze pagina wilt depubliceren?')) return;
+    if (!user?.brand_id) return;
+
+    try {
+      await supabase
+        .from('pages')
+        .update({ status: 'draft' })
+        .eq('id', pageId);
+
+      await loadPages(user.brand_id, false);
+    } catch (error) {
+      console.error('Error unpublishing page:', error);
+    }
+  };
+
+  const toggleShowInMenu = async (pageId: string, currentValue: boolean) => {
+    if (!user?.brand_id) return;
+
+    try {
+      const token = await generateBuilderJWT(user.brand_id, user.id);
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pages-api/updateMenuSettings`;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          page_id: pageId,
+          show_in_menu: !currentValue,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update menu settings');
+      }
+
+      await loadPages(user.brand_id, false);
+    } catch (error) {
+      console.error('Error updating menu settings:', error);
+    }
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('nl-NL', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Nieuwe Pagina Maken</h1>
-          <p className="text-gray-600">Kies een kant-en-klare template of bouw zelf een pagina met de pagebuilder</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-          <div className="bg-white rounded-lg border-2 border-dashed border-transparent hover:border-orange-400 p-8 text-center transition-colors cursor-pointer">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-lg bg-orange-100 flex items-center justify-center">
-              <Grid3x3 className="w-8 h-8 text-orange-600" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Pagebuilder</h3>
-            <p className="text-gray-600 mb-6">Bouw je pagina helemaal zelf met drag-and-drop blokken</p>
-            <button
-              onClick={handleOpenPageBuilder}
-              className="inline-flex items-center space-x-2 px-6 py-3 text-white rounded-lg font-medium transition-colors hover:bg-orange-700"
-              style={{ backgroundColor: '#ff7700' }}
-            >
-              <Wrench size={18} />
-              <span>Start met Bouwen</span>
-            </button>
-          </div>
-
-          <div className="bg-white rounded-lg border-2 border-dashed border-transparent hover:border-blue-400 p-8 text-center transition-colors cursor-pointer">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-lg bg-blue-100 flex items-center justify-center">
-              <Grid3x3 className="w-8 h-8 text-blue-600" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Kant-en-klare Templates</h3>
-            <p className="text-gray-600 mb-6">Kies uit professionele templates en pas ze aan naar jouw wensen</p>
-            <button className="inline-flex items-center space-x-2 px-6 py-3 border-2 border-blue-600 text-blue-600 rounded-lg font-medium transition-colors hover:bg-blue-50">
-              <span>Bekijk Templates Hieronder</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg border border-gray-200 p-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-semibold text-gray-900 mb-1">Template Gallery</h2>
-              <p className="text-gray-600">Choose from our collection of professional travel website templates</p>
-            </div>
-            <button className="inline-flex items-center space-x-2 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-              <Plus size={18} />
-              <span>Create Template</span>
-            </button>
-          </div>
-
-          <div className="mb-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search templates by name, description, or tags..."
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-4 mb-8 pb-6 border-b border-gray-200">
-            {templateCategories.map((category) => (
-              <button
-                key={category.id}
-                onClick={() => setSelectedCategory(category.id)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  selectedCategory === category.id
-                    ? 'bg-orange-100 text-orange-700'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {category.label} <span className="ml-1 text-gray-500">{category.count}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <span className="text-yellow-500 mr-2">⭐</span>
-              Popular Templates
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {templates.map((template) => (
-                <div key={template.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
-                  <div className="relative">
-                    {template.isPopular && (
-                      <div className="absolute top-3 left-3 bg-orange-600 text-white text-xs font-semibold px-3 py-1 rounded flex items-center space-x-1">
-                        <span>⭐</span>
-                        <span>Popular</span>
-                      </div>
-                    )}
-                    <div className="bg-gray-900 h-48">
-                      <div className="grid grid-cols-4 grid-rows-2 h-full p-2 gap-1">
-                        {[1,2,3,4,5,6,7,8].map((i) => (
-                          <div key={i} className="bg-gray-700 rounded"></div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-lg font-semibold text-gray-900">{template.name}</h4>
-                      <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
-                        landing
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-4 line-clamp-3">{template.description}</p>
-
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {template.tags.map((tag) => (
-                        <span key={tag} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleUseTemplate(template.id)}
-                        className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
-                      >
-                        <span>↓</span>
-                        <span>Use Template</span>
-                      </button>
-                      <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                        <Eye size={18} className="text-gray-600" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+    <div className="p-8">
+      <div className="flex items-center justify-end mb-8 space-x-3">
+        <button
+          onClick={() => user?.brand_id && loadPages(user.brand_id, false)}
+          className="inline-flex items-center space-x-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium transition-colors hover:bg-gray-200"
+          title="Ververs pagina's"
+        >
+          <RefreshCw size={20} />
+          <span>Ververs</span>
+        </button>
+        <button
+          onClick={createNewPage}
+          className="inline-flex items-center space-x-2 px-6 py-3 text-white rounded-lg font-medium transition-colors hover:bg-blue-700"
+          style={{ backgroundColor: '#0ea5e9' }}
+        >
+          <Plus size={20} />
+          <span>Nieuwe Pagina</span>
+        </button>
       </div>
+
+      {loading ? (
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <p className="mt-4 text-gray-600">Pagina's laden...</p>
+        </div>
+      ) : pages.length === 0 ? (
+        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+          <p className="text-gray-600 mb-4">Je hebt nog geen pagina's aangemaakt</p>
+          <button
+            onClick={createNewPage}
+            className="inline-flex items-center space-x-2 px-6 py-3 border-2 border-blue-600 text-blue-600 rounded-lg font-medium transition-colors hover:bg-blue-50"
+          >
+            <Plus size={20} />
+            <span>Maak je eerste pagina</span>
+          </button>
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Titel
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Slug
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  In Menu
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Laatst gepubliceerd
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Acties
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {pages.map((page) => (
+                <tr key={page.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">{page.title}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-600">{page.slug}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        page.status === 'published'
+                          ? 'bg-green-100 text-green-800'
+                          : page.status === 'review'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      {page.status === 'published' ? 'Gepubliceerd' : page.status === 'review' ? 'Review' : 'Concept'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                    <button
+                      onClick={() => toggleShowInMenu(page.id, page.show_in_menu)}
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                        page.show_in_menu
+                          ? 'bg-orange-100 text-orange-800 hover:bg-orange-200'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                      title={page.show_in_menu ? 'Verberg in menu' : 'Toon in menu'}
+                    >
+                      {page.show_in_menu ? 'Ja' : 'Nee'}
+                    </button>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    {formatDate(page.published_at)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex items-center justify-end space-x-2">
+                      <button
+                        onClick={() => openInBuilder(page.id)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Openen in Builder"
+                      >
+                        <Edit size={18} />
+                      </button>
+                      {page.status === 'published' ? (
+                        <>
+                          <button
+                            onClick={() => window.open(`/preview?brand_id=${user?.brand_id}&slug=${page.slug}`, '_blank')}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            title="Preview"
+                          >
+                            <Eye size={18} />
+                          </button>
+                          <button
+                            onClick={() => unpublishPage(page.id)}
+                            className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                            title="Depubliceren"
+                          >
+                            <FileX size={18} />
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => publishPage(page.id)}
+                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                          title="Publiceren"
+                        >
+                          <Upload size={18} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => duplicatePage(page.id)}
+                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        title="Dupliceren"
+                      >
+                        <Copy size={18} />
+                      </button>
+                      <button
+                        onClick={() => deletePage(page.id)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Verwijderen"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
