@@ -84,7 +84,7 @@ export function TemplateManager() {
         preview_image_url: formData.preview_image_url || '',
       });
 
-      const url = `https://www.ai-websitestudio.nl/?${params.toString()}#/mode/page`;
+      const url = `https://www.ai-websitestudio.nl/?${params.toString()}`;
       window.open(url, '_blank');
 
       setShowCreateForm(false);
@@ -129,7 +129,7 @@ export function TemplateManager() {
         content_type: 'page',
       });
 
-      const url = `https://www.ai-websitestudio.nl/?${params.toString()}#/mode/page`;
+      const url = `https://www.ai-websitestudio.nl/?${params.toString()}`;
       window.open(url, '_blank');
     } catch (error) {
       console.error('Error editing template:', error);
