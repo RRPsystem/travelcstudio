@@ -87,7 +87,7 @@ export function NewsManagement() {
         ? 'https://www.ai-travelstudio.nl/'
         : 'https://www.ai-travelstudio.nl/#/admin/news';
 
-      const deeplink = `${builderBaseUrl}/?api=${encodeURIComponent(apiBaseUrl)}&brand_id=${SYSTEM_BRAND_ID}&token=${jwtResponse.token}&apikey=${encodeURIComponent(apiKey)}&author_type=admin&author_id=${user.id}&content_type=news_items&return_url=${encodeURIComponent(returnUrl)}&mode=news#/mode/news`;
+      const deeplink = `${builderBaseUrl}/?api=${encodeURIComponent(apiBaseUrl)}&brand_id=${SYSTEM_BRAND_ID}&token=${encodeURIComponent(jwtResponse.token)}&apikey=${encodeURIComponent(apiKey)}&author_type=admin&author_id=${user.id}&content_type=news_items&return_url=${encodeURIComponent(returnUrl)}&mode=news#/mode/news`;
       console.log('🔗 Opening news builder deeplink:', deeplink);
 
       const newWindow = window.open(deeplink, '_blank');
@@ -129,7 +129,7 @@ export function NewsManagement() {
         ? 'https://www.ai-travelstudio.nl/'
         : 'https://www.ai-travelstudio.nl/#/admin/news';
 
-      const deeplink = `${builderBaseUrl}?api=${encodeURIComponent(apiBaseUrl)}&brand_id=${SYSTEM_BRAND_ID}&token=${jwtResponse.token}&apikey=${encodeURIComponent(apiKey)}&news_slug=${encodeURIComponent(news.slug)}&author_type=admin&author_id=${user.id}&content_type=news_items&return_url=${encodeURIComponent(returnUrl)}&mode=news`;
+      const deeplink = `${builderBaseUrl}?api=${encodeURIComponent(apiBaseUrl)}&brand_id=${SYSTEM_BRAND_ID}&token=${encodeURIComponent(jwtResponse.token)}&apikey=${encodeURIComponent(apiKey)}&news_slug=${encodeURIComponent(news.slug)}&author_type=admin&author_id=${user.id}&content_type=news_items&return_url=${encodeURIComponent(returnUrl)}&mode=news`;
 
       console.log('🔗 Opening news edit deeplink:', deeplink);
 
