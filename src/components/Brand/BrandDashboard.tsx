@@ -14,10 +14,29 @@ import RoadmapBoard from './RoadmapBoard';
 
 export function BrandDashboard() {
   const { user, signOut } = useAuth();
-  const [activeSection, setActiveSection] = useState('dashboard');
+
+  const getInitialSection = () => {
+    const hash = window.location.hash;
+    if (hash.includes('/brand/content/news')) return 'nieuwsbeheer';
+    if (hash.includes('/brand/website/pages')) return 'pages';
+    if (hash.includes('/brand/website/menu')) return 'menus';
+    if (hash.includes('/brand/website/footer')) return 'footers';
+    return 'dashboard';
+  };
+
+  const getInitialSubmenus = () => {
+    const hash = window.location.hash;
+    return {
+      showContentSubmenu: hash.includes('/brand/content/news'),
+      showWebsiteSubmenu: hash.includes('/brand/website/')
+    };
+  };
+
+  const initialSubmenus = getInitialSubmenus();
+  const [activeSection, setActiveSection] = useState(getInitialSection());
   const [showAISubmenu, setShowAISubmenu] = useState(false);
-  const [showWebsiteSubmenu, setShowWebsiteSubmenu] = useState(false);
-  const [showContentSubmenu, setShowContentSubmenu] = useState(false);
+  const [showWebsiteSubmenu, setShowWebsiteSubmenu] = useState(initialSubmenus.showWebsiteSubmenu);
+  const [showContentSubmenu, setShowContentSubmenu] = useState(initialSubmenus.showContentSubmenu);
   const [websites, setWebsites] = useState<any[]>([]);
   const [brandData, setBrandData] = useState<any>(null);
   const [stats, setStats] = useState({ pages: 0, newsItems: 0, agents: 0 });
