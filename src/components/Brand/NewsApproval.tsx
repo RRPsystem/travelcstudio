@@ -19,6 +19,7 @@ interface NewsAssignment {
     featured_image: string;
     is_mandatory: boolean;
     published_at: string;
+    tags?: string[];
   };
 }
 
@@ -50,7 +51,8 @@ export function NewsApproval() {
             excerpt,
             featured_image,
             is_mandatory,
-            published_at
+            published_at,
+            tags
           )
         `)
         .eq('brand_id', user.brand_id)
@@ -69,7 +71,7 @@ export function NewsApproval() {
 
       const { data: brandNewsData, error: brandNewsError } = await supabase
         .from('news_items')
-        .select('id, title, slug, excerpt, featured_image, created_at, published_at, status')
+        .select('id, title, slug, excerpt, featured_image, created_at, published_at, status, tags')
         .eq('author_type', 'brand')
         .eq('brand_id', user.brand_id)
         .order('created_at', { ascending: false });
@@ -90,7 +92,8 @@ export function NewsApproval() {
           excerpt: item.excerpt || '',
           featured_image: item.featured_image || '',
           is_mandatory: false,
-          published_at: item.published_at
+          published_at: item.published_at,
+          tags: item.tags || []
         }
       }));
 
@@ -250,10 +253,16 @@ export function NewsApproval() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end items-center">
+      <div className="flex justify-between items-start">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+            <Newspaper className="w-6 h-6 text-orange-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900">Nieuwsbeheer</h2>
+        </div>
         <button
           onClick={createNewArticle}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors"
         >
           <Plus className="h-5 w-5 mr-2" />
           Nieuw Bericht
@@ -267,65 +276,75 @@ export function NewsApproval() {
           <p className="mt-1 text-sm text-gray-500">Er zijn nog geen nieuwsberichten beschikbaar.</p>
         </div>
       ) : (
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Titel</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Datum</th>
-              <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-              <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Publiceren</th>
-              <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <table className="min-w-full">
+          <thead>
+            <tr className="border-b border-gray-200">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Titel</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tags</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Datum</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+              <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Publiceren</th>
+              <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acties</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white">
             {assignments.map((assignment) => (
-              <tr key={assignment.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap">
+              <tr key={assignment.id} className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors">
+                <td className="px-6 py-4">
                   <div className="flex items-start flex-col">
                     <div className="font-medium text-gray-900">{assignment.news_item.title}</div>
-                    <div className="text-sm text-gray-500">{assignment.news_item.slug}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{assignment.news_item.slug}</div>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4">
+                  {assignment.news_item.tags && assignment.news_item.tags.length > 0 ? (
+                    <div className="text-sm text-gray-500">
+                      {assignment.news_item.tags.join(', ')}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-400 italic">Geen tags</div>
+                  )}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-500">
                   {new Date(assignment.assigned_at).toLocaleDateString('nl-NL', {
-                    day: 'numeric',
-                    month: 'short',
+                    day: '2-digit',
+                    month: '2-digit',
                     year: 'numeric'
                   })}
                 </td>
-                <td className="px-6 py-4 text-center">
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    assignment.status === 'mandatory' ? 'bg-red-100 text-red-800' :
-                    assignment.status === 'brand' ? 'bg-purple-100 text-purple-800' :
-                    'bg-blue-100 text-blue-800'
+                <td className="px-6 py-4">
+                  <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full ${
+                    assignment.status === 'mandatory' ? 'bg-red-100 text-red-700' :
+                    assignment.status === 'brand' ? 'bg-purple-100 text-purple-700' :
+                    'bg-blue-100 text-blue-700'
                   }`}>
                     {assignment.status === 'mandatory' ? 'Verplicht' :
                      assignment.status === 'brand' ? 'Eigen Nieuws' :
                      'Optioneel'}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-center">
+                <td className="px-6 py-4 text-center">
                   {assignment.status === 'mandatory' ? (
                     <div className="flex items-center justify-center">
                       <button
-                        className="relative inline-flex h-6 w-11 items-center rounded-full bg-green-600 opacity-60 cursor-not-allowed"
+                        className="relative inline-flex h-6 w-11 items-center rounded-full bg-green-500 opacity-50 cursor-not-allowed"
                         disabled={true}
                         title="Verplichte nieuwsberichten zijn altijd gepubliceerd"
                       >
-                        <span className="inline-block h-4 w-4 transform rounded-full bg-white shadow-sm translate-x-6 transition-transform" />
+                        <span className="inline-block h-4 w-4 transform rounded-full bg-white shadow translate-x-6 transition-transform" />
                       </button>
                     </div>
                   ) : (
                     <div className="flex items-center justify-center">
                       <button
                         onClick={() => handleTogglePublish(assignment.id, assignment.is_published, assignment)}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
-                          assignment.is_published ? 'bg-green-600' : 'bg-gray-200'
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                          assignment.is_published ? 'bg-green-500' : 'bg-gray-300'
                         }`}
                       >
                         <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
                             assignment.is_published ? 'translate-x-6' : 'translate-x-1'
                           }`}
                         />
@@ -333,11 +352,11 @@ export function NewsApproval() {
                     </div>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                  <div className="flex items-center justify-center gap-3">
+                <td className="px-6 py-4 text-center">
+                  <div className="flex items-center justify-center gap-2">
                     <button
                       onClick={() => openPreview(assignment.news_item.slug)}
-                      className="text-blue-600 hover:text-blue-900 transition-colors"
+                      className="text-blue-600 hover:text-blue-700 transition-colors"
                       title="Preview"
                     >
                       <Eye className="w-5 h-5" />
@@ -346,14 +365,14 @@ export function NewsApproval() {
                       <>
                         <button
                           onClick={() => handleEdit(assignment)}
-                          className="text-orange-600 hover:text-orange-900 transition-colors"
+                          className="text-orange-600 hover:text-orange-700 transition-colors"
                           title="Bewerken"
                         >
                           <Pencil className="w-5 h-5" />
                         </button>
                         <button
                           onClick={() => handleDelete(assignment)}
-                          className="text-red-600 hover:text-red-900 transition-colors"
+                          className="text-red-600 hover:text-red-700 transition-colors"
                           title="Verwijderen"
                         >
                           <Trash2 className="w-5 h-5" />
