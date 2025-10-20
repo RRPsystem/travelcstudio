@@ -168,11 +168,12 @@ export function NewsApproval() {
         authorId: user.id,
         mode: 'news'
       });
-      const builderBaseUrl = 'https://www.ai-websitestudio.nl/index.html';
+      const builderBaseUrl = 'https://www.ai-websitestudio.nl';
       const apiBaseUrl = jwtResponse.api_url || import.meta.env.VITE_SUPABASE_URL;
       const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const returnUrl = `${window.location.origin}/#/brand/content/news`;
 
-      const deeplink = `${builderBaseUrl}?api=${encodeURIComponent(apiBaseUrl)}&apikey=${encodeURIComponent(apiKey)}&brand_id=${user.brand_id}&token=${encodeURIComponent(jwtResponse.token)}&slug=${assignment.news_item.slug}&content_type=news_items&author_type=brand&author_id=${user.id}#/mode/news`;
+      const deeplink = `${builderBaseUrl}?api=${encodeURIComponent(apiBaseUrl)}&apikey=${encodeURIComponent(apiKey)}&brand_id=${user.brand_id}&token=${encodeURIComponent(jwtResponse.token)}&slug=${assignment.news_item.slug}&content_type=news&return_url=${encodeURIComponent(returnUrl)}#/mode/news`;
 
       console.log('Generated deeplink:', deeplink);
       window.open(deeplink, '_blank');
@@ -219,11 +220,12 @@ export function NewsApproval() {
         authorId: user.id,
         mode: 'news'
       });
-      const builderBaseUrl = 'https://www.ai-websitestudio.nl/index.html';
+      const builderBaseUrl = 'https://www.ai-websitestudio.nl';
       const apiBaseUrl = jwtResponse.api_url || import.meta.env.VITE_SUPABASE_URL;
       const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const returnUrl = `${window.location.origin}/#/brand/content/news`;
 
-      const deeplink = `${builderBaseUrl}?api=${encodeURIComponent(apiBaseUrl)}&apikey=${encodeURIComponent(apiKey)}&brand_id=${user.brand_id}&token=${encodeURIComponent(jwtResponse.token)}&content_type=news_items&author_type=brand&author_id=${user.id}#/mode/news`;
+      const deeplink = `${builderBaseUrl}?api=${encodeURIComponent(apiBaseUrl)}&apikey=${encodeURIComponent(apiKey)}&brand_id=${user.brand_id}&token=${encodeURIComponent(jwtResponse.token)}&content_type=news&return_url=${encodeURIComponent(returnUrl)}#/mode/news`;
 
       window.open(deeplink, '_blank');
     } catch (error) {
