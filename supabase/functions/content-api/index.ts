@@ -143,6 +143,11 @@ Deno.serve(async (req: Request) => {
       const claims = await verifyBearerToken(req, "content:write");
       const { brand_id, id, title, slug, content, author_type, author_id, ...otherFields } = body;
 
+      console.log('[SAVE DEBUG] Body:', JSON.stringify(body, null, 2));
+      console.log('[SAVE DEBUG] Claims:', JSON.stringify(claims, null, 2));
+      console.log('[SAVE DEBUG] Author type from body:', author_type);
+      console.log('[SAVE DEBUG] Author ID from body:', author_id);
+
       const SYSTEM_BRAND_ID = '00000000-0000-0000-0000-000000000999';
       const isSystemBrand = claims.brand_id === SYSTEM_BRAND_ID;
 
@@ -242,9 +247,12 @@ Deno.serve(async (req: Request) => {
               insertData.author_id = author_id || claims.user_id || claims.sub;
             } else {
               insertData.author_type = 'brand';
-              insertData.author_id = claims.user_id || claims.sub;
+              insertData.author_id = author_id || claims.user_id || claims.sub;
             }
+            console.log('[SAVE DEBUG] Setting author_type:', insertData.author_type, 'author_id:', insertData.author_id);
           }
+
+          console.log('[SAVE DEBUG] Insert data:', JSON.stringify(insertData, null, 2));
 
           const { data, error } = await supabase
             .from(contentType)
