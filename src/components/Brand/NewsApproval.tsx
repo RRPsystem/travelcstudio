@@ -186,7 +186,7 @@ export function NewsApproval() {
       const boltBaseUrl = apiBaseUrl.replace('/functions/v1', '').replace('https://', 'https://bolt.');
       const returnUrl = `${boltBaseUrl}/#/brand/content/news`;
 
-      const deeplink = `${builderBaseUrl}?api=${encodeURIComponent(apiBaseUrl)}&apikey=${encodeURIComponent(apiKey)}&brand_id=${user.brand_id}&token=${encodeURIComponent(jwtResponse.token)}&slug=${assignment.news_item.slug}&content_type=news&return_url=${encodeURIComponent(returnUrl)}#/mode/news`;
+      const deeplink = `${builderBaseUrl}?api=${encodeURIComponent(apiBaseUrl)}&apikey=${encodeURIComponent(apiKey)}&brand_id=${user.brand_id}&token=${encodeURIComponent(jwtResponse.token)}&content_type=news_items&news_slug=${assignment.news_item.slug}&return_url=${encodeURIComponent(returnUrl)}#/mode/news`;
 
       console.log('Generated deeplink:', deeplink);
       window.open(deeplink, '_blank');
@@ -241,7 +241,7 @@ export function NewsApproval() {
       const boltBaseUrl = apiBaseUrl.replace('/functions/v1', '').replace('https://', 'https://bolt.');
       const returnUrl = `${boltBaseUrl}/#/brand/content/news`;
 
-      const deeplink = `${builderBaseUrl}?api=${encodeURIComponent(apiBaseUrl)}&apikey=${encodeURIComponent(apiKey)}&brand_id=${user.brand_id}&token=${encodeURIComponent(jwtResponse.token)}&content_type=news&return_url=${encodeURIComponent(returnUrl)}#/mode/news`;
+      const deeplink = `${builderBaseUrl}?api=${encodeURIComponent(apiBaseUrl)}&apikey=${encodeURIComponent(apiKey)}&brand_id=${user.brand_id}&token=${encodeURIComponent(jwtResponse.token)}&content_type=news_items&return_url=${encodeURIComponent(returnUrl)}#/mode/news`;
 
       window.open(deeplink, '_blank');
     } catch (error) {
