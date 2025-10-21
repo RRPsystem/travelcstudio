@@ -242,12 +242,13 @@ export function NewsApproval() {
 
       if (assignment.status === 'brand') {
         const newsId = assignment.news_id || assignment.news_item.id;
-        console.log('[NewsApproval] Deleting news item:', newsId);
+        console.log('[NewsApproval] Deleting brand news item:', newsId);
 
         const { data, error } = await supabase
           .from('news_items')
           .delete()
           .eq('id', newsId)
+          .eq('brand_id', user?.brand_id)
           .select();
 
         if (error) {
@@ -255,13 +256,25 @@ export function NewsApproval() {
           alert(`Fout bij verwijderen: ${error.message}`);
           throw error;
         }
+
+        if (!data || data.length === 0) {
+          console.error('[NewsApproval] No rows deleted - item not found or no permission');
+          alert('Item kon niet worden verwijderd');
+          return;
+        }
+
         console.log('[NewsApproval] News item deleted successfully:', data);
       } else {
-        console.log('[NewsApproval] Deleting assignment:', assignment.id);
+        const assignmentId = assignment.id.startsWith('brand-news-')
+          ? assignment.news_id
+          : assignment.id;
+
+        console.log('[NewsApproval] Deleting assignment:', assignmentId);
         const { data, error } = await supabase
           .from('news_brand_assignments')
           .delete()
-          .eq('id', assignment.id)
+          .eq('id', assignmentId)
+          .eq('brand_id', user?.brand_id)
           .select();
 
         if (error) {
@@ -269,6 +282,13 @@ export function NewsApproval() {
           alert(`Fout bij verwijderen: ${error.message}`);
           throw error;
         }
+
+        if (!data || data.length === 0) {
+          console.error('[NewsApproval] No assignment rows deleted - not found');
+          alert('Assignment kon niet worden verwijderd');
+          return;
+        }
+
         console.log('[NewsApproval] Assignment deleted successfully:', data);
       }
 
