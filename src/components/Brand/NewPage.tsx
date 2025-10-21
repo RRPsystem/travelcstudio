@@ -68,8 +68,13 @@ export function NewPage() {
   const handleOpenPageBuilder = async () => {
     if (!user || !user.brand_id) return;
 
-    const token = await generateBuilderJWT(user.brand_id, user.id);
-    const deeplink = generateBuilderDeeplink(user.brand_id, token);
+    const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/website/pages`;
+    const jwtResponse = await generateBuilderJWT(user.brand_id, user.id, undefined, {
+      returnUrl
+    });
+    const deeplink = generateBuilderDeeplink(user.brand_id, jwtResponse.token, {
+      returnUrl
+    });
 
     window.open(deeplink, '_blank');
   };
@@ -77,9 +82,14 @@ export function NewPage() {
   const handleUseTemplate = async (templateId: number) => {
     if (!user || !user.brand_id) return;
 
-    const token = await generateBuilderJWT(user.brand_id, user.id);
-    const deeplink = generateBuilderDeeplink(user.brand_id, token, {
-      templateId: templateId.toString()
+    const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/website/pages`;
+    const jwtResponse = await generateBuilderJWT(user.brand_id, user.id, undefined, {
+      templateId: templateId.toString(),
+      returnUrl
+    });
+    const deeplink = generateBuilderDeeplink(user.brand_id, jwtResponse.token, {
+      templateId: templateId.toString(),
+      returnUrl
     });
 
     window.open(deeplink, '_blank');

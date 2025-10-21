@@ -113,6 +113,7 @@ export function generateBuilderDeeplink(
     menuId?: string;
     headerId?: string;
     footerId?: string;
+    returnUrl?: string;
   } = {}
 ): string {
   const builderBaseUrl = 'https://www.ai-websitestudio.nl';
@@ -144,6 +145,10 @@ export function generateBuilderDeeplink(
 
   if (options.footerId) {
     params.append('footer_id', options.footerId);
+  }
+
+  if (options.returnUrl) {
+    params.append('return_url', options.returnUrl);
   }
 
   return `${builderBaseUrl}/?${params.toString()}`;
