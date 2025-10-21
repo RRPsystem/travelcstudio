@@ -242,13 +242,12 @@ export function NewsApproval() {
 
       if (assignment.status === 'brand') {
         const newsId = assignment.news_id || assignment.news_item.id;
-        console.log('[NewsApproval] Deleting brand news item:', newsId);
+        console.log('[NewsApproval] Deleting brand news item:', newsId, 'User brand_id:', user?.brand_id);
 
         const { data, error } = await supabase
           .from('news_items')
           .delete()
           .eq('id', newsId)
-          .eq('brand_id', user?.brand_id)
           .select();
 
         if (error) {
