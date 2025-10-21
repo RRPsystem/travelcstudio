@@ -35,6 +35,7 @@ export function NewsApproval() {
   const loadAssignments = async () => {
     if (!user?.brand_id) return;
 
+    setLoading(true);
     try {
       const { data: assignmentData, error: assignmentError } = await supabase
         .from('news_brand_assignments')
@@ -199,16 +200,14 @@ export function NewsApproval() {
       const apiBaseUrl = jwtResponse.api_url || import.meta.env.VITE_SUPABASE_URL;
       const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      // Use configured app URL for return (not window.location which could be builder URL)
-      const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
-      // Include hash to return to correct page
-      const returnUrl = `${appUrl}/#/brand/content/news`;
+      // Use current window origin as return URL
+      const returnUrl = `${window.location.origin}/#/brand/content/news`;
 
       const newsSlug = assignment.news_item.slug;
       const newsId = assignment.news_item.id;
       console.log('[NewsApproval] Building deeplink with slug:', newsSlug, 'id:', newsId);
 
-      const deeplink = `${builderBaseUrl}?api=${encodeURIComponent(apiBaseUrl)}&apikey=${encodeURIComponent(apiKey)}&brand_id=${user.brand_id}&token=${encodeURIComponent(jwtResponse.token)}&content_type=news_items&id=${encodeURIComponent(newsId)}&slug=${encodeURIComponent(newsSlug)}&return_url=${encodeURIComponent(returnUrl)}#/mode/news`;
+      const deeplink = `${builderBaseUrl}?api=${encodeURIComponent(apiBaseUrl)}&apikey=${encodeURIComponent(apiKey)}&brand_id=${user.brand_id}&token=${encodeURIComponent(jwtResponse.token)}&content_type=news_items&action=load_news&id=${encodeURIComponent(newsId)}&slug=${encodeURIComponent(newsSlug)}&return_url=${encodeURIComponent(returnUrl)}#/mode/news`;
 
       console.log('[NewsApproval] Opening deeplink for editing:', deeplink);
       console.log('[NewsApproval] Article details:', {
@@ -273,8 +272,11 @@ export function NewsApproval() {
         }
         console.log('[NewsApproval] Assignment deleted successfully:', data);
       }
+
+      // Refresh the assignments list immediately
+      console.log('[NewsApproval] Refreshing assignments list...');
       await loadAssignments();
-      console.log('[NewsApproval] Assignments reloaded');
+      console.log('[NewsApproval] Assignments reloaded successfully');
     } catch (error) {
       console.error('[NewsApproval] Error deleting:', error);
       alert(`Fout bij verwijderen: ${error instanceof Error ? error.message : 'Onbekende fout'}`);
