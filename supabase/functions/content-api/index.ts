@@ -113,12 +113,15 @@ function corsHeaders(req?: Request): Headers {
 }
 
 Deno.serve(async (req: Request) => {
+  console.log("[REQUEST] Method:", req.method, "URL:", req.url);
+  console.log("[REQUEST] Origin:", req.headers.get('origin'));
+
   if (req.method === "OPTIONS") {
-    console.log("[CORS] OPTIONS request from:", req.headers.get('origin'));
+    console.log("[CORS] Handling OPTIONS preflight request");
     const headers = corsHeaders(req);
-    console.log("[CORS] Responding with headers:", Object.fromEntries(headers.entries()));
+    console.log("[CORS] Responding with status 204 and headers:", Object.fromEntries(headers.entries()));
     return new Response(null, {
-      status: 200,
+      status: 204,
       headers: headers
     });
   }
