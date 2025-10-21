@@ -399,7 +399,7 @@ export function NewsApproval() {
                     >
                       <Eye className="w-5 h-5" />
                     </button>
-                    {assignment.status === 'brand' && (
+                    {assignment.status !== 'mandatory' && (
                       <>
                         <button
                           onClick={() => handleEdit(assignment)}
