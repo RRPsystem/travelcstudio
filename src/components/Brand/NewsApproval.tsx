@@ -199,15 +199,21 @@ export function NewsApproval() {
       const apiBaseUrl = jwtResponse.api_url || import.meta.env.VITE_SUPABASE_URL;
       const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      // Use current window location for return URL (preserves the actual app URL)
-      const currentOrigin = window.location.origin;
-      const returnUrl = `${currentOrigin}${window.location.pathname}#/brand/content/news`;
+      // Use configured app URL for return (not window.location which could be builder URL)
+      const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+      const returnUrl = `${appUrl}/#/brand/content/news`;
 
-      const deeplink = `${builderBaseUrl}?api=${encodeURIComponent(apiBaseUrl)}&apikey=${encodeURIComponent(apiKey)}&brand_id=${user.brand_id}&token=${encodeURIComponent(jwtResponse.token)}&content_type=news_items&news_slug=${assignment.news_item.slug}&return_url=${encodeURIComponent(returnUrl)}#/mode/news`;
+      const newsSlug = assignment.news_item.slug;
+      console.log('[NewsApproval] Building deeplink with slug:', newsSlug, 'type:', typeof newsSlug);
+
+      const deeplink = `${builderBaseUrl}?api=${encodeURIComponent(apiBaseUrl)}&apikey=${encodeURIComponent(apiKey)}&brand_id=${user.brand_id}&token=${encodeURIComponent(jwtResponse.token)}&content_type=news_items&news_slug=${encodeURIComponent(newsSlug)}&return_url=${encodeURIComponent(returnUrl)}#/mode/news`;
 
       console.log('[NewsApproval] Opening deeplink for editing:', deeplink);
-      console.log('[NewsApproval] Article slug:', assignment.news_item.slug);
-      console.log('[NewsApproval] Article title:', assignment.news_item.title);
+      console.log('[NewsApproval] Article details:', {
+        slug: newsSlug,
+        title: assignment.news_item.title,
+        id: assignment.news_item.id
+      });
       console.log('[NewsApproval] Return URL:', returnUrl);
       const result = window.open(deeplink, '_blank');
       console.log('[NewsApproval] window.open result:', result);
@@ -262,9 +268,9 @@ export function NewsApproval() {
       const apiBaseUrl = jwtResponse.api_url || import.meta.env.VITE_SUPABASE_URL;
       const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      // Use current window location for return URL (preserves the actual app URL)
-      const currentOrigin = window.location.origin;
-      const returnUrl = `${currentOrigin}${window.location.pathname}#/brand/content/news`;
+      // Use configured app URL for return (not window.location which could be builder URL)
+      const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+      const returnUrl = `${appUrl}/#/brand/content/news`;
 
       const deeplink = `${builderBaseUrl}?api=${encodeURIComponent(apiBaseUrl)}&apikey=${encodeURIComponent(apiKey)}&brand_id=${user.brand_id}&token=${encodeURIComponent(jwtResponse.token)}&content_type=news_items&return_url=${encodeURIComponent(returnUrl)}#/mode/news`;
 
