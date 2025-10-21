@@ -145,12 +145,9 @@ Deno.serve(async (req: Request) => {
             id,
             title,
             slug,
-            intro,
+            excerpt,
             content,
             featured_image,
-            is_featured,
-            author_name,
-            author_email,
             tags,
             created_at,
             updated_at,
@@ -174,12 +171,9 @@ Deno.serve(async (req: Request) => {
           id: item.id,
           title: item.title,
           slug: item.slug,
-          intro: item.intro,
+          excerpt: item.excerpt,
           content: item.content,
           featured_image: item.featured_image,
-          is_featured: item.is_featured,
-          author_name: item.author_name,
-          author_email: item.author_email,
           tags: item.tags,
           created_at: item.created_at,
           updated_at: item.updated_at,
@@ -304,16 +298,12 @@ Deno.serve(async (req: Request) => {
           const updateData: any = {
             title: body.title,
             slug: body.slug,
-            intro: body.intro || body.excerpt,
+            excerpt: body.excerpt || body.intro || '',
             content: body.content,
-            featured_image: body.featured_image,
-            is_featured: body.is_featured || false,
-            tags: body.tags,
+            featured_image: body.featured_image || '',
+            tags: body.tags || [],
             updated_at: new Date().toISOString(),
           };
-
-          if (body.author_name) updateData.author_name = body.author_name;
-          if (body.author_email) updateData.author_email = body.author_email;
 
           const { error: updateError } = await supabase
             .from("news_items")
@@ -363,15 +353,11 @@ Deno.serve(async (req: Request) => {
           const insertData: any = {
             title: body.title,
             slug: body.slug,
-            intro: body.intro || body.excerpt,
+            excerpt: body.excerpt || body.intro || '',
             content: body.content,
-            featured_image: body.featured_image,
-            is_featured: body.is_featured || false,
-            tags: body.tags,
+            featured_image: body.featured_image || '',
+            tags: body.tags || [],
           };
-
-          if (body.author_name) insertData.author_name = body.author_name;
-          if (body.author_email) insertData.author_email = body.author_email;
 
           const { data: newItem, error: insertError } = await supabase
             .from("news_items")
