@@ -302,6 +302,7 @@ Deno.serve(async (req: Request) => {
             content: body.content,
             featured_image: body.featured_image || '',
             tags: body.tags || [],
+            brand_id: brandId,
             updated_at: new Date().toISOString(),
           };
 
@@ -357,6 +358,7 @@ Deno.serve(async (req: Request) => {
             content: body.content,
             featured_image: body.featured_image || '',
             tags: body.tags || [],
+            brand_id: brandId,
           };
 
           const { data: newItem, error: insertError } = await supabase
