@@ -135,11 +135,15 @@ Deno.serve(async (req: Request) => {
     if (action === "list") {
       const payload = await verifyBearerToken(req, "content:read");
       const brandId = url.searchParams.get("brand_id") || payload.brand_id;
+      const slugFilter = url.searchParams.get("slug");
 
       console.log("[CONTENT-API] Listing content for brand:", brandId);
+      if (slugFilter) {
+        console.log("[CONTENT-API] Filtering by slug:", slugFilter);
+      }
 
       if (contentType === "news_items") {
-        const { data, error } = await supabase
+        let query = supabase
           .from("news_items")
           .select(`
             id,
@@ -156,8 +160,15 @@ Deno.serve(async (req: Request) => {
               is_published
             )
           `)
-          .eq("news_brand_assignments.brand_id", brandId)
-          .order("created_at", { ascending: false });
+          .eq("news_brand_assignments.brand_id", brandId);
+
+        if (slugFilter) {
+          query = query.eq("slug", slugFilter);
+        } else {
+          query = query.order("created_at", { ascending: false });
+        }
+
+        const { data, error } = await query;
 
         if (error) {
           console.error("[CONTENT-API] Database error:", error);
@@ -184,11 +195,18 @@ Deno.serve(async (req: Request) => {
           headers: corsHeaders(req),
         });
       } else {
-        const { data, error } = await supabase
+        let query = supabase
           .from(contentType)
           .select("*")
-          .eq("brand_id", brandId)
-          .order("created_at", { ascending: false });
+          .eq("brand_id", brandId);
+
+        if (slugFilter) {
+          query = query.eq("slug", slugFilter);
+        } else {
+          query = query.order("created_at", { ascending: false });
+        }
+
+        const { data, error } = await query;
 
         if (error) {
           console.error("[CONTENT-API] Database error:", error);
