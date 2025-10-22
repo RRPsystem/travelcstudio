@@ -108,10 +108,28 @@ Deno.serve(async (req: Request) => {
       throw new Error(`Failed to create user record: ${userInsertError.message}`);
     }
 
+    const { error: agentInsertError } = await supabaseAdmin
+      .from('agents')
+      .insert({
+        id: authData.user.id,
+        name,
+        email,
+        phone: phone || null,
+        brand_id,
+        is_published: false
+      });
+
+    if (agentInsertError) {
+      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+      await supabaseAdmin.from('users').delete().eq('id', authData.user.id);
+      throw new Error(`Failed to create agent record: ${agentInsertError.message}`);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         user_id: authData.user.id,
+        agent_id: authData.user.id,
         email,
         name,
         brand_id,
