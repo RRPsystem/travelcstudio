@@ -4,6 +4,7 @@ import { db, supabase } from '../../lib/supabase';
 import { AgentManagement } from './AgentManagement';
 import { BrandForm } from './BrandForm';
 import { NewsManagement } from './NewsManagement';
+import { DestinationManagement } from './DestinationManagement';
 import { TemplateManager } from './TemplateManager';
 import DeeplinkTester from './DeeplinkTester';
 import { HelpBot } from '../shared/HelpBot';
@@ -466,6 +467,7 @@ export function AdminDashboard() {
                 {activeSection === 'brands' && 'Brand Management'}
                 {activeSection === 'agents' && 'Agent Management'}
                 {activeSection === 'admin-news' && 'Admin News Management'}
+                {activeSection === 'destinations' && 'Bestemmingen Beheer'}
                 {activeSection === 'deeplink-tester' && 'Deeplink Tester'}
                 {activeSection === 'template-manager' && 'Template Manager'}
                 {activeSection === 'page-management' && 'Pagina Beheer'}
@@ -476,6 +478,7 @@ export function AdminDashboard() {
                 {activeSection === 'brands' && 'Manage all brands in the system'}
                 {activeSection === 'dashboard' && 'System overview and statistics'}
                 {activeSection === 'admin-news' && 'Create and manage news items for all brands'}
+                {activeSection === 'destinations' && 'Beheer bestemmingen voor alle brands'}
                 {activeSection === 'deeplink-tester' && 'Test external builder integration'}
                 {activeSection === 'template-manager' && 'Maak en beheer pagina templates voor brands'}
                 {activeSection === 'page-management' && 'Beheer alle pagina\'s van je website'}
@@ -518,6 +521,7 @@ export function AdminDashboard() {
         <main className="flex-1 p-6">
           {activeSection === 'agents' && <AgentManagement />}
           {activeSection === 'admin-news' && <NewsManagement />}
+          {activeSection === 'destinations' && <DestinationManagement />}
           {activeSection === 'deeplink-tester' && <DeeplinkTester />}
           {activeSection === 'template-manager' && <TemplateManager />}
 

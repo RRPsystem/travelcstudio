@@ -7,6 +7,7 @@ import { SocialMedia } from './AITools/SocialMedia';
 import { BrandSettings } from './BrandSettings';
 import { HelpBot } from '../shared/HelpBot';
 import { NewsApproval } from './NewsApproval';
+import { DestinationApproval } from './DestinationApproval';
 import { PageManagement } from './PageManagement';
 import { NewPage } from './NewPage';
 import { AgentManagement } from './AgentManagement';
@@ -595,6 +596,11 @@ export function BrandDashboard() {
           {activeSection === 'nieuwsbeheer' && (
             <div className="p-6">
               <NewsApproval />
+            </div>
+          )}
+          {activeSection === 'destinations' && (
+            <div className="p-6">
+              <DestinationApproval />
             </div>
           )}
           {activeSection === 'ai-content' && <AIContentGenerator />}
