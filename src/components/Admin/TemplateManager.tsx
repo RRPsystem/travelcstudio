@@ -205,10 +205,12 @@ export function TemplateManager() {
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('=== handleImageUpload called ===');
+    console.log('📸 === handleImageUpload called ===');
+    console.log('📸 Files:', e.target.files);
+    console.log('📸 Editing template:', editingTemplate);
 
     if (!e.target.files || e.target.files.length === 0 || !editingTemplate) {
-      console.log('No files or no editing template');
+      console.log('❌ No files or no editing template');
       return;
     }
 
@@ -572,7 +574,7 @@ export function TemplateManager() {
                   </div>
                 </div>
 
-                {editingTemplate.preview_image_url && (
+                {editingTemplate.preview_image_url ? (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Preview
@@ -585,6 +587,12 @@ export function TemplateManager() {
                         (e.target as HTMLImageElement).style.display = 'none';
                       }}
                     />
+                  </div>
+                ) : (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <p className="text-sm text-yellow-800">
+                      <strong>Let op:</strong> Geen preview afbeelding ingesteld. Upload een foto of voer een URL in.
+                    </p>
                   </div>
                 )}
               </div>
