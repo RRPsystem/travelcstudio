@@ -83,11 +83,21 @@ export function NewsManagement() {
       const apiBaseUrl = jwtResponse.api_url || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
       const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      const returnUrl = user.role === 'brand'
-        ? 'https://www.ai-travelstudio.nl/'
-        : 'https://www.ai-travelstudio.nl/#/admin/news';
+      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/admin/news`;
 
-      const deeplink = `${builderBaseUrl}/?api=${encodeURIComponent(apiBaseUrl)}&brand_id=${SYSTEM_BRAND_ID}&token=${encodeURIComponent(jwtResponse.token)}&apikey=${encodeURIComponent(apiKey)}&author_type=admin&author_id=${user.id}&content_type=news_items&return_url=${encodeURIComponent(returnUrl)}&mode=news#/mode/news`;
+      const params = new URLSearchParams({
+        api: apiBaseUrl,
+        brand_id: SYSTEM_BRAND_ID,
+        token: jwtResponse.token,
+        apikey: apiKey,
+        author_type: 'admin',
+        author_id: user.id,
+        content_type: 'news_items',
+        return_url: returnUrl,
+        mode: 'news'
+      });
+
+      const deeplink = `${builderBaseUrl}/?${params.toString()}#/mode/news`;
       console.log('🔗 Opening news builder deeplink:', deeplink);
 
       const newWindow = window.open(deeplink, '_blank');
@@ -125,11 +135,22 @@ export function NewsManagement() {
       const apiBaseUrl = jwtResponse.api_url || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
       const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      const returnUrl = user.role === 'brand'
-        ? 'https://www.ai-travelstudio.nl/'
-        : 'https://www.ai-travelstudio.nl/#/admin/news';
+      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/admin/news`;
 
-      const deeplink = `${builderBaseUrl}?api=${encodeURIComponent(apiBaseUrl)}&brand_id=${SYSTEM_BRAND_ID}&token=${encodeURIComponent(jwtResponse.token)}&apikey=${encodeURIComponent(apiKey)}&news_slug=${encodeURIComponent(news.slug)}&author_type=admin&author_id=${user.id}&content_type=news_items&return_url=${encodeURIComponent(returnUrl)}&mode=news`;
+      const params = new URLSearchParams({
+        api: apiBaseUrl,
+        brand_id: SYSTEM_BRAND_ID,
+        token: jwtResponse.token,
+        apikey: apiKey,
+        news_slug: news.slug,
+        author_type: 'admin',
+        author_id: user.id,
+        content_type: 'news_items',
+        return_url: returnUrl,
+        mode: 'news'
+      });
+
+      const deeplink = `${builderBaseUrl}?${params.toString()}`;
 
       console.log('🔗 Opening news edit deeplink:', deeplink);
 

@@ -70,6 +70,8 @@ export function TemplateManager() {
         }
       );
 
+      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/admin/templates`;
+
       const params = new URLSearchParams({
         api: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`,
         token: jwtResponse.token,
@@ -82,6 +84,7 @@ export function TemplateManager() {
         slug: formData.slug,
         template_category: formData.template_category,
         preview_image_url: formData.preview_image_url || '',
+        return_url: returnUrl,
       });
 
       const url = `https://www.ai-websitestudio.nl/?${params.toString()}`;
@@ -119,6 +122,8 @@ export function TemplateManager() {
         }
       );
 
+      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/admin/templates`;
+
       const params = new URLSearchParams({
         api: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`,
         token: jwtResponse.token,
@@ -127,6 +132,7 @@ export function TemplateManager() {
         page_id: templateId,
         mode: 'edit-template',
         content_type: 'page',
+        return_url: returnUrl,
       });
 
       const url = `https://www.ai-websitestudio.nl/?${params.toString()}`;
