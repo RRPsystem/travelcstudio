@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Eye, Layout, Settings, X, Save } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Layout, Settings, X, Save, Upload } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { openTemplateBuilder } from '../../lib/jwtHelper';
@@ -28,6 +28,7 @@ export function TemplateManager() {
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     slug: '',
@@ -158,6 +159,61 @@ export function TemplateManager() {
     } catch (error) {
       console.error('Error updating template metadata:', error);
       alert('Er is een fout opgetreden bij het bijwerken van de metadata');
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !editingTemplate) return;
+
+    const file = e.target.files[0];
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Selecteer een geldige afbeelding');
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Afbeelding mag maximaal 5MB zijn');
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      // Generate unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('template-previews')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('template-previews')
+        .getPublicUrl(filePath);
+
+      // Update the editing template with the new URL
+      setEditingTemplate({
+        ...editingTemplate,
+        preview_image_url: publicUrl
+      });
+
+      alert('Afbeelding succesvol geüpload!');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Er is een fout opgetreden bij het uploaden van de afbeelding');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -359,18 +415,46 @@ export function TemplateManager() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Preview Afbeelding URL
+                    Preview Afbeelding
                   </label>
-                  <input
-                    type="text"
-                    value={editingTemplate.preview_image_url || ''}
-                    onChange={(e) => setEditingTemplate({ ...editingTemplate, preview_image_url: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                    placeholder="/image.png of https://..."
-                  />
-                  <p className="text-sm text-gray-500 mt-1">
-                    Beschikbare afbeeldingen: /image.png, /image copy.png, /image copy copy.png, /image copy copy copy.png
-                  </p>
+
+                  <div className="space-y-3">
+                    {/* Upload button */}
+                    <div>
+                      <input
+                        type="file"
+                        id="image-upload"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                        disabled={uploading}
+                      />
+                      <label
+                        htmlFor="image-upload"
+                        className={`inline-flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${
+                          uploading ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                      >
+                        <Upload size={18} />
+                        <span>{uploading ? 'Uploaden...' : 'Upload Afbeelding'}</span>
+                      </label>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Max 5MB - JPEG, PNG, GIF of WebP
+                      </p>
+                    </div>
+
+                    {/* Or enter URL */}
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Of voer een URL in:</label>
+                      <input
+                        type="text"
+                        value={editingTemplate.preview_image_url || ''}
+                        onChange={(e) => setEditingTemplate({ ...editingTemplate, preview_image_url: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        placeholder="/image.png of https://..."
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {editingTemplate.preview_image_url && (
