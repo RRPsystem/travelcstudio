@@ -29,11 +29,16 @@ export function NewsApproval() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadAssignments();
-  }, [user]);
+    if (user?.brand_id) {
+      loadAssignments();
+    }
+  }, [user?.brand_id]);
 
   const loadAssignments = async () => {
-    if (!user?.brand_id) return;
+    if (!user?.brand_id) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     try {

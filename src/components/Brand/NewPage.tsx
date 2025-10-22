@@ -97,22 +97,37 @@ export function NewPage() {
   };
 
   const handleOpenPageBuilder = async () => {
-    if (!user || !user.brand_id) return;
+    if (!user || !user.brand_id) {
+      console.error('No user or brand_id available');
+      return;
+    }
 
-    const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/website/pages`;
-    const deeplink = await openBuilder(user.brand_id, user.id, { returnUrl });
-    window.open(deeplink, '_blank');
+    try {
+      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/website/pages`;
+      console.log('Opening builder with brand_id:', user.brand_id, 'returnUrl:', returnUrl);
+      const deeplink = await openBuilder(user.brand_id, user.id, { returnUrl });
+      console.log('Generated deeplink:', deeplink);
+      window.open(deeplink, '_blank');
+    } catch (error) {
+      console.error('Error opening builder:', error);
+      alert('Er is een fout opgetreden bij het openen van de builder. Probeer het opnieuw.');
+    }
   };
 
   const handleUseTemplate = async (templateId: string) => {
     if (!user || !user.brand_id) return;
 
-    const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/website/pages`;
-    const deeplink = await openBuilder(user.brand_id, user.id, {
-      templateId,
-      returnUrl
-    });
-    window.open(deeplink, '_blank');
+    try {
+      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/website/pages`;
+      const deeplink = await openBuilder(user.brand_id, user.id, {
+        templateId,
+        returnUrl
+      });
+      window.open(deeplink, '_blank');
+    } catch (error) {
+      console.error('Error opening builder with template:', error);
+      alert('Er is een fout opgetreden bij het openen van de template. Probeer het opnieuw.');
+    }
   };
 
   const filteredTemplates = templates.filter(template => {
