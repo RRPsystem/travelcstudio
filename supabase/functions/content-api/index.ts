@@ -201,6 +201,49 @@ Deno.serve(async (req: Request) => {
 
       console.log("[CONTENT-API] Getting item:", id);
 
+      // TEMPLATE MODE: Load from pages table
+      if (payload.is_template === true || payload.mode === 'edit-template') {
+        console.log("[CONTENT-API] 🎯 TEMPLATE MODE - Loading from pages table");
+
+        const { data, error } = await supabase
+          .from("pages")
+          .select("*")
+          .eq("id", id)
+          .eq("is_template", true)
+          .maybeSingle();
+
+        if (error) {
+          console.error("[CONTENT-API] Database error:", error);
+          throw error;
+        }
+
+        if (!data) {
+          return new Response(JSON.stringify({ error: "Template not found" }), {
+            status: 404,
+            headers: corsHeaders(req),
+          });
+        }
+
+        console.log("[CONTENT-API] ✅ Template loaded:", data.id);
+
+        // Transform to Builder format
+        const transformedData = {
+          id: data.id,
+          title: data.title,
+          slug: data.slug,
+          content: { json: data.content_json },
+          template_category: data.template_category,
+          preview_image_url: data.preview_image_url,
+          status: data.status,
+        };
+
+        return new Response(JSON.stringify(transformedData), {
+          status: 200,
+          headers: corsHeaders(req),
+        });
+      }
+
+      // REGULAR NEWS MODE
       if (contentType === "news_items") {
         const { data, error } = await supabase
           .from("news_items")
