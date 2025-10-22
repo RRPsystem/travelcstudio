@@ -240,6 +240,8 @@ export async function openTemplateBuilder(
     brand_id: systemBrandId,
     mode: options.mode,
     content_type: 'page',
+    is_template: 'true',
+    type: 'page',
   });
 
   if (options.pageId) params.append('page_id', options.pageId);
@@ -249,7 +251,13 @@ export async function openTemplateBuilder(
   if (options.previewImageUrl) params.append('preview_image_url', options.previewImageUrl);
   if (options.returnUrl) params.append('return_url', options.returnUrl);
 
-  params.append('is_template', 'true');
+  console.log('[openTemplateBuilder] Generated URL params:', {
+    mode: options.mode,
+    content_type: 'page',
+    is_template: 'true',
+    pageId: options.pageId || 'new',
+    returnUrl: options.returnUrl
+  });
 
   return `${builderBaseUrl}/?${params.toString()}#/mode/builder`;
 }
