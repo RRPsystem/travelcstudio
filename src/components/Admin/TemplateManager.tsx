@@ -168,19 +168,30 @@ export function TemplateManager() {
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0 || !editingTemplate) return;
+    if (!e.target.files || e.target.files.length === 0 || !editingTemplate) {
+      console.log('No file selected or no template editing');
+      return;
+    }
 
     const file = e.target.files[0];
-    console.log('Selected file:', file.name, file.type, file.size);
+    console.log('=== IMAGE UPLOAD START ===');
+    console.log('Selected file:', {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      sizeInMB: (file.size / 1024 / 1024).toFixed(2) + 'MB'
+    });
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
+      console.error('Invalid file type:', file.type);
       alert('Selecteer een geldige afbeelding');
       return;
     }
 
     // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
+      console.error('File too large:', file.size);
       alert('Afbeelding mag maximaal 5MB zijn');
       return;
     }
@@ -188,12 +199,21 @@ export function TemplateManager() {
     try {
       setUploading(true);
 
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('Current user:', user?.id);
+
+      if (!user) {
+        throw new Error('Niet ingelogd');
+      }
+
       // Generate unique filename
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `${fileName}`;
+      const filePath = fileName;
 
-      console.log('Uploading to:', filePath);
+      console.log('Uploading to path:', filePath);
+      console.log('Bucket: template-previews');
 
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -204,18 +224,22 @@ export function TemplateManager() {
         });
 
       if (uploadError) {
-        console.error('Upload error:', uploadError);
+        console.error('Upload error details:', {
+          message: uploadError.message,
+          statusCode: uploadError.statusCode,
+          error: uploadError
+        });
         throw uploadError;
       }
 
-      console.log('Upload success:', uploadData);
+      console.log('Upload success! Data:', uploadData);
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('template-previews')
         .getPublicUrl(filePath);
 
-      console.log('Public URL:', publicUrl);
+      console.log('Public URL generated:', publicUrl);
 
       // Update the editing template with the new URL
       setEditingTemplate({
@@ -223,12 +247,20 @@ export function TemplateManager() {
         preview_image_url: publicUrl
       });
 
+      console.log('=== IMAGE UPLOAD SUCCESS ===');
       alert('Afbeelding succesvol geüpload!');
     } catch (error: any) {
-      console.error('Error uploading image:', error);
-      alert(`Er is een fout opgetreden: ${error?.message || 'Onbekende fout'}`);
+      console.error('=== IMAGE UPLOAD FAILED ===');
+      console.error('Error details:', {
+        message: error?.message,
+        statusCode: error?.statusCode,
+        error: error
+      });
+      alert(`Upload mislukt: ${error?.message || 'Onbekende fout'}`);
     } finally {
       setUploading(false);
+      // Reset file input
+      e.target.value = '';
     }
   };
 
