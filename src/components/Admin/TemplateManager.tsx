@@ -14,6 +14,7 @@ interface Template {
   created_at: string;
   sort_order: number;
   theme_label: string | null;
+  is_approved_for_brands: boolean;
 }
 
 const categories = [
@@ -157,6 +158,26 @@ export function TemplateManager() {
     } catch (error) {
       console.error('Error deleting template:', error);
       alert('Er is een fout opgetreden bij het verwijderen van de template');
+    }
+  };
+
+  const handleApprovalToggle = async (templateId: string, isApproved: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('pages')
+        .update({ is_approved_for_brands: isApproved })
+        .eq('id', templateId);
+
+      if (error) throw error;
+
+      setTemplates(prev =>
+        prev.map(t => t.id === templateId ? { ...t, is_approved_for_brands: isApproved } : t)
+      );
+
+      showNotification('success', `Template ${isApproved ? 'goedgekeurd' : 'afgekeurd'} voor brands`);
+    } catch (error) {
+      console.error('Error updating approval status:', error);
+      showNotification('error', 'Fout bij het wijzigen van goedkeuringsstatus');
     }
   };
 
@@ -420,6 +441,24 @@ export function TemplateManager() {
                         </span>
                       </div>
                     )}
+
+                    <div className="mt-3 flex items-center space-x-2">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={template.is_approved_for_brands}
+                          onChange={(e) => handleApprovalToggle(template.id, e.target.checked)}
+                          className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500"
+                        />
+                        <span className="text-sm font-medium text-gray-700">
+                          {template.is_approved_for_brands ? (
+                            <span className="text-green-600">✓ Goedgekeurd voor Brands</span>
+                          ) : (
+                            <span className="text-gray-500">Niet goedgekeurd</span>
+                          )}
+                        </span>
+                      </label>
+                    </div>
                   </div>
 
                   <div className="flex space-x-2">

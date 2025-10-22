@@ -1,35 +1,41 @@
 import React, { useState, useEffect } from 'react';
-import { Grid3x3, Wrench, Search, Plus, Eye } from 'lucide-react';
+import { Grid3x3, Wrench, Search, Plus, Eye, Layout } from 'lucide-react';
 import { openBuilder } from '../../lib/jwtHelper';
 import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 
-const templateCategories = [
-  { id: 'all', label: 'All Templates', count: 1 },
-  { id: 'landing', label: 'Landing Pages', count: 1 },
-  { id: 'about', label: 'About Pages', count: 0 },
-  { id: 'contact', label: 'Contact Pages', count: 0 },
-  { id: 'services', label: 'Services', count: 0 },
-  { id: 'galleries', label: 'Galleries', count: 0 },
-  { id: 'blog', label: 'Blog Pages', count: 0 },
-];
+interface Template {
+  id: string;
+  title: string;
+  slug: string;
+  template_category: string;
+  preview_image_url: string | null;
+  theme_label: string | null;
+  sort_order: number;
+}
 
-const templates = [
-  {
-    id: 1,
-    name: 'Home 1',
-    category: 'landing',
-    description: 'Professionele travel homepage geïnspireerd door Gowilds design met hero slider, bestemmingen showcase en tour highlights',
-    image: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&h=300&fit=crop',
-    tags: ['gowilds', 'hero-slider', 'tours', '+2'],
-    isPopular: true
-  }
+const categories = [
+  { value: 'all', label: 'Alle Templates' },
+  { value: 'home', label: 'Home Pagina\'s' },
+  { value: 'about', label: 'Over Ons' },
+  { value: 'contact', label: 'Contact' },
+  { value: 'team', label: 'Team' },
+  { value: 'general', label: 'Algemeen' },
 ];
 
 export function NewPage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedTheme, setSelectedTheme] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [themes, setThemes] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
   const [initialPageCount, setInitialPageCount] = useState<number | null>(null);
   const { user } = useAuth();
+
+  useEffect(() => {
+    loadTemplates();
+  }, []);
 
   useEffect(() => {
     if (!user?.brand_id) return;
@@ -65,6 +71,31 @@ export function NewPage() {
     return () => clearInterval(interval);
   }, [user?.brand_id, initialPageCount]);
 
+  const loadTemplates = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('pages')
+        .select('*')
+        .eq('is_template', true)
+        .eq('is_approved_for_brands', true)
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+
+      setTemplates(data || []);
+
+      const uniqueThemes = Array.from(
+        new Set(data?.filter(t => t.theme_label).map(t => t.theme_label))
+      ) as string[];
+      setThemes(uniqueThemes);
+    } catch (error) {
+      console.error('Error loading templates:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleOpenPageBuilder = async () => {
     if (!user || !user.brand_id) return;
 
@@ -73,16 +104,30 @@ export function NewPage() {
     window.open(deeplink, '_blank');
   };
 
-  const handleUseTemplate = async (templateId: number) => {
+  const handleUseTemplate = async (templateId: string) => {
     if (!user || !user.brand_id) return;
 
     const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/website/pages`;
     const deeplink = await openBuilder(user.brand_id, user.id, {
-      templateId: templateId.toString(),
+      templateId,
       returnUrl
     });
     window.open(deeplink, '_blank');
   };
+
+  const filteredTemplates = templates.filter(template => {
+    const matchesCategory = selectedCategory === 'all' || template.template_category === selectedCategory;
+    const matchesTheme = selectedTheme === 'all' || template.theme_label === selectedTheme;
+    const matchesSearch = template.title.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesCategory && matchesTheme && matchesSearch;
+  });
+
+  const categoryCounts = categories.map(cat => ({
+    ...cat,
+    count: cat.value === 'all'
+      ? templates.length
+      : templates.filter(t => t.template_category === cat.value).length
+  }));
 
   return (
     <div className="bg-gray-50 min-h-screen p-8">
@@ -124,13 +169,9 @@ export function NewPage() {
         <div className="bg-white rounded-lg border border-gray-200 p-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl font-semibold text-gray-900 mb-1">Template Gallery</h2>
-              <p className="text-gray-600">Choose from our collection of professional travel website templates</p>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-1">Template Gallerij</h2>
+              <p className="text-gray-600">Kies uit onze collectie van professionele website templates</p>
             </div>
-            <button className="inline-flex items-center space-x-2 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-              <Plus size={18} />
-              <span>Create Template</span>
-            </button>
           </div>
 
           <div className="mb-6">
@@ -140,87 +181,129 @@ export function NewPage() {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search templates by name, description, or tags..."
+                placeholder="Zoek templates op naam..."
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-4 mb-8 pb-6 border-b border-gray-200">
-            {templateCategories.map((category) => (
-              <button
-                key={category.id}
-                onClick={() => setSelectedCategory(category.id)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  selectedCategory === category.id
-                    ? 'bg-orange-100 text-orange-700'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {category.label} <span className="ml-1 text-gray-500">{category.count}</span>
-              </button>
-            ))}
+          <div className="mb-6">
+            <h4 className="text-sm font-medium text-gray-700 mb-3">Categorie</h4>
+            <div className="flex flex-wrap gap-2">
+              {categoryCounts.map((category) => (
+                <button
+                  key={category.value}
+                  onClick={() => setSelectedCategory(category.value)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    selectedCategory === category.value
+                      ? 'bg-orange-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {category.label} <span className="ml-1">({category.count})</span>
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <span className="text-yellow-500 mr-2">⭐</span>
-              Popular Templates
-            </h3>
+          {themes.length > 0 && (
+            <div className="mb-8 pb-6 border-b border-gray-200">
+              <h4 className="text-sm font-medium text-gray-700 mb-3">Thema</h4>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setSelectedTheme('all')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    selectedTheme === 'all'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Alle Thema's
+                </button>
+                {themes.map((theme) => (
+                  <button
+                    key={theme}
+                    onClick={() => setSelectedTheme(theme)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      selectedTheme === theme
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {theme}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Templates laden...</p>
+            </div>
+          ) : filteredTemplates.length === 0 ? (
+            <div className="text-center py-12">
+              <Layout className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Geen templates gevonden</h3>
+              <p className="text-gray-600">Probeer een andere categorie of filter</p>
+            </div>
+          ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {templates.map((template) => (
+              {filteredTemplates.map((template) => (
                 <div key={template.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
-                  <div className="relative">
-                    {template.isPopular && (
-                      <div className="absolute top-3 left-3 bg-orange-600 text-white text-xs font-semibold px-3 py-1 rounded flex items-center space-x-1">
-                        <span>⭐</span>
-                        <span>Popular</span>
-                      </div>
-                    )}
-                    <div className="bg-gray-900 h-48">
-                      <div className="grid grid-cols-4 grid-rows-2 h-full p-2 gap-1">
-                        {[1,2,3,4,5,6,7,8].map((i) => (
-                          <div key={i} className="bg-gray-700 rounded"></div>
-                        ))}
-                      </div>
+                  {template.preview_image_url ? (
+                    <img
+                      src={template.preview_image_url}
+                      alt={template.title}
+                      className="w-full h-48 object-cover"
+                      onError={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        img.style.display = 'none';
+                        const parent = img.parentElement;
+                        if (parent) {
+                          parent.innerHTML = '<div class="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center"><svg class="h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></div>';
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                      <Layout className="h-16 w-16 text-gray-400" />
                     </div>
-                  </div>
+                  )}
 
                   <div className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-lg font-semibold text-gray-900">{template.name}</h4>
-                      <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
-                        landing
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="text-lg font-semibold text-gray-900 flex-1">{template.title}</h4>
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded ml-2">
+                        #{template.sort_order ?? 0}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-600 mb-4 line-clamp-3">{template.description}</p>
 
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {template.tags.map((tag) => (
-                        <span key={tag} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                          {tag}
+                    <p className="text-sm text-gray-600 mb-3">
+                      {categories.find(c => c.value === template.template_category)?.label || template.template_category}
+                    </p>
+
+                    {template.theme_label && (
+                      <div className="mb-4">
+                        <span className="inline-block text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
+                          🏷️ {template.theme_label}
                         </span>
-                      ))}
-                    </div>
+                      </div>
+                    )}
 
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleUseTemplate(template.id)}
-                        className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
-                      >
-                        <span>↓</span>
-                        <span>Use Template</span>
-                      </button>
-                      <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                        <Eye size={18} className="text-gray-600" />
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => handleUseTemplate(template.id)}
+                      className="w-full bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
+                    >
+                      <span>↓</span>
+                      <span>Template Gebruiken</span>
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
