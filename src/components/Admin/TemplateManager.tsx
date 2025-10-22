@@ -528,22 +528,35 @@ export function TemplateManager() {
                     {/* Upload button */}
                     <div>
                       <input
+                        ref={(el) => {
+                          if (el) (window as any).imageUploadInput = el;
+                        }}
                         type="file"
-                        id="image-upload"
                         accept="image/*"
                         onChange={handleImageUpload}
                         className="hidden"
                         disabled={uploading}
                       />
-                      <label
-                        htmlFor="image-upload"
+                      <button
+                        type="button"
+                        onClick={() => {
+                          console.log('🔵 Button clicked!');
+                          const input = (window as any).imageUploadInput;
+                          if (input) {
+                            console.log('🔵 Triggering file input click');
+                            input.click();
+                          } else {
+                            console.error('❌ Input not found');
+                          }
+                        }}
+                        disabled={uploading}
                         className={`inline-flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${
                           uploading ? 'opacity-50 cursor-not-allowed' : ''
                         }`}
                       >
                         <Upload size={18} />
                         <span>{uploading ? 'Uploaden...' : 'Upload Afbeelding'}</span>
-                      </label>
+                      </button>
                       {selectedFileName && (
                         <p className="text-sm text-green-600 mt-2">
                           ✓ {selectedFileName}
