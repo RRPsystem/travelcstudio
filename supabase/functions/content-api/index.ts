@@ -201,7 +201,6 @@ Deno.serve(async (req: Request) => {
 
       console.log("[CONTENT-API] Getting item:", id);
 
-      // TEMPLATE MODE: Load from pages table
       if (payload.is_template === true || payload.mode === 'edit-template') {
         console.log("[CONTENT-API] 🎯 TEMPLATE MODE - Loading from pages table");
 
@@ -226,7 +225,6 @@ Deno.serve(async (req: Request) => {
 
         console.log("[CONTENT-API] ✅ Template loaded:", data.id);
 
-        // Transform to Builder format - Builder expects content_json directly at root
         const transformedData = {
           id: data.id,
           title: data.title,
@@ -245,7 +243,6 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      // REGULAR NEWS MODE
       if (contentType === "news_items") {
         const { data, error } = await supabase
           .from("news_items")
@@ -318,14 +315,11 @@ Deno.serve(async (req: Request) => {
       const brandId = body.brand_id || payload.brand_id;
       const itemId = body.id;
 
-      // TEMPLATE MODE: Detect if this is a template being created/edited
       if (payload.is_template === true || payload.mode === 'create-template' || payload.mode === 'edit-template') {
         console.log("[CONTENT-API] 🎯 TEMPLATE MODE DETECTED - Redirecting to pages table");
 
-        // Extract content_json from the nested structure
         let contentJson = body.content?.json || body.content_json || body.content || {};
 
-        // If content is a string, try to parse it
         if (typeof contentJson === 'string') {
           try {
             contentJson = JSON.parse(contentJson);
@@ -348,8 +342,6 @@ Deno.serve(async (req: Request) => {
         if (itemId) {
           console.log("[CONTENT-API] Updating template:", itemId);
 
-          // Bij UPDATE: alleen content_json en updated_at wijzigen
-          // Metadata (title, category, preview) blijft behouden!
           const updateData: any = {
             content_json: contentJson,
             updated_at: new Date().toISOString(),
@@ -394,10 +386,12 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // REGULAR NEWS MODE
       if (contentType === "news_items") {
         if (itemId) {
           console.log("[CONTENT-API] Updating news item:", itemId);
+
+          const authorType = body.author_type || (payload as any).author_type || 'brand';
+          const authorId = body.author_id || (payload as any).author_id || payload.sub || payload.user_id;
 
           const updateData: any = {
             title: body.title,
@@ -407,8 +401,8 @@ Deno.serve(async (req: Request) => {
             featured_image: body.featured_image || '',
             tags: body.tags || [],
             brand_id: brandId,
-            author_type: 'brand',
-            author_id: payload.sub || payload.user_id,
+            author_type: authorType,
+            author_id: authorId,
             updated_at: new Date().toISOString(),
           };
 
@@ -473,6 +467,9 @@ Deno.serve(async (req: Request) => {
         } else {
           console.log("[CONTENT-API] Creating new news item");
 
+          const authorType = body.author_type || (payload as any).author_type || 'brand';
+          const authorId = body.author_id || (payload as any).author_id || payload.sub || payload.user_id;
+
           const insertData: any = {
             title: body.title,
             slug: body.slug,
@@ -481,8 +478,8 @@ Deno.serve(async (req: Request) => {
             featured_image: body.featured_image || '',
             tags: body.tags || [],
             brand_id: brandId,
-            author_type: 'brand',
-            author_id: payload.sub || payload.user_id,
+            author_type: authorType,
+            author_id: authorId,
           };
 
           const { data: newItem, error: insertError } = await supabase

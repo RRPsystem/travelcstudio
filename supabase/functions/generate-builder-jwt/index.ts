@@ -105,6 +105,16 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    if (requestBody.author_type) {
+      payload.author_type = requestBody.author_type;
+      console.log('[JWT] Including author_type in payload:', requestBody.author_type);
+    }
+
+    if (requestBody.author_id) {
+      payload.author_id = requestBody.author_id;
+      console.log('[JWT] Including author_id in payload:', requestBody.author_id);
+    }
+
     const jwt = await signJWT(payload);
     console.log("[JWT] Token generated:", { length: jwt.length, first30: jwt.substring(0, 30), scopes: requestedScopes });
 
