@@ -36,6 +36,17 @@ export function TemplateManager() {
 
   useEffect(() => {
     loadTemplates();
+
+    const handleFocus = () => {
+      console.log('Template Manager regained focus, reloading templates...');
+      loadTemplates();
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   const loadTemplates = async () => {
@@ -97,10 +108,6 @@ export function TemplateManager() {
         template_category: 'general',
         preview_image_url: '',
       });
-
-      setTimeout(() => {
-        loadTemplates();
-      }, 2000);
     } catch (error) {
       console.error('Error creating template:', error);
       alert('Er is een fout opgetreden bij het aanmaken van de template');
