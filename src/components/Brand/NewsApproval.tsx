@@ -27,20 +27,23 @@ export function NewsApproval() {
   const { user } = useAuth();
   const [assignments, setAssignments] = useState<NewsAssignment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isLoadingData, setIsLoadingData] = useState(false);
 
   useEffect(() => {
-    if (user?.brand_id) {
+    if (user?.brand_id && !isLoadingData) {
       loadAssignments();
+    } else if (!user?.brand_id) {
+      setLoading(false);
     }
   }, [user?.brand_id]);
 
   const loadAssignments = async () => {
-    if (!user?.brand_id) {
-      setLoading(false);
+    if (!user?.brand_id || isLoadingData) {
       return;
     }
 
     setLoading(true);
+    setIsLoadingData(true);
     try {
       const { data: assignmentData, error: assignmentError } = await supabase
         .from('news_brand_assignments')
@@ -117,6 +120,7 @@ export function NewsApproval() {
       console.error('Error loading assignments:', error);
     } finally {
       setLoading(false);
+      setIsLoadingData(false);
     }
   };
 
