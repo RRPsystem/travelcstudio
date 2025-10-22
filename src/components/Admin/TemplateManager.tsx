@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Eye, Layout } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { generateBuilderJWT, generateBuilderDeeplink } from '../../lib/jwtHelper';
+import { openTemplateBuilder } from '../../lib/jwtHelper';
 
 interface Template {
   id: string;
@@ -71,35 +71,18 @@ export function TemplateManager() {
     if (!user) return;
 
     try {
-      const jwtResponse = await generateBuilderJWT(
-        'template',
-        user.id,
-        ['pages:write', 'content:write', 'layouts:write', 'menus:write'],
-        {
-          forceBrandId: false,
-          mode: 'create-template',
-        }
-      );
-
       const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/admin/templates`;
 
-      const params = new URLSearchParams({
-        api: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`,
-        token: jwtResponse.token,
-        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-        brand_id: '00000000-0000-0000-0000-000000000999',
+      const deeplink = await openTemplateBuilder(user.id, {
         mode: 'create-template',
-        content_type: 'page',
-        is_template: 'true',
         title: formData.title,
         slug: formData.slug,
-        template_category: formData.template_category,
-        preview_image_url: formData.preview_image_url || '',
-        return_url: returnUrl,
+        templateCategory: formData.template_category,
+        previewImageUrl: formData.preview_image_url || undefined,
+        returnUrl,
       });
 
-      const url = `https://www.ai-websitestudio.nl/?${params.toString()}#/mode/builder`;
-      window.open(url, '_blank');
+      window.open(deeplink, '_blank');
 
       setShowCreateForm(false);
       setFormData({
@@ -118,32 +101,15 @@ export function TemplateManager() {
     if (!user) return;
 
     try {
-      const jwtResponse = await generateBuilderJWT(
-        'template',
-        user.id,
-        ['pages:write', 'content:write', 'layouts:write', 'menus:write'],
-        {
-          pageId: templateId,
-          forceBrandId: false,
-          mode: 'edit-template',
-        }
-      );
-
       const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/admin/templates`;
 
-      const params = new URLSearchParams({
-        api: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`,
-        token: jwtResponse.token,
-        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-        brand_id: '00000000-0000-0000-0000-000000000999',
-        page_id: templateId,
+      const deeplink = await openTemplateBuilder(user.id, {
         mode: 'edit-template',
-        content_type: 'page',
-        return_url: returnUrl,
+        pageId: templateId,
+        returnUrl,
       });
 
-      const url = `https://www.ai-websitestudio.nl/?${params.toString()}#/mode/builder`;
-      window.open(url, '_blank');
+      window.open(deeplink, '_blank');
     } catch (error) {
       console.error('Error editing template:', error);
       alert('Er is een fout opgetreden bij het bewerken van de template');

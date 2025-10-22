@@ -202,6 +202,59 @@ export async function openBuilder(
 }
 
 /**
+ * Helper function specifically for Admin to create/edit templates
+ */
+export async function openTemplateBuilder(
+  userId: string,
+  options: {
+    mode: 'create-template' | 'edit-template';
+    pageId?: string;
+    title?: string;
+    slug?: string;
+    templateCategory?: string;
+    previewImageUrl?: string;
+    returnUrl?: string;
+  }
+): Promise<string> {
+  const systemBrandId = '00000000-0000-0000-0000-000000000999';
+  const scopes = ['pages:write', 'content:write', 'layouts:write', 'menus:write'];
+
+  const jwtOptions: any = {
+    forceBrandId: false,
+    mode: options.mode,
+  };
+
+  if (options.pageId) jwtOptions.pageId = options.pageId;
+  if (options.returnUrl) jwtOptions.returnUrl = options.returnUrl;
+
+  const jwtResponse = await generateBuilderJWT(systemBrandId, userId, scopes, jwtOptions);
+
+  const builderBaseUrl = 'https://www.ai-websitestudio.nl';
+  const apiBaseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+  const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+  const params = new URLSearchParams({
+    api: apiBaseUrl,
+    token: jwtResponse.token,
+    apikey: apiKey,
+    brand_id: systemBrandId,
+    mode: options.mode,
+    content_type: 'page',
+  });
+
+  if (options.pageId) params.append('page_id', options.pageId);
+  if (options.title) params.append('title', options.title);
+  if (options.slug) params.append('slug', options.slug);
+  if (options.templateCategory) params.append('template_category', options.templateCategory);
+  if (options.previewImageUrl) params.append('preview_image_url', options.previewImageUrl);
+  if (options.returnUrl) params.append('return_url', options.returnUrl);
+
+  params.append('is_template', 'true');
+
+  return `${builderBaseUrl}/?${params.toString()}#/mode/builder`;
+}
+
+/**
  * Extract JWT token and brand_id from deeplink URL
  * Call this when Builder receives a deeplink from Bolt.new
  */
