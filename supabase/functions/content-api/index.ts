@@ -347,11 +347,17 @@ Deno.serve(async (req: Request) => {
 
         if (itemId) {
           console.log("[CONTENT-API] Updating template:", itemId);
-          pageData.updated_at = new Date().toISOString();
+
+          // Bij UPDATE: alleen content_json en updated_at wijzigen
+          // Metadata (title, category, preview) blijft behouden!
+          const updateData: any = {
+            content_json: contentJson,
+            updated_at: new Date().toISOString(),
+          };
 
           const { data: updatedPage, error: updateError } = await supabase
             .from("pages")
-            .update(pageData)
+            .update(updateData)
             .eq("id", itemId)
             .select()
             .single();
