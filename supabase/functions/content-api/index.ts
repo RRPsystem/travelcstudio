@@ -7,6 +7,8 @@ interface JWTPayload {
   user_id?: string;
   sub?: string;
   scope?: string[];
+  mode?: string;
+  is_template?: boolean;
 }
 
 async function verifyBearerToken(req: Request, requiredScope?: string): Promise<JWTPayload> {
@@ -103,13 +105,11 @@ Deno.serve(async (req: Request) => {
     const contentType = url.searchParams.get("type");
     let action = url.searchParams.get("action");
 
-    // Default action for POST requests
     if (!action && req.method === "POST") {
       action = "save";
       console.log("[CONTENT-API] No action parameter, using default 'save' for POST request");
     }
 
-    // Default action for GET requests with slug or id parameter
     if (!action && req.method === "GET") {
       const slug = url.searchParams.get("slug");
       const id = url.searchParams.get("id");
@@ -268,10 +268,82 @@ Deno.serve(async (req: Request) => {
       const body = await req.json();
 
       console.log("[CONTENT-API] Saving content:", JSON.stringify(body, null, 2));
+      console.log("[CONTENT-API] JWT payload:", { mode: payload.mode, is_template: payload.is_template });
 
       const brandId = body.brand_id || payload.brand_id;
       const itemId = body.id;
 
+      // TEMPLATE MODE: Detect if this is a template being created/edited
+      if (payload.is_template === true || payload.mode === 'create-template' || payload.mode === 'edit-template') {
+        console.log("[CONTENT-API] 🎯 TEMPLATE MODE DETECTED - Redirecting to pages table");
+
+        // Extract content_json from the nested structure
+        let contentJson = body.content?.json || body.content_json || body.content || {};
+
+        // If content is a string, try to parse it
+        if (typeof contentJson === 'string') {
+          try {
+            contentJson = JSON.parse(contentJson);
+          } catch (e) {
+            console.error("[CONTENT-API] Failed to parse content JSON:", e);
+          }
+        }
+
+        const pageData: any = {
+          title: body.title,
+          slug: body.slug,
+          content_json: contentJson,
+          is_template: true,
+          template_category: body.template_category || contentJson.template_category || 'general',
+          preview_image_url: body.preview_image_url || contentJson.preview_image_url || null,
+          status: body.status || 'draft',
+          brand_id: '00000000-0000-0000-0000-000000000999',
+        };
+
+        if (itemId) {
+          console.log("[CONTENT-API] Updating template:", itemId);
+          pageData.updated_at = new Date().toISOString();
+
+          const { data: updatedPage, error: updateError } = await supabase
+            .from("pages")
+            .update(pageData)
+            .eq("id", itemId)
+            .select()
+            .single();
+
+          if (updateError) {
+            console.error("[CONTENT-API] Template update error:", updateError);
+            throw updateError;
+          }
+
+          console.log("[CONTENT-API] ✅ Template updated successfully:", updatedPage.id);
+          return new Response(JSON.stringify(updatedPage), {
+            status: 200,
+            headers: corsHeaders(req),
+          });
+        } else {
+          console.log("[CONTENT-API] Creating new template");
+
+          const { data: newPage, error: insertError } = await supabase
+            .from("pages")
+            .insert(pageData)
+            .select()
+            .single();
+
+          if (insertError) {
+            console.error("[CONTENT-API] Template insert error:", insertError);
+            throw insertError;
+          }
+
+          console.log("[CONTENT-API] ✅ Template created successfully:", newPage.id);
+          return new Response(JSON.stringify(newPage), {
+            status: 201,
+            headers: corsHeaders(req),
+          });
+        }
+      }
+
+      // REGULAR NEWS MODE
       if (contentType === "news_items") {
         if (itemId) {
           console.log("[CONTENT-API] Updating news item:", itemId);
