@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Eye, Layout } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Layout, Settings, X, Save } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { openTemplateBuilder } from '../../lib/jwtHelper';
@@ -27,6 +27,7 @@ export function TemplateManager() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     slug: '',
@@ -129,6 +130,34 @@ export function TemplateManager() {
     } catch (error) {
       console.error('Error deleting template:', error);
       alert('Er is een fout opgetreden bij het verwijderen van de template');
+    }
+  };
+
+  const handleOpenEditMetadata = (template: Template) => {
+    setEditingTemplate(template);
+  };
+
+  const handleSaveMetadata = async () => {
+    if (!editingTemplate) return;
+
+    try {
+      const { error } = await supabase
+        .from('pages')
+        .update({
+          title: editingTemplate.title,
+          template_category: editingTemplate.template_category,
+          preview_image_url: editingTemplate.preview_image_url,
+        })
+        .eq('id', editingTemplate.id);
+
+      if (error) throw error;
+
+      await loadTemplates();
+      setEditingTemplate(null);
+      alert('Template metadata succesvol bijgewerkt!');
+    } catch (error) {
+      console.error('Error updating template metadata:', error);
+      alert('Er is een fout opgetreden bij het bijwerken van de metadata');
     }
   };
 
@@ -263,6 +292,13 @@ export function TemplateManager() {
                       <span>Bewerken</span>
                     </button>
                     <button
+                      onClick={() => handleOpenEditMetadata(template)}
+                      className="bg-gray-600 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                      title="Metadata bewerken"
+                    >
+                      <Settings size={16} />
+                    </button>
+                    <button
                       onClick={() => handleDeleteTemplate(template.id)}
                       className="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors"
                     >
@@ -275,6 +311,104 @@ export function TemplateManager() {
           </div>
         )}
       </div>
+
+      {editingTemplate && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">Template Metadata Bewerken</h3>
+                <button
+                  onClick={() => setEditingTemplate(null)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Titel
+                  </label>
+                  <input
+                    type="text"
+                    value={editingTemplate.title}
+                    onChange={(e) => setEditingTemplate({ ...editingTemplate, title: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    placeholder="Bijv: Home 2"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Categorie
+                  </label>
+                  <select
+                    value={editingTemplate.template_category}
+                    onChange={(e) => setEditingTemplate({ ...editingTemplate, template_category: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  >
+                    {categories.map((cat) => (
+                      <option key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Preview Afbeelding URL
+                  </label>
+                  <input
+                    type="text"
+                    value={editingTemplate.preview_image_url || ''}
+                    onChange={(e) => setEditingTemplate({ ...editingTemplate, preview_image_url: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    placeholder="/image.png of https://..."
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    Beschikbare afbeeldingen: /image.png, /image copy.png, /image copy copy.png, /image copy copy copy.png
+                  </p>
+                </div>
+
+                {editingTemplate.preview_image_url && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Preview
+                    </label>
+                    <img
+                      src={editingTemplate.preview_image_url}
+                      alt="Preview"
+                      className="w-full h-48 object-cover rounded-lg border"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex space-x-3 mt-6">
+                <button
+                  onClick={handleSaveMetadata}
+                  className="flex-1 bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center space-x-2"
+                >
+                  <Save size={20} />
+                  <span>Opslaan</span>
+                </button>
+                <button
+                  onClick={() => setEditingTemplate(null)}
+                  className="bg-gray-200 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Annuleren
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
