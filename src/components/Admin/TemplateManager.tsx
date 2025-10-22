@@ -186,72 +186,62 @@ export function TemplateManager() {
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log('=== handleImageUpload called ===');
-    console.log('Files:', e.target.files);
-    console.log('Editing template:', editingTemplate);
 
     if (!e.target.files || e.target.files.length === 0 || !editingTemplate) {
-      console.log('No files or no editing template, returning');
+      console.log('No files or no editing template');
       return;
     }
 
     const file = e.target.files[0];
     console.log('Selected file:', file.name, file.size, file.type);
-    setSelectedFileName(file.name);
 
     if (!file.type.startsWith('image/')) {
-      console.log('Invalid file type');
       alert('Selecteer een geldige afbeelding');
-      setSelectedFileName('');
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      console.log('File too large');
       alert('Afbeelding mag maximaal 5MB zijn');
-      setSelectedFileName('');
       return;
     }
 
-    console.log('Starting upload to Supabase storage...');
+    setSelectedFileName(file.name);
     setUploading(true);
 
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${editingTemplate.id}-${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
 
-      console.log('Uploading to path:', filePath);
+      console.log('Uploading to storage:', fileName);
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('template-previews')
-        .upload(filePath, file, {
+        .upload(fileName, file, {
           cacheControl: '3600',
           upsert: true
         });
 
       if (uploadError) {
-        console.error('Upload error:', uploadError);
-        throw uploadError;
+        console.error('Storage upload error:', uploadError);
+        throw new Error(uploadError.message);
       }
-
-      console.log('Upload successful:', uploadData);
 
       const { data: publicUrlData } = supabase.storage
         .from('template-previews')
-        .getPublicUrl(filePath);
+        .getPublicUrl(fileName);
 
       const publicUrl = publicUrlData.publicUrl;
-      console.log('Public URL:', publicUrl);
+      console.log('Public URL generated:', publicUrl);
 
       setEditingTemplate({
         ...editingTemplate,
         preview_image_url: publicUrl
       });
 
-      console.log('Updated editing template with storage URL');
       setUploading(false);
+      console.log('Upload complete - image ready for save');
     } catch (error: any) {
-      console.error('Upload exception:', error);
+      console.error('Upload failed:', error);
       alert(`Upload mislukt: ${error?.message || 'Onbekende fout'}`);
       setUploading(false);
       setSelectedFileName('');
@@ -365,6 +355,14 @@ export function TemplateManager() {
                     src={template.preview_image_url}
                     alt={template.title}
                     className="w-full h-48 object-cover"
+                    onError={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      img.style.display = 'none';
+                      const parent = img.parentElement;
+                      if (parent) {
+                        parent.innerHTML = '<div class="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center"><svg class="h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></div>';
+                      }
+                    }}
                   />
                 ) : (
                   <div className="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">

@@ -62,6 +62,8 @@ export class ErrorTracker {
 
   async logError(data: ErrorLogData) {
     try {
+      console.error('Error logged:', data.message);
+
       const { data: session } = await supabase.auth.getSession();
 
       const errorData = {
@@ -88,10 +90,12 @@ export class ErrorTracker {
           title: 'Critical Error Detected',
           description: data.message,
           severity: 'critical',
+        }).catch(err => {
+          console.error('Failed to create alert:', err);
         });
       }
     } catch (err) {
-      console.error('Error in error tracking:', err);
+      console.error('Error in error tracking (non-fatal):', err);
     }
   }
 
