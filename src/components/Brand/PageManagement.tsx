@@ -37,7 +37,7 @@ export function PageManagement() {
         throw new Error('No active session');
       }
 
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pages-api?brand_id=${brandId}`;
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pages-api/list?brand_id=${brandId}`;
 
       const response = await fetch(apiUrl, {
         headers: {

@@ -45,7 +45,7 @@ export function NewPage() {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
 
-        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pages-api?brand_id=${user.brand_id}`;
+        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pages-api/list?brand_id=${user.brand_id}`;
         const response = await fetch(apiUrl, {
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
