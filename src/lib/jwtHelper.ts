@@ -202,7 +202,9 @@ export async function openBuilder(
 
   const jwtResponse = await generateBuilderJWT(brandId, userId, scopes, jwtOptions);
 
-  const deeplinkOptions: any = {};
+  const deeplinkOptions: any = {
+    jwtResponse: jwtResponse
+  };
   if (options.pageId) deeplinkOptions.pageId = options.pageId;
   if (options.templateId) deeplinkOptions.templateId = options.templateId;
   if (options.menuId) deeplinkOptions.menuId = options.menuId;
@@ -210,7 +212,7 @@ export async function openBuilder(
   if (options.footerId) deeplinkOptions.footerId = options.footerId;
   if (options.returnUrl) deeplinkOptions.returnUrl = options.returnUrl;
 
-  return generateBuilderDeeplink(brandId, jwtResponse.token, deeplinkOptions);
+  return generateBuilderDeeplink(deeplinkOptions);
 }
 
 /**
