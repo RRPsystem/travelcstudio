@@ -34,11 +34,8 @@ export function AdminDashboard() {
   const [resetError, setResetError] = useState('');
 
   React.useEffect(() => {
-    if (['template-manager', 'page-management', 'menu-builder', 'footer-builder'].includes(activeSection)) {
+    if (['template-manager'].includes(activeSection)) {
       setShowWebsiteSubmenu(true);
-      if (activeSection !== 'template-manager' && brands.length === 0) {
-        loadBrands();
-      }
     }
     if (['admin-news', 'destinations', 'trips'].includes(activeSection)) {
       setShowContentSubmenu(true);
@@ -88,7 +85,7 @@ export function AdminDashboard() {
     if (activeSection === 'dashboard') {
       loadDashboardStats();
     }
-    if (activeSection === 'brands' || ['page-management', 'menu-builder', 'footer-builder'].includes(activeSection)) {
+    if (activeSection === 'brands') {
       loadBrands();
     }
   }, [activeSection]);
@@ -179,9 +176,6 @@ export function AdminDashboard() {
 
   const websiteItems = [
     { id: 'template-manager', label: 'Template Manager', icon: Layout },
-    { id: 'page-management', label: 'Pagina Beheer', icon: FileText },
-    { id: 'menu-builder', label: 'Menu Builder', icon: Menu },
-    { id: 'footer-builder', label: 'Footer Builder', icon: Layout },
   ];
 
   const contentItems = [
@@ -234,7 +228,7 @@ export function AdminDashboard() {
                 <button
                   onClick={() => setShowWebsiteSubmenu(!showWebsiteSubmenu)}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                    ['new-page', 'page-management', 'menu-builder', 'footer-builder'].includes(activeSection)
+                    ['template-manager'].includes(activeSection)
                       ? 'bg-slate-700 text-white'
                       : 'text-slate-300 hover:text-white hover:bg-slate-700'
                   }`}
@@ -349,7 +343,7 @@ export function AdminDashboard() {
               <button
                 onClick={() => setShowWebsiteSubmenu(!showWebsiteSubmenu)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                  ['new-page', 'page-management', 'menu-builder', 'footer-builder'].includes(activeSection)
+                  ['template-manager'].includes(activeSection)
                     ? 'bg-slate-700 text-white'
                     : 'text-slate-300 hover:text-white hover:bg-slate-700'
                 }`}
@@ -470,9 +464,6 @@ export function AdminDashboard() {
                 {activeSection === 'destinations' && 'Bestemmingen Beheer'}
                 {activeSection === 'deeplink-tester' && 'Deeplink Tester'}
                 {activeSection === 'template-manager' && 'Template Manager'}
-                {activeSection === 'page-management' && 'Pagina Beheer'}
-                {activeSection === 'menu-builder' && 'Menu Builder'}
-                {activeSection === 'footer-builder' && 'Footer Builder'}
               </h1>
               <p className="text-gray-600 mt-1">
                 {activeSection === 'brands' && 'Manage all brands in the system'}
@@ -481,9 +472,6 @@ export function AdminDashboard() {
                 {activeSection === 'destinations' && 'Beheer bestemmingen voor alle brands'}
                 {activeSection === 'deeplink-tester' && 'Test external builder integration'}
                 {activeSection === 'template-manager' && 'Maak en beheer pagina templates voor brands'}
-                {activeSection === 'page-management' && 'Beheer alle pagina\'s van je website'}
-                {activeSection === 'menu-builder' && 'Bouw en organiseer je website navigatie'}
-                {activeSection === 'footer-builder' && 'Ontwerp en beheer je website footer'}
               </p>
             </div>
             
@@ -497,23 +485,6 @@ export function AdminDashboard() {
               </button>
             )}
 
-            {['page-management', 'menu-builder', 'footer-builder'].includes(activeSection) && brands.length > 0 && (
-              <div className="flex items-center space-x-3">
-                <label htmlFor="brand-select" className="text-sm font-medium text-gray-700">Brand:</label>
-                <select
-                  id="brand-select"
-                  value={selectedBrandId}
-                  onChange={(e) => setSelectedBrandId(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
-                >
-                  {brands.map((brand) => (
-                    <option key={brand.id} value={brand.id}>
-                      {brand.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
           </div>
         </header>
 
@@ -525,28 +496,6 @@ export function AdminDashboard() {
           {activeSection === 'deeplink-tester' && <DeeplinkTester />}
           {activeSection === 'template-manager' && <TemplateManager />}
 
-          {/* Website Management Content - Admin can select brand */}
-          {activeSection === 'page-management' && (
-            <div className="bg-white rounded-lg shadow-sm border p-12 text-center">
-              <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Pagina Beheer</h3>
-              <p className="text-gray-600">Beheer alle pagina's (Binnenkort beschikbaar)</p>
-            </div>
-          )}
-          {activeSection === 'menu-builder' && (
-            <div className="bg-white rounded-lg shadow-sm border p-12 text-center">
-              <Menu className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Menu Builder</h3>
-              <p className="text-gray-600">Beheer menu's (Binnenkort beschikbaar)</p>
-            </div>
-          )}
-          {activeSection === 'footer-builder' && (
-            <div className="bg-white rounded-lg shadow-sm border p-12 text-center">
-              <Layout className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Footer Builder</h3>
-              <p className="text-gray-600">Beheer footers (Binnenkort beschikbaar)</p>
-            </div>
-          )}
 
           {activeSection === 'dashboard' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
