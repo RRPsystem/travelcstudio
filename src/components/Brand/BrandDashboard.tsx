@@ -21,8 +21,6 @@ export function BrandDashboard() {
     const hash = window.location.hash;
     if (hash.includes('/brand/content/news')) return 'nieuwsbeheer';
     if (hash.includes('/brand/website/pages')) return 'pages';
-    if (hash.includes('/brand/website/menu')) return 'menus';
-    if (hash.includes('/brand/website/footer')) return 'footers';
     return 'dashboard';
   };
 
@@ -51,14 +49,6 @@ export function BrandDashboard() {
       if (hash.includes('/brand/website/pages')) {
         console.log('Hash routing: Navigating to pages section');
         setActiveSection('pages');
-        setShowWebsiteSubmenu(true);
-      } else if (hash.includes('/brand/website/menu')) {
-        console.log('Hash routing: Navigating to menu section');
-        setActiveSection('menus');
-        setShowWebsiteSubmenu(true);
-      } else if (hash.includes('/brand/website/footer')) {
-        console.log('Hash routing: Navigating to footer section');
-        setActiveSection('footers');
         setShowWebsiteSubmenu(true);
       } else if (hash.includes('/brand/content/news')) {
         console.log('Hash routing: Navigating to news section');
@@ -157,7 +147,7 @@ export function BrandDashboard() {
   };
 
   React.useEffect(() => {
-    if (['new-page', 'pages', 'menus', 'footers'].includes(activeSection)) {
+    if (['new-page', 'pages'].includes(activeSection)) {
       setShowWebsiteSubmenu(true);
     }
     if (['ai-content', 'ai-travelbro', 'ai-import'].includes(activeSection)) {
@@ -178,11 +168,8 @@ export function BrandDashboard() {
   ];
 
   const websiteManagementItems = [
-    { id: 'template-gallery', label: 'Template Gallery', icon: Layout },
     { id: 'new-page', label: 'Nieuwe Pagina', icon: Plus },
     { id: 'pages', label: 'Pagina Beheer', icon: FileText },
-    { id: 'menus', label: 'Menu Builder', icon: Layout },
-    { id: 'footers', label: 'Footer Builder', icon: Layout },
   ];
 
   const aiToolsItems = [
@@ -236,13 +223,6 @@ export function BrandDashboard() {
       icon: Newspaper,
       color: 'from-green-500 to-green-600',
       action: () => setActiveSection('nieuwsbeheer')
-    },
-    {
-      title: 'Templates',
-      description: 'Kies uit professionele templates',
-      icon: Layout,
-      color: 'from-indigo-500 to-indigo-600',
-      action: () => setActiveSection('template-gallery')
     }
   ];
 
@@ -286,7 +266,7 @@ export function BrandDashboard() {
               <button
                 onClick={() => setShowWebsiteSubmenu(!showWebsiteSubmenu)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                  ['pages', 'menus', 'footers'].includes(activeSection)
+                  ['pages'].includes(activeSection)
                     ? 'bg-gray-700 text-white'
                     : 'text-gray-300 hover:text-white hover:bg-gray-700'
                 }`}
@@ -463,8 +443,6 @@ export function BrandDashboard() {
                   {activeSection === 'websites' && 'My Websites'}
                   {activeSection === 'agents' && 'Agents'}
                   {activeSection === 'pages' && 'Pagina Beheer'}
-                  {activeSection === 'menus' && 'Menu Builder'}
-                  {activeSection === 'footers' && 'Footer Builder'}
                   {activeSection === 'content' && 'Nieuwsberichten'}
                   {activeSection === 'destinations' && 'Bestemmingen'}
                   {activeSection === 'settings' && 'Brand Settings'}
@@ -478,8 +456,6 @@ export function BrandDashboard() {
                   {activeSection === 'dashboard' && 'Welkom terug bij je brand dashboard'}
                   {activeSection === 'websites' && 'Manage your travel websites'}
                   {activeSection === 'pages' && 'Beheer alle pagina\'s van je website'}
-                  {activeSection === 'menus' && 'Beheer menu\'s en hun structuur'}
-                  {activeSection === 'footers' && 'Beheer footer layouts voor je website'}
                   {activeSection === 'ai-content' && 'Generate travel content with AI'}
                   {activeSection === 'ai-travelbro' && 'Your AI travel assistant'}
                   {activeSection === 'ai-import' && 'Import travel data with AI'}
@@ -569,29 +545,8 @@ export function BrandDashboard() {
             </div>
           )}
 
-          {activeSection === 'template-gallery' && (
-            <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
-              <Layout className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Template Gallery</h2>
-              <p className="text-gray-600">Kies uit professionele website templates (Binnenkort beschikbaar)</p>
-            </div>
-          )}
           {activeSection === 'new-page' && <NewPage />}
           {activeSection === 'pages' && <PageManagement />}
-          {activeSection === 'menus' && (
-            <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
-              <Layout className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Menu Builder</h2>
-              <p className="text-gray-600">Beheer menu's en hun structuur (Binnenkort beschikbaar)</p>
-            </div>
-          )}
-          {activeSection === 'footers' && (
-            <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
-              <Layout className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Footer Builder</h2>
-              <p className="text-gray-600">Beheer footer layouts voor je website (Binnenkort beschikbaar)</p>
-            </div>
-          )}
           {activeSection === 'settings' && <BrandSettings />}
           {activeSection === 'nieuwsbeheer' && (
             <div className="p-6">
