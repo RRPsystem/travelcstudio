@@ -7,14 +7,27 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-async function sendWhatsAppMessage(to: string, message: string, twilioAccountSid: string, twilioAuthToken: string, twilioWhatsAppNumber: string) {
+async function sendWhatsAppMessage(
+  to: string,
+  message: string,
+  twilioAccountSid: string,
+  twilioAuthToken: string,
+  twilioWhatsAppNumber: string,
+  mediaUrl?: string
+) {
   const url = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`;
 
-  const body = new URLSearchParams({
+  const params: Record<string, string> = {
     From: `whatsapp:${twilioWhatsAppNumber}`,
     To: `whatsapp:${to}`,
     Body: message,
-  });
+  };
+
+  if (mediaUrl) {
+    params.MediaUrl = mediaUrl;
+  }
+
+  const body = new URLSearchParams(params);
 
   const response = await fetch(url, {
     method: 'POST',
@@ -32,6 +45,42 @@ async function sendWhatsAppMessage(to: string, message: string, twilioAccountSid
   }
 
   return await response.json();
+}
+
+async function transcribeAudio(audioUrl: string, openaiApiKey: string, twilioAccountSid: string, twilioAuthToken: string): Promise<string> {
+  const audioResponse = await fetch(audioUrl, {
+    headers: {
+      'Authorization': 'Basic ' + btoa(`${twilioAccountSid}:${twilioAuthToken}`),
+    },
+  });
+
+  if (!audioResponse.ok) {
+    throw new Error('Failed to download audio');
+  }
+
+  const audioBlob = await audioResponse.blob();
+
+  const formData = new FormData();
+  formData.append('file', audioBlob, 'audio.ogg');
+  formData.append('model', 'whisper-1');
+  formData.append('language', 'nl');
+
+  const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${openaiApiKey}`,
+    },
+    body: formData,
+  });
+
+  if (!whisperResponse.ok) {
+    const error = await whisperResponse.text();
+    console.error('Whisper API error:', error);
+    throw new Error('Failed to transcribe audio');
+  }
+
+  const result = await whisperResponse.json();
+  return result.text;
 }
 
 async function getOrCreateSession(supabase: any, tripId: string, phoneNumber: string) {
@@ -94,13 +143,22 @@ Deno.serve(async (req: Request) => {
 
     const formData = await req.formData();
     const from = formData.get('From')?.toString().replace('whatsapp:', '') || '';
-    const body = formData.get('Body')?.toString() || '';
+    let body = formData.get('Body')?.toString() || '';
     const to = formData.get('To')?.toString().replace('whatsapp:', '') || '';
+    const numMedia = parseInt(formData.get('NumMedia')?.toString() || '0');
+    const mediaUrl = numMedia > 0 ? formData.get('MediaUrl0')?.toString() : undefined;
+    const mediaContentType = numMedia > 0 ? formData.get('MediaContentType0')?.toString() : undefined;
 
-    console.log('WhatsApp message received:', { from, to, body });
+    console.log('WhatsApp message received:', { from, to, body, numMedia, mediaContentType });
 
-    if (!from || !body) {
-      return new Response('Missing required fields', { status: 400 });
+    if (!from) {
+      return new Response('Missing sender', { status: 400 });
+    }
+
+    if (!body) {
+      return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
+        headers: { 'Content-Type': 'text/xml' },
+      });
     }
 
     const { data: trip } = await supabase
@@ -129,6 +187,25 @@ Deno.serve(async (req: Request) => {
       return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
         headers: { 'Content-Type': 'text/xml' },
       });
+    }
+
+    const isVoiceMessage = mediaContentType?.includes('audio');
+
+    if (isVoiceMessage && mediaUrl && openaiApiKey) {
+      try {
+        console.log('Transcribing voice message...');
+        const transcribedText = await transcribeAudio(
+          mediaUrl,
+          openaiApiKey,
+          apiSettings.twilio_account_sid,
+          apiSettings.twilio_auth_token
+        );
+        body = `🎤 [Spraakbericht]: ${transcribedText}`;
+        console.log('Transcribed text:', body);
+      } catch (error) {
+        console.error('Failed to transcribe audio:', error);
+        body = '🎤 [Sorry, ik kon je spraakbericht niet verstaan. Kun je het opnieuw proberen of typen?]';
+      }
     }
 
     const session = await getOrCreateSession(supabase, trip.id, from);
@@ -187,12 +264,20 @@ Je communiceert via WhatsApp, dus:
 - Als iemand een persoonlijke vraag stelt, geef persoonlijk advies op basis van hun eerdere berichten
 - Wees proactief: als je iets nuttigs weet over de reis, deel het!
 
+SPECIALE FUNCTIES:
+Als je wilt dat er een afbeelding, foto of Google Maps locatie wordt verstuurd, gebruik dan deze markers:
+- [IMAGE:https://url-naar-afbeelding.jpg] - om een foto te versturen (gebruik Pexels of echte foto URLs)
+- [LOCATION:latitude,longitude,naam] - om een Google Maps locatie te delen
+Voorbeeld: "Hier is het restaurant! [LOCATION:52.3676,4.9041,La Bella Vista]"
+
 Voorbeelden van goede antwoorden:
 \u274c SLECHT: "Hier is een uitgebreide lijst van alle restaurants in het gebied met hun openingstijden en prijzen..."
-\u2705 GOED: "Er is een leuke pizzeria op 5 min lopen! Zal ik de naam doorsturen? \ud83c\udf55"
+\u2705 GOED: "Er is een leuke pizzeria op 5 min lopen! Zal ik de locatie doorsturen? \ud83c\udf55"
 
 \u274c SLECHT: "Dank u voor uw vraag. Ik zal u helpen met informatie over het zwembad."
-\u2705 GOED: "Ja! Het zwembad is er super \ud83d\ude0e Het heeft een apart kinderbad. Hoe laat wil je ongeveer gaan?"`;
+\u2705 GOED: "Ja! Het zwembad is er super \ud83d\ude0e Het heeft een apart kinderbad. Hoe laat wil je ongeveer gaan?"
+
+Als iemand vraagt om foto's of locaties, gebruik dan actief de [IMAGE:] en [LOCATION:] markers!`;
 
     const messages = [
       { role: "system", content: systemPrompt },
@@ -231,8 +316,8 @@ Voorbeelden van goede antwoorden:
       body: JSON.stringify({
         model: "gpt-4o",
         messages,
-        max_tokens: 300,
-        temperature: 0.8,
+        max_tokens: 500,
+        temperature: 0.9,
       }),
     });
 
@@ -243,7 +328,26 @@ Voorbeelden van goede antwoorden:
     }
 
     const openaiData = await openaiResponse.json();
-    const aiResponse = openaiData.choices[0].message.content;
+    let aiResponse = openaiData.choices[0].message.content;
+
+    let imageUrl: string | undefined;
+    let locationData: { lat: number; lng: number; name: string } | undefined;
+
+    const imageMatch = aiResponse.match(/\[IMAGE:(https?:\/\/[^\]]+)\]/);
+    if (imageMatch) {
+      imageUrl = imageMatch[1];
+      aiResponse = aiResponse.replace(imageMatch[0], '').trim();
+    }
+
+    const locationMatch = aiResponse.match(/\[LOCATION:([^,]+),([^,]+),([^\]]+)\]/);
+    if (locationMatch) {
+      locationData = {
+        lat: parseFloat(locationMatch[1]),
+        lng: parseFloat(locationMatch[2]),
+        name: locationMatch[3].trim(),
+      };
+      aiResponse = aiResponse.replace(locationMatch[0], '').trim();
+    }
 
     await supabase
       .from('travel_conversations')
@@ -254,13 +358,37 @@ Voorbeelden van goede antwoorden:
         role: 'assistant',
       });
 
-    await sendWhatsAppMessage(
-      from,
-      aiResponse,
-      apiSettings.twilio_account_sid,
-      apiSettings.twilio_auth_token,
-      apiSettings.twilio_whatsapp_number || to
-    );
+    if (imageUrl) {
+      await sendWhatsAppMessage(
+        from,
+        aiResponse || 'Hier is de foto!',
+        apiSettings.twilio_account_sid,
+        apiSettings.twilio_auth_token,
+        apiSettings.twilio_whatsapp_number || to,
+        imageUrl
+      );
+    } else if (locationData) {
+      const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${locationData.lat},${locationData.lng}`;
+      const locationMessage = aiResponse
+        ? `${aiResponse}\n\n📍 ${locationData.name}\n${googleMapsUrl}`
+        : `📍 ${locationData.name}\n${googleMapsUrl}`;
+
+      await sendWhatsAppMessage(
+        from,
+        locationMessage,
+        apiSettings.twilio_account_sid,
+        apiSettings.twilio_auth_token,
+        apiSettings.twilio_whatsapp_number || to
+      );
+    } else {
+      await sendWhatsAppMessage(
+        from,
+        aiResponse,
+        apiSettings.twilio_account_sid,
+        apiSettings.twilio_auth_token,
+        apiSettings.twilio_whatsapp_number || to
+      );
+    }
 
     return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
       headers: { 'Content-Type': 'text/xml' },
