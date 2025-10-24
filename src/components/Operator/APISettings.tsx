@@ -36,6 +36,8 @@ export function APISettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [savingTwilio, setSavingTwilio] = useState(false);
+  const [testingTwilio, setTestingTwilio] = useState(false);
+  const [twilioTestResult, setTwilioTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
   const [showKey, setShowKey] = useState<Record<string, boolean>>({});
   const [showTwilioToken, setShowTwilioToken] = useState(false);
@@ -122,6 +124,45 @@ export function APISettings() {
     }
   };
 
+  const testTwilioConnection = async () => {
+    if (!twilioSettings.twilio_account_sid || !twilioSettings.twilio_auth_token || !twilioSettings.twilio_whatsapp_number) {
+      setTwilioTestResult({ success: false, message: 'Vul eerst alle Twilio credentials in' });
+      return;
+    }
+
+    setTestingTwilio(true);
+    setTwilioTestResult(null);
+
+    try {
+      const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilioSettings.twilio_account_sid}/Messages.json`, {
+        method: 'GET',
+        headers: {
+          'Authorization': 'Basic ' + btoa(`${twilioSettings.twilio_account_sid}:${twilioSettings.twilio_auth_token}`),
+        },
+      });
+
+      if (response.ok) {
+        setTwilioTestResult({
+          success: true,
+          message: '✅ Verbinding succesvol! Twilio credentials werken correct.'
+        });
+      } else {
+        const error = await response.text();
+        setTwilioTestResult({
+          success: false,
+          message: `❌ Verbinding mislukt: ${response.status} - Controleer je Account SID en Auth Token`
+        });
+      }
+    } catch (err: any) {
+      setTwilioTestResult({
+        success: false,
+        message: `❌ Netwerk fout: ${err.message}`
+      });
+    } finally {
+      setTestingTwilio(false);
+    }
+  };
+
   const saveTwilioSettings = async () => {
     if (!selectedBrandId) {
       alert('Selecteer eerst een brand');
@@ -129,10 +170,12 @@ export function APISettings() {
     }
 
     setSavingTwilio(true);
+    setTwilioTestResult(null);
     try {
       let query = supabase
         .from('api_settings')
-        .select('id');
+        .select('id')
+        .eq('provider', 'Twilio');
 
       if (selectedBrandId === 'all') {
         query = query.is('brand_id', null);
@@ -164,6 +207,7 @@ export function APISettings() {
 
       const scope = selectedBrandId === 'all' ? 'voor ALLE brands' : 'voor deze brand';
       alert(`Twilio instellingen opgeslagen ${scope}!`);
+      loadTwilioSettings();
     } catch (err: any) {
       console.error('Error saving Twilio settings:', err);
       alert(`Fout bij opslaan: ${err.message}`);
@@ -520,23 +564,51 @@ export function APISettings() {
               </p>
             </div>
 
-            <button
-              onClick={saveTwilioSettings}
-              disabled={savingTwilio}
-              className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {savingTwilio ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Opslaan...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  Twilio Settings Opslaan
-                </>
-              )}
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={testTwilioConnection}
+                disabled={testingTwilio}
+                className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {testingTwilio ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Testen...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4" />
+                    Test Verbinding
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={saveTwilioSettings}
+                disabled={savingTwilio}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {savingTwilio ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Opslaan...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Opslaan
+                  </>
+                )}
+              </button>
+            </div>
+
+            {twilioTestResult && (
+              <div className={`mt-4 p-4 rounded-lg border ${twilioTestResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                <p className={`text-sm font-medium ${twilioTestResult.success ? 'text-green-900' : 'text-red-900'}`}>
+                  {twilioTestResult.message}
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">

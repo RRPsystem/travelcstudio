@@ -184,6 +184,7 @@ Deno.serve(async (req: Request) => {
     let { data: apiSettings } = await supabase
       .from('api_settings')
       .select('twilio_account_sid, twilio_auth_token, twilio_whatsapp_number')
+      .eq('provider', 'Twilio')
       .eq('brand_id', trip.brand_id)
       .maybeSingle();
 
@@ -191,6 +192,7 @@ Deno.serve(async (req: Request) => {
       const { data: systemSettings } = await supabase
         .from('api_settings')
         .select('twilio_account_sid, twilio_auth_token, twilio_whatsapp_number')
+        .eq('provider', 'Twilio')
         .is('brand_id', null)
         .maybeSingle();
 

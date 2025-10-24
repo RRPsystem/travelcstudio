@@ -1166,14 +1166,6 @@ function WhatsAppSettings({ trip, onSave }: { trip: Trip; onSave: () => void }) 
         )}
       </div>
 
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-        <h4 className="font-medium text-yellow-900 mb-2">Let op: Twilio Credentials vereist</h4>
-        <p className="text-sm text-yellow-800">
-          Voor WhatsApp berichten heb je Twilio Account SID, Auth Token en WhatsApp nummer nodig.
-          Deze worden geconfigureerd in de <strong>Operator API Settings</strong> per brand.
-        </p>
-      </div>
-
       <div className="flex space-x-3 pt-4">
         <button
           type="button"
