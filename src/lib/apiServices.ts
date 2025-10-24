@@ -219,6 +219,22 @@ export class OpenAIService {
 
     systemPrompt = systemPrompt.replace(/{ROUTE_TYPE_INSTRUCTION}/g, getRouteInstruction(options.routeType || ''));
 
+    // Build enhanced user prompt with specific instructions for richer content
+    let userPrompt = prompt;
+
+    // Add specific requirements for destination texts
+    if (contentType === 'destination') {
+      userPrompt += '\n\n[VEREIST voor bestemmingsteksten]: Vermeld minimaal 5-7 CONCRETE bezienswaardigheden, attracties of activiteiten met hun ECHTE NAMEN (geen algemene omschrijvingen zoals "prachtige stranden" of "interessante musea"). Denk aan: specifieke archeologische sites, natuurparken met naam, bekende stranden, karakteristieke dorpjes, markten, monumenten, etc. Maak het specifiek en actionable!';
+
+      if (options.vacationType?.toLowerCase().includes('strand')) {
+        userPrompt += '\n\n[STRAND-SPECIFIEK]: Beschrijf het strandtype (wit zand/gouden zand/kiezel), waterkleur, sfeer (levendig/rustig), beschikbare wateractiviteiten (snorkelen/duiken/jetski/etc), en minimaal 2-3 specifieke stranden met hun namen.';
+      }
+
+      if (writingStyle?.toLowerCase().includes('kinderen')) {
+        userPrompt += '\n\n[GEZIN-SPECIFIEK]: Vermeld concrete kinderactiviteiten met NAMEN zoals: pretparken (bijv. Aquapark X), kindermusea, dierentuinen, avonturenpaden, speeltuinen. Benoem welke stranden kindvriendelijk zijn en waarom. Denk aan interactieve experiences waar kinderen van kunnen genieten.';
+      }
+    }
+
     const messages: OpenAIMessage[] = [
       {
         role: 'system',
@@ -226,9 +242,11 @@ export class OpenAIService {
       },
       {
         role: 'user',
-        content: `${prompt}${additionalContext ? `\n\nExtra context: ${additionalContext}` : ''}`
+        content: `${userPrompt}${additionalContext ? `\n\nExtra context: ${additionalContext}` : ''}`
       }
     ];
+
+    console.log('📤 Final user prompt being sent (first 500 chars):', messages[1].content.substring(0, 500));
 
     try {
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
