@@ -338,7 +338,7 @@ export function DomainSettings() {
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-xs font-medium text-gray-700">CNAME Record (www)</span>
                             <button
-                              onClick={() => copyToClipboard(subdomainUrl.replace('https://', ''), `cname-${domain.id}`)}
+                              onClick={() => copyToClipboard(domain.domain, `cname-${domain.id}`)}
                               className="text-xs text-blue-600 hover:text-blue-700 flex items-center space-x-1"
                             >
                               {copiedField === `cname-${domain.id}` ? (
@@ -351,7 +351,8 @@ export function DomainSettings() {
                           <div className="text-xs text-gray-600 space-y-1">
                             <div><span className="font-medium">Type:</span> CNAME</div>
                             <div><span className="font-medium">Naam:</span> www</div>
-                            <div className="break-all"><span className="font-medium">Waarde:</span> {subdomainUrl.replace('https://', '')}</div>
+                            <div className="break-all"><span className="font-medium">Waarde:</span> {domain.domain}</div>
+                            <div className="text-xs text-gray-500 mt-2 italic">Dit zorgt ervoor dat www.{domain.domain} naar {domain.domain} verwijst</div>
                           </div>
                         </div>
                       </div>
