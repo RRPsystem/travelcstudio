@@ -227,8 +227,34 @@ export function DomainSettings() {
 
                 {domain.status !== 'verified' && (
                   <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                      <h4 className="text-sm font-semibold text-blue-900 mb-3">📋 Stapsgewijs eigen domein koppelen:</h4>
+                      <ol className="space-y-2 text-xs text-blue-800">
+                        <li className="flex items-start">
+                          <span className="font-bold mr-2 flex-shrink-0">1.</span>
+                          <span>Log in bij je domein provider (bijv. TransIP, Mijndomein, GoDaddy)</span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="font-bold mr-2 flex-shrink-0">2.</span>
+                          <span>Ga naar DNS-instellingen / DNS-beheer van je domein</span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="font-bold mr-2 flex-shrink-0">3.</span>
+                          <span>Voeg onderstaande 3 DNS records toe (gebruik de kopieer-knoppen)</span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="font-bold mr-2 flex-shrink-0">4.</span>
+                          <span>Wacht 2-48 uur tot de DNS-wijzigingen wereldwijd actief zijn</span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="font-bold mr-2 flex-shrink-0">5.</span>
+                          <span>Klik op de "Verifiëren" knop om je domein te activeren</span>
+                        </li>
+                      </ol>
+                    </div>
+
                     <div>
-                      <h4 className="text-sm font-medium text-gray-900 mb-3">DNS Records toevoegen bij je domein provider:</h4>
+                      <h4 className="text-sm font-medium text-gray-900 mb-3">Voeg deze 3 DNS records toe:</h4>
 
                       <div className="space-y-3">
                         <div className="bg-white rounded border border-gray-200 p-3">
