@@ -488,7 +488,7 @@ Deno.serve(async (req: Request) => {
     if (req.method === "DELETE" && pathParts.length >= 2) {
       const pageId = pathParts[pathParts.length - 1];
       if (pageId !== "pages-api") {
-        const claims = await verifyBearerToken(req, supabase, "content:read", ["pages:read"]);
+        const claims = await verifyBearerToken(req, supabase, "content:write", ["pages:write"]);
 
         const { data: page, error: fetchError } = await supabase
           .from("pages")
