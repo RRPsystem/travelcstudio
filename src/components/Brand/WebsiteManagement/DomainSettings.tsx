@@ -105,8 +105,12 @@ export function DomainSettings() {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const currentUrl = user?.brand_id
-    ? `https://e${user.brand_id.substring(0, 7)}-1178-4a6d-8f64-a61615bbe8ab.ai-travelstudio.nl`
+  const previewUrl = user?.brand_id
+    ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/website-viewer?brand_id=${user.brand_id}`
+    : '';
+
+  const subdomainUrl = user?.brand_id
+    ? `https://brand-${user.brand_id}.ai-travelstudio.nl`
     : '';
 
   if (loading) {
@@ -141,12 +145,33 @@ export function DomainSettings() {
           </div>
         )}
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <div className="flex items-start space-x-3">
-            <Globe className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <h3 className="font-medium text-blue-900 mb-1">Huidige URL</h3>
-              <p className="text-sm text-blue-700 break-all">{currentUrl}</p>
+        <div className="space-y-4 mb-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start space-x-3">
+              <Globe className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-medium text-blue-900 mb-1">Preview URL</h3>
+                <p className="text-xs text-blue-600 mb-2">Gebruik deze URL om je website te bekijken voordat je een eigen domein koppelt</p>
+                <a
+                  href={previewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-700 hover:text-blue-800 underline break-all"
+                >
+                  {previewUrl}
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-start space-x-3">
+              <Globe className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-medium text-green-900 mb-1">Toekomstig Subdomain</h3>
+                <p className="text-xs text-green-600 mb-2">Binnenkort beschikbaar: je eigen subdomain</p>
+                <p className="text-sm text-green-700 break-all">{subdomainUrl}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -252,7 +277,7 @@ export function DomainSettings() {
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-xs font-medium text-gray-700">CNAME Record (www)</span>
                             <button
-                              onClick={() => copyToClipboard(currentUrl.replace('https://', ''), `cname-${domain.id}`)}
+                              onClick={() => copyToClipboard(subdomainUrl.replace('https://', ''), `cname-${domain.id}`)}
                               className="text-xs text-blue-600 hover:text-blue-700 flex items-center space-x-1"
                             >
                               {copiedField === `cname-${domain.id}` ? (
@@ -265,7 +290,7 @@ export function DomainSettings() {
                           <div className="text-xs text-gray-600 space-y-1">
                             <div><span className="font-medium">Type:</span> CNAME</div>
                             <div><span className="font-medium">Naam:</span> www</div>
-                            <div className="break-all"><span className="font-medium">Waarde:</span> {currentUrl.replace('https://', '')}</div>
+                            <div className="break-all"><span className="font-medium">Waarde:</span> {subdomainUrl.replace('https://', '')}</div>
                           </div>
                         </div>
                       </div>
