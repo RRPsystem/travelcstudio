@@ -474,9 +474,25 @@ export class AITravelService {
     try {
       const { db } = await import('./supabase');
       const gptModels = await db.getGPTModels();
-      return gptModels?.find(gpt => gpt.content_type === contentType && gpt.is_active) || null;
+      console.log('[AITravelService] Looking for active GPT with contentType:', contentType);
+      console.log('[AITravelService] Available GPT models:', gptModels?.map(g => ({
+        name: g.name,
+        contentType: g.contentType,
+        content_type: g.content_type,
+        isActive: g.isActive,
+        is_active: g.is_active
+      })));
+
+      // Try both camelCase and snake_case because the mapping might not be consistent
+      const found = gptModels?.find(gpt =>
+        (gpt.contentType === contentType || gpt.content_type === contentType) &&
+        (gpt.isActive === true || gpt.is_active === true)
+      ) || null;
+
+      console.log('[AITravelService] Found GPT model:', found ? found.name : 'none');
+      return found;
     } catch (error) {
-      console.log('Could not load GPT models from database, using default');
+      console.log('Could not load GPT models from database, using default:', error);
       return null;
     }
   }
@@ -532,14 +548,26 @@ export class AITravelService {
     try {
       // Generate content with OpenAI (using custom GPT if available)
       if (customGPT) {
-        // Use custom GPT model configuration
+        console.log('[AITravelService] Using custom GPT:', customGPT.name);
+        console.log('[AITravelService] Custom GPT settings:', {
+          temperature: customGPT.temperature,
+          max_tokens: customGPT.max_tokens,
+          maxTokens: customGPT.maxTokens,
+          model: customGPT.model,
+          system_prompt: customGPT.system_prompt?.substring(0, 100),
+          systemPrompt: customGPT.systemPrompt?.substring(0, 100)
+        });
+
+        // Use custom GPT model configuration - try both camelCase and snake_case
         const customOptions = {
           ...options,
           temperature: typeof customGPT.temperature === 'string' ? parseFloat(customGPT.temperature) : customGPT.temperature,
-          maxTokens: customGPT.max_tokens,
+          maxTokens: customGPT.max_tokens || customGPT.maxTokens,
           model: customGPT.model,
-          systemPrompt: customGPT.system_prompt
+          systemPrompt: customGPT.system_prompt || customGPT.systemPrompt
         };
+
+        console.log('[AITravelService] Final custom options:', customOptions);
         
         // Increment usage count
         try {
