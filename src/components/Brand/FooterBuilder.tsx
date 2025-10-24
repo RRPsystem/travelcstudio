@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Layout, Plus, Edit2, Trash2, ExternalLink, RefreshCw, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { openBuilder } from '../../lib/jwtHelper';
+import { openBuilderSimple } from '../../lib/jwtHelper';
 
 interface FooterData {
   id: string;
@@ -69,8 +69,9 @@ export function FooterBuilder() {
     if (!user?.brand_id) return;
 
     const returnUrl = `${window.location.origin}${window.location.pathname}#/brand/footer`;
-    await openBuilder({
+    await openBuilderSimple({
       brand_id: user.brand_id,
+      user_id: user.id,
       mode: 'footer',
       return_url: returnUrl,
     });
@@ -80,8 +81,9 @@ export function FooterBuilder() {
     if (!user?.brand_id) return;
 
     const returnUrl = `${window.location.origin}${window.location.pathname}#/brand/footer`;
-    await openBuilder({
+    await openBuilderSimple({
       brand_id: user.brand_id,
+      user_id: user.id,
       mode: 'footer',
       footer_id: footerId,
       return_url: returnUrl,

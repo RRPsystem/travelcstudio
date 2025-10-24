@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Menu, Plus, Edit2, Trash2, ExternalLink, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { openBuilder } from '../../lib/jwtHelper';
+import { openBuilderSimple } from '../../lib/jwtHelper';
 
 interface MenuData {
   id: string;
@@ -66,8 +66,9 @@ export function MenuBuilder() {
     if (!user?.brand_id) return;
 
     const returnUrl = `${window.location.origin}${window.location.pathname}#/brand/menu`;
-    await openBuilder({
+    await openBuilderSimple({
       brand_id: user.brand_id,
+      user_id: user.id,
       mode: 'menu',
       return_url: returnUrl,
     });
@@ -77,8 +78,9 @@ export function MenuBuilder() {
     if (!user?.brand_id) return;
 
     const returnUrl = `${window.location.origin}${window.location.pathname}#/brand/menu`;
-    await openBuilder({
+    await openBuilderSimple({
       brand_id: user.brand_id,
+      user_id: user.id,
       mode: 'menu',
       menu_id: menuId,
       return_url: returnUrl,

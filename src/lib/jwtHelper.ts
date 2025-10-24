@@ -277,6 +277,56 @@ export async function openTemplateBuilder(
 }
 
 /**
+ * Simplified helper for opening builder - auto-fetches user context
+ */
+export async function openBuilderSimple(options: {
+  brand_id: string;
+  user_id?: string;
+  mode?: 'page' | 'menu' | 'footer';
+  page_id?: string;
+  menu_id?: string;
+  footer_id?: string;
+  template_id?: string;
+  return_url?: string;
+}): Promise<void> {
+  const jwtResponse = await generateBuilderJWT(
+    options.brand_id,
+    options.user_id || options.brand_id,
+    [
+      'pages:read',
+      'pages:write',
+      'layouts:read',
+      'layouts:write',
+      'menus:read',
+      'menus:write',
+      'content:read',
+      'content:write'
+    ],
+    {
+      pageId: options.page_id,
+      menuId: options.menu_id,
+      footerId: options.footer_id,
+      templateId: options.template_id,
+      returnUrl: options.return_url,
+      mode: options.mode,
+    }
+  );
+
+  const deeplink = generateBuilderDeeplink({
+    jwtResponse,
+    pageId: options.page_id,
+    menuId: options.menu_id,
+    footerId: options.footer_id,
+    templateId: options.template_id,
+    returnUrl: options.return_url,
+    mode: options.mode,
+  });
+
+  console.log('[openBuilderSimple] Opening builder:', deeplink);
+  window.location.href = deeplink;
+}
+
+/**
  * Extract JWT token and brand_id from deeplink URL
  * Call this when Builder receives a deeplink from Bolt.new
  */
