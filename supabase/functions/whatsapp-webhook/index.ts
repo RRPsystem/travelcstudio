@@ -159,16 +159,7 @@ Deno.serve(async (req: Request) => {
       .select('*')
       .eq('session_token', session.session_token)
       .order('created_at', { ascending: true })
-      .limit(10);
-
-    await supabase
-      .from('travel_conversations')
-      .insert({
-        trip_id: trip.id,
-        session_token: session.session_token,
-        message: body,
-        role: 'user',
-      });
+      .limit(20);
 
     const hasValidTripData = trip.parsed_data && !trip.parsed_data.error;
     const tripDataText = hasValidTripData
@@ -185,7 +176,23 @@ ${trip.source_urls && trip.source_urls.length > 0 ? `Extra informatie bronnen:\n
 Reiziger informatie:
 ${intake ? JSON.stringify(intake.intake_data, null, 2) : "Geen intake data beschikbaar"}
 
-Je communiceert via WhatsApp, dus houd berichten kort, vriendelijk en conversationeel. Gebruik emoji's waar passend. Beantwoord vragen direct en bondig, maar blijf behulpzaam.`;
+BELANGRIJKE INSTRUCTIES:
+
+Je communiceert via WhatsApp, dus:
+- Houd berichten kort (max 2-3 zinnen per antwoord tenzij expliciet meer detail wordt gevraagd)
+- Wees vriendelijk en conversationeel, alsof je met een vriend chat
+- Gebruik emoji's waar passend (maar niet overdrijven)
+- Stel follow-up vragen om het gesprek gaande te houden
+- Onthoud wat er eerder in het gesprek is gezegd en refereer ernaar
+- Als iemand een persoonlijke vraag stelt, geef persoonlijk advies op basis van hun eerdere berichten
+- Wees proactief: als je iets nuttigs weet over de reis, deel het!
+
+Voorbeelden van goede antwoorden:
+\u274c SLECHT: "Hier is een uitgebreide lijst van alle restaurants in het gebied met hun openingstijden en prijzen..."
+\u2705 GOED: "Er is een leuke pizzeria op 5 min lopen! Zal ik de naam doorsturen? \ud83c\udf55"
+
+\u274c SLECHT: "Dank u voor uw vraag. Ik zal u helpen met informatie over het zwembad."
+\u2705 GOED: "Ja! Het zwembad is er super \ud83d\ude0e Het heeft een apart kinderbad. Hoe laat wil je ongeveer gaan?"`;
 
     const messages = [
       { role: "system", content: systemPrompt },
@@ -202,6 +209,15 @@ Je communiceert via WhatsApp, dus houd berichten kort, vriendelijk en conversati
 
     messages.push({ role: "user", content: body });
 
+    await supabase
+      .from('travel_conversations')
+      .insert({
+        trip_id: trip.id,
+        session_token: session.session_token,
+        message: body,
+        role: 'user',
+      });
+
     if (!openaiApiKey) {
       throw new Error('OpenAI API key not configured');
     }
@@ -213,10 +229,10 @@ Je communiceert via WhatsApp, dus houd berichten kort, vriendelijk en conversati
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages,
-        max_tokens: 500,
-        temperature: 0.7,
+        max_tokens: 300,
+        temperature: 0.8,
       }),
     });
 
