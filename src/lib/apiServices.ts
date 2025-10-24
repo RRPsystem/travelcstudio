@@ -554,8 +554,8 @@ export class AITravelService {
           max_tokens: customGPT.max_tokens,
           maxTokens: customGPT.maxTokens,
           model: customGPT.model,
-          system_prompt: customGPT.system_prompt?.substring(0, 100),
-          systemPrompt: customGPT.systemPrompt?.substring(0, 100)
+          system_prompt_length: customGPT.system_prompt?.length,
+          systemPrompt_length: customGPT.systemPrompt?.length
         });
 
         // Use custom GPT model configuration - try both camelCase and snake_case
@@ -567,7 +567,14 @@ export class AITravelService {
           systemPrompt: customGPT.system_prompt || customGPT.systemPrompt
         };
 
-        console.log('[AITravelService] Final custom options:', customOptions);
+        console.log('[AITravelService] Final custom options:', {
+          temperature: customOptions.temperature,
+          maxTokens: customOptions.maxTokens,
+          model: customOptions.model,
+          vacationType: customOptions.vacationType,
+          destination: customOptions.destination,
+          systemPrompt_length: customOptions.systemPrompt?.length
+        });
         
         // Increment usage count
         try {
