@@ -364,15 +364,26 @@ export const db = {
     if (!supabase) {
       throw new Error('Supabase not configured');
     }
-    const { error } = await supabase
+
+    // First get current usage count
+    const { data: currentModel, error: fetchError } = await supabase
+      .from('gpt_models')
+      .select('usage_count')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    // Then increment it
+    const { error: updateError } = await supabase
       .from('gpt_models')
       .update({
-        usage_count: supabase.raw('usage_count + 1'),
+        usage_count: (currentModel?.usage_count || 0) + 1,
         last_used: new Date().toISOString()
       })
       .eq('id', id);
 
-    if (error) throw error;
+    if (updateError) throw updateError;
   },
 
   // API Settings
