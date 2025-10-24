@@ -6,11 +6,12 @@ import { supabase } from '../../../lib/supabase';
 interface Domain {
   id: string;
   domain: string;
-  verification_code: string;
-  is_verified: boolean;
+  verification_token: string;
+  status: string;
   is_primary: boolean;
-  ssl_status: string;
+  ssl_enabled: boolean;
   created_at: string;
+  dns_verified_at: string | null;
 }
 
 export function DomainSettings() {
@@ -34,7 +35,7 @@ export function DomainSettings() {
 
     try {
       const { data, error: fetchError } = await supabase
-        .from('domain_settings')
+        .from('brand_domains')
         .select('*')
         .eq('brand_id', user.brand_id)
         .order('created_at', { ascending: false });
@@ -58,17 +59,14 @@ export function DomainSettings() {
     if (!user?.brand_id) return;
 
     try {
-      const verificationCode = `bolt-verify-${Math.random().toString(36).substring(2, 15)}`;
-
       const { error: insertError } = await supabase
-        .from('domain_settings')
+        .from('brand_domains')
         .insert({
           brand_id: user.brand_id,
           domain: newDomain.trim().toLowerCase(),
-          verification_code: verificationCode,
-          is_verified: false,
+          status: 'pending',
           is_primary: domains.length === 0,
-          ssl_status: 'pending'
+          ssl_enabled: false
         });
 
       if (insertError) throw insertError;
@@ -85,10 +83,11 @@ export function DomainSettings() {
   const handleVerify = async (domainId: string) => {
     try {
       const { error: updateError } = await supabase
-        .from('domain_settings')
+        .from('brand_domains')
         .update({
-          is_verified: true,
-          ssl_status: 'active'
+          status: 'verified',
+          dns_verified_at: new Date().toISOString(),
+          ssl_enabled: true
         })
         .eq('id', domainId);
 
@@ -180,10 +179,15 @@ export function DomainSettings() {
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    {domain.is_verified ? (
+                    {domain.status === 'verified' ? (
                       <span className="flex items-center space-x-1 text-green-600 text-sm">
                         <CheckCircle size={16} />
                         <span>Geverifieerd</span>
+                      </span>
+                    ) : domain.status === 'failed' ? (
+                      <span className="flex items-center space-x-1 text-red-600 text-sm">
+                        <XCircle size={16} />
+                        <span>Verificatie mislukt</span>
                       </span>
                     ) : (
                       <button
@@ -196,7 +200,7 @@ export function DomainSettings() {
                   </div>
                 </div>
 
-                {!domain.is_verified && (
+                {domain.status !== 'verified' && (
                   <div className="bg-gray-50 rounded-lg p-4 space-y-4">
                     <div>
                       <h4 className="text-sm font-medium text-gray-900 mb-3">DNS Records toevoegen bij je domein provider:</h4>
@@ -206,7 +210,7 @@ export function DomainSettings() {
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-xs font-medium text-gray-700">TXT Record (Verificatie)</span>
                             <button
-                              onClick={() => copyToClipboard(domain.verification_code, `txt-${domain.id}`)}
+                              onClick={() => copyToClipboard(domain.verification_token, `txt-${domain.id}`)}
                               className="text-xs text-blue-600 hover:text-blue-700 flex items-center space-x-1"
                             >
                               {copiedField === `txt-${domain.id}` ? (
@@ -219,7 +223,7 @@ export function DomainSettings() {
                           <div className="text-xs text-gray-600 space-y-1">
                             <div><span className="font-medium">Type:</span> TXT</div>
                             <div><span className="font-medium">Naam:</span> _bolt-verify</div>
-                            <div className="break-all"><span className="font-medium">Waarde:</span> {domain.verification_code}</div>
+                            <div className="break-all"><span className="font-medium">Waarde:</span> {domain.verification_token}</div>
                           </div>
                         </div>
 
