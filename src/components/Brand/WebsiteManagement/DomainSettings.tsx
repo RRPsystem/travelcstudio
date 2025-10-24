@@ -12,19 +12,29 @@ interface Domain {
   ssl_enabled: boolean;
   created_at: string;
   dns_verified_at: string | null;
+  website_id: string | null;
+}
+
+interface Website {
+  id: string;
+  name: string;
+  status: string;
 }
 
 export function DomainSettings() {
   const { user } = useAuth();
   const [domains, setDomains] = useState<Domain[]>([]);
+  const [websites, setWebsites] = useState<Website[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newDomain, setNewDomain] = useState('');
+  const [selectedWebsiteId, setSelectedWebsiteId] = useState<string>('');
   const [error, setError] = useState('');
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   useEffect(() => {
     loadDomains();
+    loadWebsites();
   }, [user]);
 
   const loadDomains = async () => {
@@ -47,6 +57,23 @@ export function DomainSettings() {
       setError('Fout bij het laden van domeinen');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadWebsites = async () => {
+    if (!user?.brand_id) return;
+
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('websites')
+        .select('id, name, status')
+        .eq('brand_id', user.brand_id)
+        .order('created_at', { ascending: false });
+
+      if (fetchError) throw fetchError;
+      setWebsites(data || []);
+    } catch (err) {
+      console.error('Error loading websites:', err);
     }
   };
 
@@ -90,6 +117,7 @@ export function DomainSettings() {
         .insert({
           brand_id: user.brand_id,
           domain: trimmedDomain,
+          website_id: selectedWebsiteId || null,
           status: 'pending',
           is_primary: domains.length === 0,
           ssl_enabled: false
@@ -107,6 +135,7 @@ export function DomainSettings() {
       }
 
       setNewDomain('');
+      setSelectedWebsiteId('');
       setShowAddModal(false);
       loadDomains();
     } catch (err: any) {
@@ -416,11 +445,35 @@ export function DomainSettings() {
               <p className="text-xs text-gray-500 mt-1">Voer alleen de domeinnaam in, zonder https:// of www</p>
             </div>
 
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Website (optioneel)
+              </label>
+              <select
+                value={selectedWebsiteId}
+                onChange={(e) => setSelectedWebsiteId(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              >
+                <option value="">-- Gebruik pagina's systeem --</option>
+                {websites.map((website) => (
+                  <option key={website.id} value={website.id}>
+                    {website.name} ({website.status})
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                {websites.length === 0
+                  ? 'Geen websites gevonden. Het domein gebruikt automatisch je pagina\'s.'
+                  : 'Selecteer een website of laat leeg om losse pagina\'s te gebruiken'}
+              </p>
+            </div>
+
             <div className="flex items-center justify-end space-x-3">
               <button
                 onClick={() => {
                   setShowAddModal(false);
                   setNewDomain('');
+                  setSelectedWebsiteId('');
                   setError('');
                 }}
                 className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"

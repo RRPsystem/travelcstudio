@@ -24,38 +24,36 @@ Deno.serve(async (req: Request) => {
     
     console.log("[VIEWER] Request:", { host, pathname });
 
-    // Determine brand_id from host or query param
     let brandId: string | null = null;
     let isCustomDomain = false;
 
-    // Check if it's a custom domain
     if (!host.includes("supabase.co") && !host.includes("localhost")) {
       const domainParts = host.split(".");
       
-      // Check if it's a subdomain like brand123.ai-travelstudio.nl
       if (host.includes("ai-travelstudio.nl")) {
         const subdomain = domainParts[0];
-        // Extract brand_id from subdomain (format: brand-{uuid})
         if (subdomain.startsWith("brand-")) {
           brandId = subdomain.replace("brand-", "");
         }
       } else {
-        // It's a custom domain - look it up
         const { data: domainData } = await supabase
           .from("brand_domains")
-          .select("brand_id, status")
+          .select("brand_id, status, website_id")
           .eq("domain", host)
           .eq("status", "verified")
           .maybeSingle();
-        
+
         if (domainData) {
           brandId = domainData.brand_id;
           isCustomDomain = true;
+
+          if (domainData.website_id) {
+            return await renderWebsite(supabase, domainData.website_id, pathname);
+          }
         }
       }
     }
 
-    // Fallback: check query param
     if (!brandId) {
       brandId = url.searchParams.get("brand_id");
     }
@@ -69,17 +67,14 @@ Deno.serve(async (req: Request) => {
 
     console.log("[VIEWER] Brand ID:", brandId, "Custom domain:", isCustomDomain);
 
-    // Get the page slug from pathname (default to homepage)
     let slug = pathname === "/" || pathname === "" ? "home" : pathname.substring(1);
     
-    // Remove trailing slash
     if (slug.endsWith("/")) {
       slug = slug.substring(0, slug.length - 1);
     }
 
     console.log("[VIEWER] Looking for slug:", slug);
 
-    // Fetch the page
     const { data: page, error: pageError } = await supabase
       .from("pages")
       .select("*")
@@ -89,7 +84,6 @@ Deno.serve(async (req: Request) => {
       .or("content_type.eq.page,content_type.is.null")
       .maybeSingle();
 
-    // If not found and looking for home, try index or first published page
     if (!page && slug === "home") {
       const { data: indexPage } = await supabase
         .from("pages")
@@ -107,7 +101,6 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      // Get first published page
       const { data: firstPage } = await supabase
         .from("pages")
         .select("*")
@@ -137,7 +130,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Render the page
     return new Response(renderPage(page), {
       status: 200,
       headers: { "Content-Type": "text/html" },
@@ -152,7 +144,6 @@ Deno.serve(async (req: Request) => {
 });
 
 function renderPage(page: any): string {
-  // Extract HTML from content_json
   let html = "";
   
   if (page.body_html) {
@@ -167,7 +158,6 @@ function renderPage(page: any): string {
     return renderErrorPage("Geen content", "Deze pagina heeft nog geen content.");
   }
 
-  // Wrap in a complete HTML document if needed
   if (!html.includes("<html") && !html.includes("<!DOCTYPE")) {
     html = `<!DOCTYPE html>
 <html lang="nl">
@@ -233,4 +223,119 @@ function renderErrorPage(title: string, message: string): string {
   </div>
 </body>
 </html>`;
+}
+
+async function renderWebsite(supabase: any, websiteId: string, pathname: string): Promise<Response> {
+  try {
+    const { data: website, error: websiteError } = await supabase
+      .from("websites")
+      .select("*")
+      .eq("id", websiteId)
+      .maybeSingle();
+
+    if (websiteError || !website) {
+      return new Response(
+        renderErrorPage("Website niet gevonden", "Deze website bestaat niet."),
+        { status: 404, headers: { "Content-Type": "text/html" } }
+      );
+    }
+
+    let slug = pathname === "/" || pathname === "" ? "home" : pathname.substring(1);
+    if (slug.endsWith("/")) {
+      slug = slug.substring(0, slug.length - 1);
+    }
+
+    const { data: page, error: pageError } = await supabase
+      .from("website_pages")
+      .select("*")
+      .eq("website_id", websiteId)
+      .eq("slug", slug)
+      .maybeSingle();
+
+    if (!page && slug === "home") {
+      const { data: homepage } = await supabase
+        .from("website_pages")
+        .select("*")
+        .eq("website_id", websiteId)
+        .eq("is_homepage", true)
+        .maybeSingle();
+
+      if (homepage) {
+        return new Response(renderWebsitePage(homepage, website), {
+          status: 200,
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+
+      const { data: firstPage } = await supabase
+        .from("website_pages")
+        .select("*")
+        .eq("website_id", websiteId)
+        .order("sort_order", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (firstPage) {
+        return new Response(renderWebsitePage(firstPage, website), {
+          status: 200,
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+    }
+
+    if (pageError || !page) {
+      return new Response(
+        renderErrorPage(
+          "Pagina niet gevonden",
+          `De pagina '${slug}' bestaat niet.`
+        ),
+        { status: 404, headers: { "Content-Type": "text/html" } }
+      );
+    }
+
+    return new Response(renderWebsitePage(page, website), {
+      status: 200,
+      headers: { "Content-Type": "text/html" },
+    });
+  } catch (error) {
+    console.error("[WEBSITE-RENDER] Error:", error);
+    return new Response(
+      renderErrorPage("Server Fout", error?.message || "Er is een fout opgetreden."),
+      { status: 500, headers: { "Content-Type": "text/html" } }
+    );
+  }
+}
+
+function renderWebsitePage(page: any, website: any): string {
+  let html = "";
+
+  if (page.content?.html) {
+    html = page.content.html;
+  } else if (page.content?.htmlSnapshot) {
+    html = page.content.htmlSnapshot;
+  }
+
+  if (!html) {
+    return renderErrorPage("Geen content", "Deze pagina heeft nog geen content.");
+  }
+
+  if (!html.includes("<html") && !html.includes("<!DOCTYPE")) {
+    html = `<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${page.meta_title || page.name || "Pagina"}</title>
+  ${page.meta_description ? `<meta name="description" content="${page.meta_description}">` : ''}
+  <style>
+    body { margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+  </style>
+</head>
+<body>
+${html}
+</body>
+</html>`;
+  }
+
+  return html;
 }
