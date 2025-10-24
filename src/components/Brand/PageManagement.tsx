@@ -125,75 +125,65 @@ export function PageManagement() {
     if (!user?.brand_id) return;
 
     try {
-      const token = await generateBuilderJWT(user.brand_id, user.id);
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pages-api/${pageId}`;
+      const { error } = await supabase
+        .from('pages')
+        .delete()
+        .eq('id', pageId)
+        .eq('brand_id', user.brand_id);
 
-      console.log('[PageManagement] Deleting page:', pageId);
-      const response = await fetch(apiUrl, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[PageManagement] Delete failed:', response.status, errorText);
-        throw new Error(`Failed to delete page: ${response.status} ${errorText}`);
+      if (error) {
+        console.error('[PageManagement] Delete failed:', error);
+        throw error;
       }
 
       console.log('[PageManagement] Page deleted successfully');
-      await loadPages(user.brand_id);
+      await loadPages(user.brand_id, false);
     } catch (error) {
       console.error('[PageManagement] Error deleting page:', error);
       alert('Kon pagina niet verwijderen: ' + error);
     }
   };
 
-  const publishPage = async (pageId: string) => {
-    if (!confirm('Weet je zeker dat je deze pagina wilt publiceren?')) return;
+  const togglePublishStatus = async (pageId: string, currentStatus: string) => {
     if (!user?.brand_id) return;
 
+    const isPublished = currentStatus === 'published';
+    const newStatus = isPublished ? 'draft' : 'published';
+    const action = isPublished ? 'depubliceren' : 'publiceren';
+
+    if (!confirm(`Weet je zeker dat je deze pagina wilt ${action}?`)) return;
+
     try {
-      const token = await generateBuilderJWT(user.brand_id, user.id);
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pages-api/publish`;
+      if (!isPublished) {
+        const token = await generateBuilderJWT(user.brand_id, user.id);
+        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pages-api/publish`;
 
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          brand_id: user.brand_id,
-          page_id: pageId,
-        }),
-      });
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            brand_id: user.brand_id,
+            page_id: pageId,
+          }),
+        });
 
-      if (!response.ok) {
-        throw new Error('Failed to publish page');
+        if (!response.ok) {
+          throw new Error('Failed to publish page');
+        }
+      } else {
+        await supabase
+          .from('pages')
+          .update({ status: newStatus })
+          .eq('id', pageId);
       }
 
       await loadPages(user.brand_id, false);
     } catch (error) {
-      console.error('Error publishing page:', error);
-    }
-  };
-
-  const unpublishPage = async (pageId: string) => {
-    if (!confirm('Weet je zeker dat je deze pagina wilt depubliceren?')) return;
-    if (!user?.brand_id) return;
-
-    try {
-      await supabase
-        .from('pages')
-        .update({ status: 'draft' })
-        .eq('id', pageId);
-
-      await loadPages(user.brand_id, false);
-    } catch (error) {
-      console.error('Error unpublishing page:', error);
+      console.error(`Error ${action} page:`, error);
+      alert(`Kon pagina niet ${action}: ` + error);
     }
   };
 
@@ -346,32 +336,28 @@ export function PageManagement() {
                       >
                         <Edit size={18} />
                       </button>
-                      {page.status === 'published' ? (
-                        <>
-                          <button
-                            onClick={() => window.open(`/preview?brand_id=${user?.brand_id}&slug=${page.slug}`, '_blank')}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                            title="Preview"
-                          >
-                            <Eye size={18} />
-                          </button>
-                          <button
-                            onClick={() => unpublishPage(page.id)}
-                            className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                            title="Depubliceren"
-                          >
-                            <FileX size={18} />
-                          </button>
-                        </>
-                      ) : (
+                      {page.status === 'published' && (
                         <button
-                          onClick={() => publishPage(page.id)}
+                          onClick={() => window.open(`/preview?brand_id=${user?.brand_id}&slug=${page.slug}`, '_blank')}
                           className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                          title="Publiceren"
+                          title="Preview"
                         >
-                          <Upload size={18} />
+                          <Eye size={18} />
                         </button>
                       )}
+                      <button
+                        onClick={() => togglePublishStatus(page.id, page.status)}
+                        className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors ${
+                          page.status === 'published' ? 'bg-green-600' : 'bg-gray-300'
+                        }`}
+                        title={page.status === 'published' ? 'Depubliceren' : 'Publiceren'}
+                      >
+                        <span
+                          className={`inline-block w-4 h-4 bg-white rounded-full transition-transform ${
+                            page.status === 'published' ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
                       <button
                         onClick={() => duplicatePage(page.id)}
                         className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
