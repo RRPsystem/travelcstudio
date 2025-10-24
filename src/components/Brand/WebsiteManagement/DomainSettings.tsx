@@ -394,7 +394,8 @@ export function DomainSettings() {
                   <p className="font-medium mb-1">Belangrijk:</p>
                   <ul className="list-disc list-inside space-y-1 mt-2">
                     <li>Voeg alleen je <strong>hoofddomein</strong> toe (bijv. jouwreisbureau.nl)</li>
-                    <li><strong>Niet</strong> www.jouwreisbureau.nl - www wordt automatisch ondersteund!</li>
+                    <li><strong>Niet</strong> www.jouwreisbureau.nl invoeren - dit voeg je later via een extra DNS record toe</li>
+                    <li>Je krijgt na toevoegen instructies voor 2 verplichte + 1 optioneel DNS record</li>
                     <li>Het ai-travelstudio.nl subdomain is al beschikbaar en hoeft niet toegevoegd te worden</li>
                   </ul>
                 </div>
