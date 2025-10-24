@@ -11,7 +11,9 @@ import { DestinationApproval } from './DestinationApproval';
 import { PageManagement } from './PageManagement';
 import { NewPage } from './NewPage';
 import { AgentManagement } from './AgentManagement';
-import { Users, Settings, Plus, Bot, Sparkles, Import as FileImport, ChevronDown, ChevronRight, LayoutGrid as Layout, FileText, Globe, Newspaper, MapPin, Plane, Share2, Map, ArrowRight } from 'lucide-react';
+import { MenuBuilder } from './MenuBuilder';
+import { FooterBuilder } from './FooterBuilder';
+import { Users, Settings, Plus, Bot, Sparkles, Import as FileImport, ChevronDown, ChevronRight, LayoutGrid as Layout, FileText, Globe, Newspaper, MapPin, Plane, Share2, Map, ArrowRight, Menu } from 'lucide-react';
 import RoadmapBoard from './RoadmapBoard';
 
 export function BrandDashboard() {
@@ -21,6 +23,8 @@ export function BrandDashboard() {
     const hash = window.location.hash;
     if (hash.includes('/brand/content/news')) return 'nieuwsbeheer';
     if (hash.includes('/brand/website/pages')) return 'pages';
+    if (hash.includes('/brand/menu')) return 'menu';
+    if (hash.includes('/brand/footer')) return 'footer';
     return 'dashboard';
   };
 
@@ -28,7 +32,7 @@ export function BrandDashboard() {
     const hash = window.location.hash;
     return {
       showContentSubmenu: hash.includes('/brand/content/news'),
-      showWebsiteSubmenu: hash.includes('/brand/website/')
+      showWebsiteSubmenu: hash.includes('/brand/website/') || hash.includes('/brand/menu') || hash.includes('/brand/footer')
     };
   };
 
@@ -170,6 +174,8 @@ export function BrandDashboard() {
   const websiteManagementItems = [
     { id: 'new-page', label: 'Nieuwe Pagina', icon: Plus },
     { id: 'pages', label: 'Pagina Beheer', icon: FileText },
+    { id: 'menu', label: 'Menu Beheer', icon: Menu },
+    { id: 'footer', label: 'Footer Beheer', icon: Layout },
   ];
 
   const aiToolsItems = [
@@ -443,6 +449,8 @@ export function BrandDashboard() {
                   {activeSection === 'websites' && 'My Websites'}
                   {activeSection === 'agents' && 'Agents'}
                   {activeSection === 'pages' && 'Pagina Beheer'}
+                  {activeSection === 'menu' && 'Menu Beheer'}
+                  {activeSection === 'footer' && 'Footer Beheer'}
                   {activeSection === 'content' && 'Nieuwsberichten'}
                   {activeSection === 'destinations' && 'Bestemmingen'}
                   {activeSection === 'settings' && 'Brand Settings'}
@@ -456,6 +464,8 @@ export function BrandDashboard() {
                   {activeSection === 'dashboard' && 'Welkom terug bij je brand dashboard'}
                   {activeSection === 'websites' && 'Manage your travel websites'}
                   {activeSection === 'pages' && 'Beheer alle pagina\'s van je website'}
+                  {activeSection === 'menu' && 'Beheer menu\'s voor je website'}
+                  {activeSection === 'footer' && 'Beheer footers voor je website'}
                   {activeSection === 'ai-content' && 'Generate travel content with AI'}
                   {activeSection === 'ai-travelbro' && 'Your AI travel assistant'}
                   {activeSection === 'ai-import' && 'Import travel data with AI'}
@@ -547,6 +557,8 @@ export function BrandDashboard() {
 
           {activeSection === 'new-page' && <NewPage />}
           {activeSection === 'pages' && <PageManagement />}
+          {activeSection === 'menu' && <MenuBuilder />}
+          {activeSection === 'footer' && <FooterBuilder />}
           {activeSection === 'settings' && <BrandSettings />}
           {activeSection === 'nieuwsbeheer' && (
             <div className="p-6">
