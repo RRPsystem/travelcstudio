@@ -92,7 +92,8 @@ export function APISettings() {
     try {
       let query = supabase
         .from('api_settings')
-        .select('twilio_account_sid, twilio_auth_token, twilio_whatsapp_number, brand_id');
+        .select('twilio_account_sid, twilio_auth_token, twilio_whatsapp_number, brand_id')
+        .eq('provider', 'Twilio');
 
       if (selectedBrandId === 'all') {
         query = query.is('brand_id', null);
