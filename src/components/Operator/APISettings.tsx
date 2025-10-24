@@ -80,9 +80,7 @@ export function APISettings() {
 
       if (fetchError) throw fetchError;
       setBrands(data || []);
-      if (data && data.length > 0) {
-        setSelectedBrandId(data[0].id);
-      }
+      setSelectedBrandId('all');
     } catch (err: any) {
       console.error('Error loading brands:', err);
     }
@@ -92,11 +90,17 @@ export function APISettings() {
     if (!selectedBrandId) return;
 
     try {
-      const { data, error: fetchError } = await supabase
+      let query = supabase
         .from('api_settings')
-        .select('twilio_account_sid, twilio_auth_token, twilio_whatsapp_number')
-        .eq('brand_id', selectedBrandId)
-        .maybeSingle();
+        .select('twilio_account_sid, twilio_auth_token, twilio_whatsapp_number, brand_id');
+
+      if (selectedBrandId === 'all') {
+        query = query.is('brand_id', null);
+      } else {
+        query = query.eq('brand_id', selectedBrandId);
+      }
+
+      const { data, error: fetchError } = await query.maybeSingle();
 
       if (fetchError) throw fetchError;
       if (data) {
@@ -125,11 +129,17 @@ export function APISettings() {
 
     setSavingTwilio(true);
     try {
-      const { data: existing } = await supabase
+      let query = supabase
         .from('api_settings')
-        .select('id')
-        .eq('brand_id', selectedBrandId)
-        .maybeSingle();
+        .select('id');
+
+      if (selectedBrandId === 'all') {
+        query = query.is('brand_id', null);
+      } else {
+        query = query.eq('brand_id', selectedBrandId);
+      }
+
+      const { data: existing } = await query.maybeSingle();
 
       if (existing) {
         const { error: updateError } = await supabase
@@ -142,14 +152,17 @@ export function APISettings() {
         const { error: insertError } = await supabase
           .from('api_settings')
           .insert({
-            brand_id: selectedBrandId,
+            brand_id: selectedBrandId === 'all' ? null : selectedBrandId,
+            provider: 'Twilio',
+            service_name: 'WhatsApp',
             ...twilioSettings
           });
 
         if (insertError) throw insertError;
       }
 
-      alert('Twilio instellingen opgeslagen!');
+      const scope = selectedBrandId === 'all' ? 'voor ALLE brands' : 'voor deze brand';
+      alert(`Twilio instellingen opgeslagen ${scope}!`);
     } catch (err: any) {
       console.error('Error saving Twilio settings:', err);
       alert(`Fout bij opslaan: ${err.message}`);
@@ -424,21 +437,33 @@ export function APISettings() {
       )}
 
       <div className="mt-8 pt-8 border-t border-gray-200">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Twilio WhatsApp Instellingen (per Brand)</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Twilio WhatsApp Instellingen</h2>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <h3 className="font-semibold text-blue-900 mb-2">💡 System-wide vs Brand-specific</h3>
+            <ul className="text-sm text-blue-800 space-y-1">
+              <li><strong>"Alle Brands"</strong> - Eén centraal Twilio nummer voor alle brands (aanbevolen)</li>
+              <li><strong>Specifieke Brand</strong> - Unieke Twilio credentials per brand (optioneel)</li>
+              <li>Nieuwe brands gebruiken automatisch de system-wide instellingen</li>
+            </ul>
+          </div>
+
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Selecteer Brand
+              Scope
             </label>
             <select
               value={selectedBrandId}
               onChange={(e) => setSelectedBrandId(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              {brands.map(brand => (
-                <option key={brand.id} value={brand.id}>{brand.name}</option>
-              ))}
+              <option value="all">🌍 Alle Brands (System-wide)</option>
+              <optgroup label="Brand-specific overrides">
+                {brands.map(brand => (
+                  <option key={brand.id} value={brand.id}>{brand.name}</option>
+                ))}
+              </optgroup>
             </select>
           </div>
 

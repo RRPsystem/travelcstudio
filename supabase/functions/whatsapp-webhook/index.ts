@@ -181,17 +181,27 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { data: apiSettings } = await supabase
+    let { data: apiSettings } = await supabase
       .from('api_settings')
       .select('twilio_account_sid, twilio_auth_token, twilio_whatsapp_number')
       .eq('brand_id', trip.brand_id)
       .maybeSingle();
 
     if (!apiSettings?.twilio_account_sid || !apiSettings?.twilio_auth_token) {
-      console.error('Twilio credentials not configured for brand:', trip.brand_id);
-      return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
-        headers: { 'Content-Type': 'text/xml' },
-      });
+      const { data: systemSettings } = await supabase
+        .from('api_settings')
+        .select('twilio_account_sid, twilio_auth_token, twilio_whatsapp_number')
+        .is('brand_id', null)
+        .maybeSingle();
+
+      if (systemSettings?.twilio_account_sid && systemSettings?.twilio_auth_token) {
+        apiSettings = systemSettings;
+      } else {
+        console.error('No Twilio credentials configured (brand-specific or system-wide)');
+        return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
+          headers: { 'Content-Type': 'text/xml' },
+        });
+      }
     }
 
     const isVoiceMessage = mediaContentType?.includes('audio');
