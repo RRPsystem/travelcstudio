@@ -51,32 +51,50 @@ export function DomainSettings() {
   };
 
   const handleAddDomain = async () => {
-    if (!newDomain.trim()) {
+    const trimmedDomain = newDomain.trim().toLowerCase();
+
+    if (!trimmedDomain) {
       setError('Voer een domeinnaam in');
       return;
     }
 
+    if (trimmedDomain.includes('ai-travelstudio.nl')) {
+      setError('Je hoeft het ai-travelstudio.nl subdomain niet toe te voegen - dit is al automatisch beschikbaar!');
+      return;
+    }
+
     if (!user?.brand_id) return;
+
+    setError('');
 
     try {
       const { error: insertError } = await supabase
         .from('brand_domains')
         .insert({
           brand_id: user.brand_id,
-          domain: newDomain.trim().toLowerCase(),
+          domain: trimmedDomain,
           status: 'pending',
           is_primary: domains.length === 0,
           ssl_enabled: false
         });
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        if (insertError.message?.includes('duplicate')) {
+          setError('Dit domein is al toegevoegd');
+        } else if (insertError.message?.includes('valid_domain')) {
+          setError('Ongeldige domeinnaam. Gebruik alleen je eigen domein (bijv. jouwreisbureau.nl)');
+        } else {
+          setError('Fout bij het toevoegen van domein: ' + insertError.message);
+        }
+        return;
+      }
 
       setNewDomain('');
       setShowAddModal(false);
       loadDomains();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error adding domain:', err);
-      setError('Fout bij het toevoegen van domein');
+      setError('Fout bij het toevoegen van domein: ' + (err.message || err));
     }
   };
 
@@ -342,7 +360,17 @@ export function DomainSettings() {
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Domein Toevoegen</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Eigen Domein Toevoegen</h3>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <div className="flex items-start space-x-2">
+                <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="text-xs text-blue-800">
+                  <p className="font-medium mb-1">Let op:</p>
+                  <p>Voeg hier alleen je <strong>eigen gekochte domein</strong> toe (bijv. jouwreisbureau.nl). Het ai-travelstudio.nl subdomain is al automatisch beschikbaar!</p>
+                </div>
+              </div>
+            </div>
 
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -355,6 +383,7 @@ export function DomainSettings() {
                 placeholder="bijv. jouwreisbureau.nl"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
+              <p className="text-xs text-gray-500 mt-1">Voer alleen de domeinnaam in, zonder https:// of www</p>
             </div>
 
             <div className="flex items-center justify-end space-x-3">
