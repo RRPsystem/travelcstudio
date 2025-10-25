@@ -138,7 +138,7 @@ export function APISettings() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify({
           accountSid: twilioSettings.twilio_account_sid,
@@ -146,6 +146,16 @@ export function APISettings() {
           whatsappNumber: twilioSettings.twilio_whatsapp_number
         }),
       });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Response error:', response.status, errorText);
+        setTwilioTestResult({
+          success: false,
+          message: `❌ Verbinding mislukt: ${response.status}\n${errorText}`
+        });
+        return;
+      }
 
       const data = await response.json();
       setTwilioTestResult({
