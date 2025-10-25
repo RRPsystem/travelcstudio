@@ -696,7 +696,7 @@ function TripDetails({ trip, onBack }: { trip: Trip; onBack: () => void }) {
                 <p className="text-sm text-gray-600 mb-4">
                   Vul alvast de namen en leeftijden in van de reizigers. Je klanten hoeven dan alleen nog hun voorkeuren aan te vullen.
                 </p>
-                <IntakeTemplateEditor trip={trip} onSave={() => loadTrip()} />
+                <IntakeTemplateEditor trip={trip} onSave={() => loadTrips()} />
               </div>
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

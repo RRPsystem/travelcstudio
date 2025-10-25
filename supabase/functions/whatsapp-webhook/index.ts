@@ -485,9 +485,9 @@ Wees creatief maar realistisch met locaties en foto's. Gebruik alleen echte URLs
 
   } catch (error) {
     console.error('Error processing WhatsApp webhook:', error);
-    return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
-      headers: { 'Content-Type': 'text/xml' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
