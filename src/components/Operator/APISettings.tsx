@@ -125,11 +125,16 @@ export function APISettings() {
   };
 
   const testTwilioConnection = async () => {
+    console.log('🔵 testTwilioConnection called');
+    console.log('🔵 twilioSettings:', twilioSettings);
+
     if (!twilioSettings.twilio_account_sid || !twilioSettings.twilio_auth_token) {
+      console.log('🔴 Missing credentials');
       setTwilioTestResult({ success: false, message: 'Vul eerst Account SID en Auth Token in' });
       return;
     }
 
+    console.log('🟢 Starting Twilio test...');
     setTestingTwilio(true);
     setTwilioTestResult(null);
 
