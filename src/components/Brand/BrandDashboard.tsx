@@ -8,6 +8,7 @@ import { BrandSettings } from './BrandSettings';
 import { HelpBot } from '../shared/HelpBot';
 import { NewsApproval } from './NewsApproval';
 import { DestinationApproval } from './DestinationApproval';
+import { TripApproval } from './TripApproval';
 import { PageManagement } from './PageManagement';
 import { NewPage } from './NewPage';
 import { AgentManagement } from './AgentManagement';
@@ -440,7 +441,7 @@ export function BrandDashboard() {
       </div>
 
       <div className="flex-1 flex flex-col">
-        {activeSection !== 'nieuwsbeheer' && (
+        {!['nieuwsbeheer', 'destinations', 'trips'].includes(activeSection) && (
           <header className="bg-white border-b border-gray-200 px-6 py-4">
             <div className="flex items-center justify-between">
               <div>
@@ -452,7 +453,9 @@ export function BrandDashboard() {
                   {activeSection === 'menu' && 'Menu Beheer'}
                   {activeSection === 'footer' && 'Footer Beheer'}
                   {activeSection === 'content' && 'Nieuwsberichten'}
+                  {activeSection === 'nieuwsbeheer' && 'Nieuwsbeheer'}
                   {activeSection === 'destinations' && 'Bestemmingen'}
+                  {activeSection === 'trips' && 'Reizen'}
                   {activeSection === 'settings' && 'Brand Settings'}
                   {activeSection === 'ai-content' && 'AI Content Generator'}
                   {activeSection === 'ai-travelbro' && 'AI TravelBRO'}
@@ -466,6 +469,9 @@ export function BrandDashboard() {
                   {activeSection === 'pages' && 'Beheer alle pagina\'s van je website'}
                   {activeSection === 'menu' && 'Beheer menu\'s voor je website'}
                   {activeSection === 'footer' && 'Beheer footers voor je website'}
+                  {activeSection === 'nieuwsbeheer' && 'Beheer nieuwsberichten voor je website'}
+                  {activeSection === 'destinations' && 'Beheer bestemmingen voor je website'}
+                  {activeSection === 'trips' && 'Beheer reizen voor je website'}
                   {activeSection === 'ai-content' && 'Generate travel content with AI'}
                   {activeSection === 'ai-travelbro' && 'Your AI travel assistant'}
                   {activeSection === 'ai-import' && 'Import travel data with AI'}
@@ -568,6 +574,11 @@ export function BrandDashboard() {
           {activeSection === 'destinations' && (
             <div className="p-6">
               <DestinationApproval />
+            </div>
+          )}
+          {activeSection === 'trips' && (
+            <div className="p-6">
+              <TripApproval />
             </div>
           )}
           {activeSection === 'ai-content' && <AIContentGenerator />}
