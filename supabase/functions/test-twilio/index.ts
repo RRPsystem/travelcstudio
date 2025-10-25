@@ -30,42 +30,41 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+    // Test 1: Verify account exists
+    const accountUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}.json`;
+    const authHeader = 'Basic ' + btoa(`${accountSid}:${authToken}`);
 
-    const response = await fetch(twilioUrl, {
+    console.log('Testing Twilio account:', accountSid);
+
+    const accountResponse = await fetch(accountUrl, {
       method: 'GET',
       headers: {
-        'Authorization': 'Basic ' + btoa(`${accountSid}:${authToken}`),
+        'Authorization': authHeader,
       },
     });
 
-    if (response.ok) {
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: '\u2705 Verbinding succesvol! Twilio credentials werken correct.',
-          details: `Account ${accountSid} is geldig${whatsappNumber ? ` met nummer ${whatsappNumber}` : ''}`
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    } else {
-      const errorText = await response.text();
-      let errorMessage = 'Onbekende fout';
+    if (!accountResponse.ok) {
+      const errorText = await accountResponse.text();
+      let errorDetails = 'Onbekende fout';
 
       try {
         const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.message || errorText;
+        errorDetails = errorJson.message || errorJson.error?.message || errorText;
+        console.error('Twilio error response:', errorJson);
       } catch {
-        errorMessage = errorText;
+        errorDetails = errorText;
       }
 
       return new Response(
         JSON.stringify({
           success: false,
-          message: `\u274c Verbinding mislukt: ${response.status}`,
-          details: errorMessage
+          message: `\u274c Verbinding mislukt (${accountResponse.status})`,
+          details: errorDetails,
+          debug: {
+            accountSid: accountSid.substring(0, 8) + '...',
+            tokenLength: authToken.length,
+            statusCode: accountResponse.status
+          }
         }),
         {
           status: 200,
@@ -74,12 +73,49 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const accountData = await accountResponse.json();
+    console.log('Account verified:', accountData.friendly_name);
+
+    // Test 2: Check WhatsApp capability if number provided
+    let whatsappStatus = 'Niet getest';
+    if (whatsappNumber) {
+      const numbersUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/IncomingPhoneNumbers.json`;
+      const numbersResponse = await fetch(numbersUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': authHeader,
+        },
+      });
+
+      if (numbersResponse.ok) {
+        const numbersData = await numbersResponse.json();
+        const hasNumbers = numbersData.incoming_phone_numbers?.length > 0;
+        whatsappStatus = hasNumbers
+          ? `Gevonden: ${numbersData.incoming_phone_numbers.length} nummer(s)`
+          : 'Gebruik WhatsApp Sandbox voor testen';
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: '\u2705 Verbinding succesvol! Twilio credentials werken correct.',
+        details: `Account: ${accountData.friendly_name || accountSid}`,
+        whatsappStatus,
+        accountStatus: accountData.status
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
+
   } catch (error) {
     console.error('Error testing Twilio:', error);
     return new Response(
       JSON.stringify({
         success: false,
-        message: `\u274c Fout bij testen: ${error.message}`
+        message: `\u274c Fout bij testen: ${error.message}`,
+        details: error.stack
       }),
       {
         status: 500,
