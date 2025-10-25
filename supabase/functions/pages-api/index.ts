@@ -98,10 +98,9 @@ async function verifyBearerToken(req: Request, supabaseClient: any, requiredScop
 
 function corsHeaders(): Headers {
   const headers = new Headers();
-  headers.set('Access-Control-Allow-Origin', '*');
-  headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Client-Info, Apikey');
-  headers.set('Content-Type', 'application/json');
+  headers.set("Access-Control-Allow-Origin", "*");
+  headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Client-Info, Apikey");
   return headers;
 }
 
@@ -110,12 +109,11 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { status: 200, headers: corsHeaders() });
   }
 
-  try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
+  try {
     const url = new URL(req.url);
     const pathParts = url.pathname.split("/").filter(Boolean);
 
@@ -123,10 +121,10 @@ Deno.serve(async (req: Request) => {
       method: req.method,
       pathname: url.pathname,
       pathParts,
-      hasAuth: req.headers.has("Authorization")
+      searchParams: Object.fromEntries(url.searchParams.entries()),
     });
 
-    if (req.method === "POST" && (pathParts.includes("saveDraft") || pathParts.includes("save"))) {
+    if (req.method === "POST" && (pathParts.includes("save") || pathParts.includes("saveDraft"))) {
       console.log("[DEBUG] Processing saveDraft/save");
       const body = await req.json();
       console.log("[DEBUG] Body:", {
@@ -159,7 +157,18 @@ Deno.serve(async (req: Request) => {
         if (referer.includes('content_type=news') || referer.includes('mode=news')) {
           content_type = 'news';
           console.log("[DEBUG] Detected news content from referer");
+        } else if (referer.includes('content_type=destination') || referer.includes('mode=destination')) {
+          content_type = 'destination';
+          console.log("[DEBUG] Detected destination content from referer");
+        } else if (referer.includes('content_type=trip') || referer.includes('mode=trip') || referer.includes('mode=travel')) {
+          content_type = 'trip';
+          console.log("[DEBUG] Detected trip content from referer");
         }
+      }
+
+      if (content_type === 'trips') {
+        content_type = 'trip';
+        console.log("[DEBUG] Normalized 'trips' to 'trip'");
       }
 
       let content_json = body.content_json || body.json || body.content || body.layout || {};
@@ -341,6 +350,77 @@ Deno.serve(async (req: Request) => {
         result = data;
       }
 
+      if (!isTemplateMode && content_type && ['news', 'destination', 'trip'].includes(content_type)) {
+        const tableName = content_type === 'news' ? 'news_items' : content_type === 'destination' ? 'destinations' : 'trips';
+        const userId = claims.sub || claims.user_id;
+
+        console.log(`[DEBUG] Syncing ${content_type} to ${tableName} table`);
+
+        const contentData: any = {
+          brand_id,
+          title,
+          slug,
+          content: content_json,
+          description: content_json.description || content_json.excerpt || '',
+          featured_image: content_json.featured_image || content_json.image || '',
+          status: 'draft',
+          author_type: 'brand',
+          author_id: userId,
+        };
+
+        if (content_type === 'news') {
+          contentData.excerpt = content_json.excerpt || content_json.description || '';
+          contentData.tags = content_json.tags || [];
+        } else if (content_type === 'destination') {
+          contentData.country = content_json.country || '';
+          contentData.region = content_json.region || '';
+          contentData.gallery = content_json.gallery || [];
+        } else if (content_type === 'trip') {
+          contentData.destination_id = content_json.destination_id || null;
+          contentData.price = content_json.price || 0;
+          contentData.duration_days = content_json.duration_days || 0;
+          contentData.departure_dates = content_json.departure_dates || [];
+          contentData.gallery = content_json.gallery || [];
+        }
+
+        const { data: existingContent } = await supabase
+          .from(tableName)
+          .select('id')
+          .eq('brand_id', brand_id)
+          .eq('slug', slug)
+          .maybeSingle();
+
+        if (existingContent) {
+          const { error: updateError } = await supabase
+            .from(tableName)
+            .update({
+              ...contentData,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingContent.id);
+
+          if (updateError) {
+            console.error(`[ERROR] Failed to update ${tableName}:`, updateError);
+          } else {
+            console.log(`[DEBUG] Successfully updated ${tableName} with id:`, existingContent.id);
+          }
+        } else {
+          const { error: insertError } = await supabase
+            .from(tableName)
+            .insert({
+              ...contentData,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+
+          if (insertError) {
+            console.error(`[ERROR] Failed to insert ${tableName}:`, insertError);
+          } else {
+            console.log(`[DEBUG] Successfully created new ${tableName} record`);
+          }
+        }
+      }
+
       const responseData: any = {
         page_id: result.id,
         title,
@@ -435,192 +515,263 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("pages")
         .select("*")
         .eq("brand_id", brandId)
         .or("content_type.eq.page,content_type.is.null")
-        .order("updated_at", { ascending: false });
+        .order("created_at", { ascending: false });
+
+      const { data, error } = await query;
 
       if (error) throw error;
-      return new Response(JSON.stringify({ items: data || [] }), { status: 200, headers: corsHeaders() });
-    }
 
-    if (req.method === "GET" && pathParts.length >= 2) {
-      const pageId = pathParts[pathParts.length - 1];
-      if (pageId !== "pages-api" && pageId !== "list") {
-        const claims = await verifyBearerToken(req, supabase, "content:read", ["pages:read"]);
-
-        const { data, error } = await supabase
-          .from("pages")
-          .select("*")
-          .eq("id", pageId)
-          .maybeSingle();
-
-        if (error) throw error;
-        if (!data) {
-          return new Response(
-            JSON.stringify({ error: "Page not found" }),
-            { status: 404, headers: corsHeaders() }
-          );
-        }
-
-        if (!data.is_template && claims.brand_id !== data.brand_id) {
-          return new Response(
-            JSON.stringify({ error: "Unauthorized" }),
-            { status: 403, headers: corsHeaders() }
-          );
-        }
-
-        if (data.content_json && data.content_json.htmlSnapshot && !data.content_json.layout && !data.content_json.json) {
-          console.log("[DEBUG] Converting htmlSnapshot to layout for builder");
-          data.content_json.layout = {
-            html: data.content_json.htmlSnapshot,
-            css: "",
-            js: ""
-          };
-        }
-
-        return new Response(JSON.stringify(data), { status: 200, headers: corsHeaders() });
+      if (data && data.length > 0) {
+        data.forEach(page => {
+          if (page.content_json && page.content_json.htmlSnapshot && !page.content_json.layout && !page.content_json.json) {
+            console.log("[DEBUG] Converting htmlSnapshot to layout for builder (list query):", page.id);
+            page.content_json.layout = {
+              html: page.content_json.htmlSnapshot,
+              css: "",
+              js: ""
+            };
+          }
+        });
       }
+
+      return new Response(JSON.stringify({ pages: data }), { status: 200, headers: corsHeaders() });
     }
 
-    if (req.method === "DELETE" && pathParts.length >= 2) {
+    if (req.method === "GET" && pathParts[pathParts.length - 2] === "pages") {
+      const claims = await verifyBearerToken(req, supabase, "content:read", ["pages:read"]);
       const pageId = pathParts[pathParts.length - 1];
-      if (pageId !== "pages-api") {
-        const claims = await verifyBearerToken(req, supabase, "content:write", ["pages:write"]);
 
-        const { data: page, error: fetchError } = await supabase
-          .from("pages")
-          .select("brand_id")
-          .eq("id", pageId)
-          .maybeSingle();
+      const { data, error } = await supabase
+        .from("pages")
+        .select("*")
+        .eq("id", pageId)
+        .maybeSingle();
 
-        if (fetchError || !page) {
-          return new Response(
-            JSON.stringify({ error: "Page not found" }),
-            { status: 404, headers: corsHeaders() }
-          );
-        }
-
-        if (claims.brand_id !== page.brand_id) {
-          return new Response(
-            JSON.stringify({ error: "Unauthorized" }),
-            { status: 403, headers: corsHeaders() }
-          );
-        }
-
-        const { error } = await supabase
-          .from("pages")
-          .delete()
-          .eq("id", pageId);
-
-        if (error) throw error;
-
+      if (error) throw error;
+      if (!data) {
         return new Response(
-          JSON.stringify({ success: true, message: "Page deleted successfully" }),
-          { status: 200, headers: corsHeaders() }
+          JSON.stringify({ error: "Page not found" }),
+          { status: 404, headers: corsHeaders() }
         );
       }
+
+      if (claims.brand_id !== data.brand_id && !claims.is_template) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 403, headers: corsHeaders() }
+        );
+      }
+
+      if (data.content_json && data.content_json.htmlSnapshot && !data.content_json.layout && !data.content_json.json) {
+        console.log("[DEBUG] Converting htmlSnapshot to layout for builder (single page query):", data.id);
+        data.content_json.layout = {
+          html: data.content_json.htmlSnapshot,
+          css: "",
+          js: ""
+        };
+      }
+
+      return new Response(JSON.stringify(data), { status: 200, headers: corsHeaders() });
+    }
+
+    if (req.method === "PUT" && pathParts[pathParts.length - 2] === "pages") {
+      const claims = await verifyBearerToken(req, supabase, "content:write", ["pages:write"]);
+      const pageId = pathParts[pathParts.length - 1];
+      const body = await req.json();
+
+      const { data: currentPage, error: fetchError } = await supabase
+        .from("pages")
+        .select("brand_id")
+        .eq("id", pageId)
+        .maybeSingle();
+
+      if (fetchError || !currentPage) {
+        return new Response(
+          JSON.stringify({ error: "Page not found" }),
+          { status: 404, headers: corsHeaders() }
+        );
+      }
+
+      if (claims.brand_id !== currentPage.brand_id) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 403, headers: corsHeaders() }
+        );
+      }
+
+      const updateData: any = {
+        ...body,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (body.content_json) {
+        updateData.content_json = body.content_json;
+      }
+
+      const { data, error } = await supabase
+        .from("pages")
+        .update(updateData)
+        .eq("id", pageId)
+        .select("*")
+        .maybeSingle();
+
+      if (error) throw error;
+
+      return new Response(JSON.stringify(data), { status: 200, headers: corsHeaders() });
+    }
+
+    if (req.method === "DELETE" && pathParts[pathParts.length - 2] === "pages") {
+      const claims = await verifyBearerToken(req, supabase, "content:write", ["pages:write"]);
+      const pageId = pathParts[pathParts.length - 1];
+
+      const { data: currentPage, error: fetchError } = await supabase
+        .from("pages")
+        .select("brand_id")
+        .eq("id", pageId)
+        .maybeSingle();
+
+      if (fetchError || !currentPage) {
+        return new Response(
+          JSON.stringify({ error: "Page not found" }),
+          { status: 404, headers: corsHeaders() }
+        );
+      }
+
+      if (claims.brand_id !== currentPage.brand_id) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 403, headers: corsHeaders() }
+        );
+      }
+
+      const { error } = await supabase
+        .from("pages")
+        .delete()
+        .eq("id", pageId);
+
+      if (error) throw error;
+
+      return new Response(
+        JSON.stringify({ success: true, message: "Page deleted successfully" }),
+        { status: 200, headers: corsHeaders() }
+      );
     }
 
     if (req.method === "GET" && (url.pathname.endsWith("/pages") || url.pathname.endsWith("/pages-api"))) {
-      const apikey = url.searchParams.get("apikey");
-      const preview = url.searchParams.get("preview");
-      const brand_id = url.searchParams.get("brand_id");
-      const page_id = url.searchParams.get("page_id");
+    const apikey = url.searchParams.get("apikey");
+    const preview = url.searchParams.get("preview");
+    const brand_id = url.searchParams.get("brand_id");
+    const page_id = url.searchParams.get("page_id");
 
-      if (page_id) {
-        const { data, error } = await supabase
-          .from("pages")
-          .select("*")
-          .eq("id", page_id)
-          .maybeSingle();
+    if (page_id) {
+      const { data, error } = await supabase
+        .from("pages")
+        .select("*")
+        .eq("id", page_id)
+        .maybeSingle();
 
-        if (error) throw error;
-        if (!data) {
-          return new Response(
-            JSON.stringify({ error: "Page not found" }),
-            { status: 404, headers: corsHeaders() }
-          );
-        }
-
-        // Apply builder compatibility conversion
-        if (data.content_json && data.content_json.htmlSnapshot && !data.content_json.layout && !data.content_json.json) {
-          console.log("[DEBUG] Converting htmlSnapshot to layout for builder (anon query)");
-          data.content_json.layout = {
-            html: data.content_json.htmlSnapshot,
-            css: "",
-            js: ""
-          };
-        }
-
-        return new Response(JSON.stringify(data), { status: 200, headers: corsHeaders() });
+      if (error) throw error;
+      if (!data) {
+        return new Response(
+          JSON.stringify({ error: "Page not found" }),
+          { status: 404, headers: corsHeaders() }
+        );
       }
 
-      if (apikey) {
-        const { data: apiSettings, error: apiError } = await supabase
-          .from("api_settings")
-          .select("api_key, brand_id, can_read_content")
-          .eq("api_key", apikey)
-          .maybeSingle();
-
-        if (apiError || !apiSettings || !apiSettings.can_read_content) {
-          return new Response(
-            JSON.stringify({ error: "Invalid API key or insufficient permissions" }),
-            { status: 403, headers: corsHeaders() }
-          );
-        }
-
-        let query = supabase
-          .from("pages")
-          .select("*")
-          .eq("brand_id", apiSettings.brand_id)
-          .or("content_type.eq.page,content_type.is.null");
-
-        if (preview !== "true") {
-          query = query.eq("status", "published");
-        }
-
-        const { data, error } = await query.order("updated_at", { ascending: false });
-
-        if (error) throw error;
-        return new Response(JSON.stringify({ items: data || [] }), { status: 200, headers: corsHeaders() });
-      } else {
-        if (!brand_id) {
-          return new Response(
-            JSON.stringify({ error: "brand_id is required" }),
-            { status: 400, headers: corsHeaders() }
-          );
-        }
-
-        const { data, error } = await supabase
-          .from("pages")
-          .select("*")
-          .eq("brand_id", brand_id)
-          .or("content_type.eq.page,content_type.is.null")
-          .order("updated_at", { ascending: false });
-
-        if (error) throw error;
-        return new Response(JSON.stringify({ items: data || [] }), { status: 200, headers: corsHeaders() });
+      if (data.content_json && data.content_json.htmlSnapshot && !data.content_json.layout && !data.content_json.json) {
+        console.log("[DEBUG] Converting htmlSnapshot to layout for builder (anon query)");
+        data.content_json.layout = {
+          html: data.content_json.htmlSnapshot,
+          css: "",
+          js: ""
+        };
       }
+
+      return new Response(JSON.stringify(data), { status: 200, headers: corsHeaders() });
+    }
+
+    if (apikey) {
+      const { data: apiSettings, error: apiError } = await supabase
+        .from("api_settings")
+        .select("api_key, brand_id, can_read_content")
+        .eq("api_key", apikey)
+        .maybeSingle();
+
+      if (apiError || !apiSettings) {
+        return new Response(
+          JSON.stringify({ error: "Invalid API key" }),
+          { status: 401, headers: corsHeaders() }
+        );
+      }
+
+      if (!apiSettings.can_read_content) {
+        return new Response(
+          JSON.stringify({ error: "API key does not have read content permission" }),
+          { status: 403, headers: corsHeaders() }
+        );
+      }
+
+      let query = supabase
+        .from("pages")
+        .select("*")
+        .eq("brand_id", apiSettings.brand_id);
+
+      if (preview !== "true") {
+        query = query.eq("status", "published");
+      }
+
+      query = query
+        .or("content_type.eq.page,content_type.is.null")
+        .order("created_at", { ascending: false });
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      return new Response(JSON.stringify({ pages: data }), { status: 200, headers: corsHeaders() });
+    }
+
+    if (brand_id) {
+      let query = supabase
+        .from("pages")
+        .select("*")
+        .eq("brand_id", brand_id);
+
+      if (preview !== "true") {
+        query = query.eq("status", "published");
+      }
+
+      query = query
+        .or("content_type.eq.page,content_type.is.null")
+        .order("created_at", { ascending: false });
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      return new Response(JSON.stringify({ pages: data }), { status: 200, headers: corsHeaders() });
     }
 
     return new Response(
-      JSON.stringify({ error: "Not found" }),
-      { status: 404, headers: corsHeaders() }
+      JSON.stringify({ error: "Missing required parameters: apikey, brand_id, or page_id" }),
+      { status: 400, headers: corsHeaders() }
     );
-  } catch (error) {
-    console.error("[ERROR] Full error:", error);
-    console.error("[ERROR] Error message:", error?.message);
-    console.error("[ERROR] Error stack:", error?.stack);
-    const statusCode = (error as any).statusCode || 500;
+  }
+
+  return new Response(
+    JSON.stringify({ error: "Route not found" }),
+    { status: 404, headers: corsHeaders() }
+  );
+  } catch (err: any) {
+    console.error("[ERROR] Request failed:", err);
+    const statusCode = err.statusCode || 500;
     return new Response(
-      JSON.stringify({
-        error: error?.message || "Internal server error",
-        details: error?.toString(),
-        timestamp: new Date().toISOString()
-      }),
+      JSON.stringify({ error: err.message || "Internal Server Error" }),
       { status: statusCode, headers: corsHeaders() }
     );
   }
