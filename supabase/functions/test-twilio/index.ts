@@ -17,7 +17,11 @@ Deno.serve(async (req: Request) => {
   try {
     const { accountSid, authToken, whatsappNumber } = await req.json();
 
-    if (!accountSid || !authToken) {
+    // Trim whitespace from credentials
+    const cleanAccountSid = accountSid?.trim();
+    const cleanAuthToken = authToken?.trim();
+
+    if (!cleanAccountSid || !cleanAuthToken) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -31,10 +35,12 @@ Deno.serve(async (req: Request) => {
     }
 
     // Test 1: Verify account exists
-    const accountUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}.json`;
-    const authHeader = 'Basic ' + btoa(`${accountSid}:${authToken}`);
+    const accountUrl = `https://api.twilio.com/2010-04-01/Accounts/${cleanAccountSid}.json`;
+    const authHeader = 'Basic ' + btoa(`${cleanAccountSid}:${cleanAuthToken}`);
 
-    console.log('Testing Twilio account:', accountSid);
+    console.log('Testing Twilio account:', cleanAccountSid);
+    console.log('Auth token length:', cleanAuthToken.length);
+    console.log('Auth token first 8 chars:', cleanAuthToken.substring(0, 8));
 
     const accountResponse = await fetch(accountUrl, {
       method: 'GET',
@@ -61,9 +67,12 @@ Deno.serve(async (req: Request) => {
           message: `\u274c Verbinding mislukt (${accountResponse.status})`,
           details: errorDetails,
           debug: {
-            accountSid: accountSid.substring(0, 8) + '...',
-            tokenLength: authToken.length,
-            statusCode: accountResponse.status
+            accountSid: cleanAccountSid.substring(0, 8) + '...',
+            tokenLength: cleanAuthToken.length,
+            tokenStart: cleanAuthToken.substring(0, 4),
+            statusCode: accountResponse.status,
+            originalTokenLength: authToken?.length,
+            hadWhitespace: authToken !== cleanAuthToken
           }
         }),
         {
