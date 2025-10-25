@@ -346,13 +346,22 @@ function IntakeForm({ trip, onComplete }: { trip: Trip; onComplete: (token: stri
           completed_at: new Date().toISOString(),
         })
         .select()
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
+
+      if (!data) {
+        console.error('No data returned from insert');
+        throw new Error('Geen data ontvangen van database');
+      }
+
       onComplete(data.session_token);
     } catch (error) {
       console.error('Error submitting intake:', error);
-      alert('Er ging iets mis bij het opslaan');
+      alert('Er ging iets mis bij het opslaan: ' + (error instanceof Error ? error.message : 'Onbekende fout'));
     } finally {
       setSubmitting(false);
     }
