@@ -691,6 +691,14 @@ function TripDetails({ trip, onBack }: { trip: Trip; onBack: () => void }) {
                 </div>
               </div>
 
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <h3 className="font-semibold text-gray-900 mb-4">Reizigers Voorinvullen (optioneel)</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Vul alvast de namen en leeftijden in van de reizigers. Je klanten hoeven dan alleen nog hun voorkeuren aan te vullen.
+                </p>
+                <IntakeTemplateEditor trip={trip} onSave={() => loadTrip()} />
+              </div>
+
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h3 className="font-semibold text-blue-900 mb-2">WhatsApp Setup (éénmalig)</h3>
                 <p className="text-sm text-blue-800 mb-3">
@@ -719,12 +727,12 @@ function TripDetails({ trip, onBack }: { trip: Trip; onBack: () => void }) {
 
 function IntakeTemplateEditor({ trip, onSave }: { trip: Trip; onSave: () => void }) {
   const [travelers, setTravelers] = useState<any[]>(
-    trip.intake_template?.travelers || [{ name: '', age: '', relation: 'adult' }]
+    trip.intake_template?.travelers || [{ name: '', age: '' }]
   );
   const [saving, setSaving] = useState(false);
 
   const addTraveler = () => {
-    setTravelers([...travelers, { name: '', age: '', relation: 'child', interests: [] }]);
+    setTravelers([...travelers, { name: '', age: '' }]);
   };
 
   const updateTraveler = (index: number, field: string, value: any) => {
@@ -739,22 +747,6 @@ function IntakeTemplateEditor({ trip, onSave }: { trip: Trip; onSave: () => void
     }
   };
 
-  const toggleInterest = (index: number, interest: string) => {
-    const updated = [...travelers];
-    if (!updated[index].interests) updated[index].interests = [];
-
-    const interests = updated[index].interests;
-    const interestIndex = interests.indexOf(interest);
-
-    if (interestIndex > -1) {
-      interests.splice(interestIndex, 1);
-    } else {
-      interests.push(interest);
-    }
-
-    setTravelers(updated);
-  };
-
   const handleSave = async () => {
     setSaving(true);
 
@@ -767,7 +759,7 @@ function IntakeTemplateEditor({ trip, onSave }: { trip: Trip; onSave: () => void
         .eq('id', trip.id);
 
       if (error) throw error;
-      alert('Intake template opgeslagen!');
+      alert('Reizigers opgeslagen! Je klanten zullen deze info al vooringevuld zien.');
       onSave();
     } catch (error) {
       console.error('Error saving template:', error);
@@ -777,29 +769,20 @@ function IntakeTemplateEditor({ trip, onSave }: { trip: Trip; onSave: () => void
     }
   };
 
-  const interestOptions = [
-    { id: 'gaming', label: '🎮 Gaming', value: 'gaming' },
-    { id: 'tiktok', label: '📱 TikTok/Social Media', value: 'tiktok' },
-    { id: 'drawing', label: '🎨 Tekenen/Knutselen', value: 'drawing' },
-    { id: 'sports', label: '⚽ Sport', value: 'sports' },
-    { id: 'reading', label: '📚 Lezen', value: 'reading' },
-    { id: 'music', label: '🎵 Muziek', value: 'music' },
-    { id: 'animals', label: '🐾 Dieren', value: 'animals' },
-    { id: 'adventure', label: '🏔️ Avontuur/Buiten', value: 'adventure' },
-    { id: 'puzzles', label: '🧩 Puzzelen', value: 'puzzles' },
-  ];
-
   return (
     <div className="space-y-6">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <p className="text-sm text-blue-900">
-          <strong>Tip:</strong> Vul hier alvast gegevens in die je al weet over de reizigers.
-          De klant kan deze gegevens later aanvullen of aanpassen in het intake formulier.
+        <p className="text-sm text-blue-900 mb-2">
+          <strong>Voorinvullen basisgegevens (optioneel)</strong>
+        </p>
+        <p className="text-sm text-blue-800">
+          Vul hier de namen en leeftijden in van de reizigers. Je klanten hoeven dan alleen nog hun voorkeuren aan te vullen.
+          Laat leeg als je wilt dat klanten alles zelf invullen.
         </p>
       </div>
 
       {travelers.map((traveler, index) => (
-        <div key={index} className="border border-gray-200 rounded-lg p-4">
+        <div key={index} className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-gray-900">
               Reiziger {index + 1}
@@ -815,122 +798,29 @@ function IntakeTemplateEditor({ trip, onSave }: { trip: Trip; onSave: () => void
             )}
           </div>
 
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Naam (optioneel)
-                </label>
-                <input
-                  type="text"
-                  value={traveler.name || ''}
-                  onChange={(e) => updateTraveler(index, 'name', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  placeholder="Laat leeg als onbekend"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Leeftijd (optioneel)
-                </label>
-                <input
-                  type="number"
-                  value={traveler.age || ''}
-                  onChange={(e) => updateTraveler(index, 'age', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  placeholder="Laat leeg als onbekend"
-                />
-              </div>
-            </div>
-
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Relatie
-              </label>
-              <select
-                value={traveler.relation || 'adult'}
-                onChange={(e) => updateTraveler(index, 'relation', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              >
-                <option value="adult">Volwassene</option>
-                <option value="child">Kind</option>
-                <option value="teen">Tiener</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Favoriet Eten (optioneel)
+                Naam
               </label>
               <input
                 type="text"
-                value={traveler.favoriteFood || ''}
-                onChange={(e) => updateTraveler(index, 'favoriteFood', e.target.value)}
+                value={traveler.name || ''}
+                onChange={(e) => updateTraveler(index, 'name', e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                placeholder="Bijv: Pizza, Mac Donalds, Pasta"
+                placeholder="Bijv: Jan Jansen"
               />
             </div>
-
-            {(traveler.relation === 'child' || traveler.relation === 'teen') && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Interesses & Hobby's (optioneel)
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {interestOptions.map((interest) => (
-                    <button
-                      key={interest.id}
-                      type="button"
-                      onClick={() => toggleInterest(index, interest.value)}
-                      className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
-                        traveler.interests?.includes(interest.value)
-                          ? 'border-orange-600 bg-orange-50 text-orange-700'
-                          : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                      }`}
-                    >
-                      {interest.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Allergieën of Dieetwensen (optioneel)
+                Leeftijd
               </label>
               <input
-                type="text"
-                value={traveler.dietary || ''}
-                onChange={(e) => updateTraveler(index, 'dietary', e.target.value)}
+                type="number"
+                value={traveler.age || ''}
+                onChange={(e) => updateTraveler(index, 'age', e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                placeholder="Bijv: Lactose intolerant, vegetarisch"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Waar kijkt deze persoon naar uit op reis? (optioneel)
-              </label>
-              <textarea
-                value={traveler.lookingForward || ''}
-                onChange={(e) => updateTraveler(index, 'lookingForward', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                placeholder="Bijv: Zwemmen in het zwembad, nieuwe vriendjes maken"
-                rows={2}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Bijzonderheden of Extra Info (optioneel)
-              </label>
-              <textarea
-                value={traveler.specialNeeds || ''}
-                onChange={(e) => updateTraveler(index, 'specialNeeds', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                placeholder="Bijv: Wordt snel wagenziek, heeft knuffel nodig om te slapen"
-                rows={2}
+                placeholder="Bijv: 35"
               />
             </div>
           </div>
@@ -960,7 +850,7 @@ function IntakeTemplateEditor({ trip, onSave }: { trip: Trip; onSave: () => void
           className="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
           style={{ backgroundColor: '#ff7700' }}
         >
-          {saving ? 'Opslaan...' : 'Template Opslaan'}
+          {saving ? 'Opslaan...' : 'Reizigers Opslaan'}
         </button>
       </div>
     </div>

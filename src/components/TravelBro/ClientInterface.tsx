@@ -384,6 +384,8 @@ function IntakeForm({ trip, onComplete }: { trip: Trip; onComplete: (token: stri
     { id: 'puzzles', label: '🧩 Puzzelen', value: 'puzzles' },
   ];
 
+  const hasPrefilled = travelers.some(t => t.name && t.age);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 py-12 px-4">
       <div className="max-w-2xl mx-auto">
@@ -392,59 +394,88 @@ function IntakeForm({ trip, onComplete }: { trip: Trip; onComplete: (token: stri
             <Sparkles className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">{trip.name}</h1>
-          <p className="text-gray-600">Vertel ons over jezelf en je reisgenoten</p>
+          <p className="text-gray-600">
+            {hasPrefilled
+              ? 'Vertel ons meer over je voorkeuren voor deze reis'
+              : 'Vertel ons over jezelf en je reisgenoten'}
+          </p>
         </div>
+
+        {hasPrefilled && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-blue-800">
+              💡 Je reisagent heeft al wat basisinfo voor je ingevuld. Vul hieronder je voorkeuren aan zodat TravelBRO je nog beter kan helpen!
+            </p>
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <form onSubmit={handleSubmit} className="space-y-8">
             {travelers.map((traveler, index) => (
               <div key={index} className="pb-6 border-b border-gray-200 last:border-0">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Reiziger {index + 1}
+                  {traveler.name ? traveler.name : `Reiziger ${index + 1}`}
                 </h3>
 
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Naam *
-                      </label>
-                      <input
-                        type="text"
-                        value={traveler.name}
-                        onChange={(e) => updateTraveler(index, 'name', e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                        required
-                      />
+                  {hasPrefilled ? (
+                    <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-600">Naam:</span>
+                          <span className="ml-2 font-medium text-gray-900">{traveler.name}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Leeftijd:</span>
+                          <span className="ml-2 font-medium text-gray-900">{traveler.age} jaar</span>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Leeftijd *
-                      </label>
-                      <input
-                        type="number"
-                        value={traveler.age}
-                        onChange={(e) => updateTraveler(index, 'age', e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                        required
-                      />
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Naam *
+                        </label>
+                        <input
+                          type="text"
+                          value={traveler.name}
+                          onChange={(e) => updateTraveler(index, 'name', e.target.value)}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Leeftijd *
+                        </label>
+                        <input
+                          type="number"
+                          value={traveler.age}
+                          onChange={(e) => updateTraveler(index, 'age', e.target.value)}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          required
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Relatie
-                    </label>
-                    <select
-                      value={traveler.relation}
-                      onChange={(e) => updateTraveler(index, 'relation', e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                    >
-                      <option value="adult">Volwassene</option>
-                      <option value="child">Kind</option>
-                      <option value="teen">Tiener</option>
-                    </select>
-                  </div>
+                  {!hasPrefilled && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Relatie
+                      </label>
+                      <select
+                        value={traveler.relation}
+                        onChange={(e) => updateTraveler(index, 'relation', e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      >
+                        <option value="adult">Volwassene</option>
+                        <option value="child">Kind</option>
+                        <option value="teen">Tiener</option>
+                      </select>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -525,13 +556,15 @@ function IntakeForm({ trip, onComplete }: { trip: Trip; onComplete: (token: stri
               </div>
             ))}
 
-            <button
-              type="button"
-              onClick={addTraveler}
-              className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-orange-500 hover:text-orange-600 transition-colors"
-            >
-              + Voeg reiziger toe
-            </button>
+            {!hasPrefilled && (
+              <button
+                type="button"
+                onClick={addTraveler}
+                className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-orange-500 hover:text-orange-600 transition-colors"
+              >
+                + Voeg reiziger toe
+              </button>
+            )}
 
             <button
               type="submit"
