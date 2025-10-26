@@ -152,6 +152,16 @@ Deno.serve(async (req: Request) => {
         console.log("[DEBUG] Detected news mode from JWT");
       }
 
+      if (!content_type && ((claims as any).mode === 'travel' || (claims as any).mode === 'trip')) {
+        content_type = 'trip';
+        console.log("[DEBUG] Detected trip/travel mode from JWT");
+      }
+
+      if (!content_type && (claims as any).mode === 'destination') {
+        content_type = 'destination';
+        console.log("[DEBUG] Detected destination mode from JWT");
+      }
+
       if (!content_type) {
         const referer = req.headers.get('Referer') || req.headers.get('Origin') || '';
         if (referer.includes('content_type=news') || referer.includes('mode=news')) {
