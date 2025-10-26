@@ -135,7 +135,10 @@ Deno.serve(async (req: Request) => {
     console.log(`Using GPT config: ${gptConfig?.name || 'default'} (${modelToUse})`);
     console.log(`Writing Style: "${writingStyle}"`);
     console.log(`Vacation Type: "${vacationTypeContext}"`);
-    console.log(`System Prompt (first 200 chars): ${systemPrompt.substring(0, 200)}...`);
+    console.log(`Days: "${daysContext}"`);
+    console.log(`Route Type: "${routeTypeContext}"`);
+    console.log(`User Prompt: "${userPrompt}"`);
+    console.log(`\n=== FULL SYSTEM PROMPT ===\n${systemPrompt}\n=== END SYSTEM PROMPT ===\n`);
 
     // Update usage count
     if (gptConfig) {
