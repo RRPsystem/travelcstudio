@@ -32,26 +32,19 @@ export function PageManagement() {
     try {
       if (showLoading) setLoading(true);
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('No active session');
+      const { data, error } = await supabase
+        .from('website_pages')
+        .select('*')
+        .eq('brand_id', brandId)
+        .or('content_type.eq.page,content_type.is.null')
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading pages:', error);
+        throw error;
       }
 
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pages-api/list?brand_id=${brandId}`;
-
-      const response = await fetch(apiUrl, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load pages');
-      }
-
-      const data = await response.json();
-      setPages(data.pages || []);
+      setPages(data || []);
     } catch (error) {
       console.error('Error loading pages:', error);
     } finally {
@@ -98,19 +91,20 @@ export function PageManagement() {
 
     try {
       const { data: originalPage } = await supabase
-        .from('pages')
+        .from('website_pages')
         .select('*')
         .eq('id', pageId)
         .single();
 
       if (originalPage) {
-        await supabase.from('pages').insert({
+        await supabase.from('website_pages').insert({
           brand_id: originalPage.brand_id,
           owner_user_id: originalPage.owner_user_id,
           title: `${originalPage.title} (kopie)`,
           slug: `${originalPage.slug}-copy-${Date.now()}`,
           status: 'draft',
           content_json: originalPage.content_json,
+          content_type: 'page',
         });
 
         await loadPages(user.brand_id);
@@ -126,7 +120,7 @@ export function PageManagement() {
 
     try {
       const { error } = await supabase
-        .from('pages')
+        .from('website_pages')
         .delete()
         .eq('id', pageId)
         .eq('brand_id', user.brand_id);
@@ -154,31 +148,22 @@ export function PageManagement() {
     if (!confirm(`Weet je zeker dat je deze pagina wilt ${action}?`)) return;
 
     try {
+      const updateData: any = {
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      };
+
       if (!isPublished) {
-        const token = await generateBuilderJWT(user.brand_id, user.id);
-        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pages-api/publish`;
-
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            brand_id: user.brand_id,
-            page_id: pageId,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to publish page');
-        }
-      } else {
-        await supabase
-          .from('pages')
-          .update({ status: newStatus })
-          .eq('id', pageId);
+        updateData.published_at = new Date().toISOString();
       }
+
+      const { error } = await supabase
+        .from('website_pages')
+        .update(updateData)
+        .eq('id', pageId)
+        .eq('brand_id', user.brand_id);
+
+      if (error) throw error;
 
       await loadPages(user.brand_id, false);
     } catch (error) {
@@ -191,24 +176,16 @@ export function PageManagement() {
     if (!user?.brand_id) return;
 
     try {
-      const token = await generateBuilderJWT(user.brand_id, user.id);
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pages-api/updateMenuSettings`;
-
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          page_id: pageId,
+      const { error } = await supabase
+        .from('website_pages')
+        .update({
           show_in_menu: !currentValue,
-        }),
-      });
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', pageId)
+        .eq('brand_id', user.brand_id);
 
-      if (!response.ok) {
-        throw new Error('Failed to update menu settings');
-      }
+      if (error) throw error;
 
       await loadPages(user.brand_id, false);
     } catch (error) {
