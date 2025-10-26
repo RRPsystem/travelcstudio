@@ -686,8 +686,11 @@ export class EdgeFunctionAIService {
     additionalContext: string = '',
     options: {
       vacationType?: string;
+      vacationTypeDescription?: string;
       routeType?: string;
+      routeTypeDescription?: string;
       days?: string;
+      daysDescription?: string;
       destination?: string;
       temperature?: number;
       maxTokens?: number;

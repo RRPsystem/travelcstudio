@@ -13,8 +13,11 @@ interface GenerateContentRequest {
   additionalContext?: string;
   options?: {
     vacationType?: string;
+    vacationTypeDescription?: string;
     routeType?: string;
+    routeTypeDescription?: string;
     days?: string;
+    daysDescription?: string;
     destination?: string;
     temperature?: number;
     maxTokens?: number;
@@ -85,13 +88,26 @@ Deno.serve(async (req: Request) => {
     // Use GPT config if available, otherwise use defaults
     let systemPrompt = gptConfig?.system_prompt || options.systemPrompt || `Je bent een professionele reisschrijver die boeiende bestemmingsteksten schrijft over {DESTINATION}. Schrijf in {WRITING_STYLE} stijl voor {VACATION_TYPE} reizigers.`;
 
+    // Build context descriptions
+    const vacationTypeContext = options.vacationTypeDescription
+      ? `${options.vacationType} (${options.vacationTypeDescription})`
+      : options.vacationType || 'algemene';
+
+    const routeTypeContext = options.routeTypeDescription
+      ? `${options.routeType} (${options.routeTypeDescription})`
+      : options.routeType || '';
+
+    const daysContext = options.daysDescription
+      ? `${options.days} (${options.daysDescription})`
+      : options.days || '';
+
     // Replace variables in system prompt
     systemPrompt = systemPrompt
       .replace(/{WRITING_STYLE}/g, writingStyle)
-      .replace(/{VACATION_TYPE}/g, options.vacationType || 'algemene')
-      .replace(/{ROUTE_TYPE}/g, options.routeType || '')
+      .replace(/{VACATION_TYPE}/g, vacationTypeContext)
+      .replace(/{ROUTE_TYPE}/g, routeTypeContext)
       .replace(/{ROUTE_TYPE_INSTRUCTION}/g, getRouteInstruction(options.routeType || ''))
-      .replace(/{DAYS}/g, options.days || '')
+      .replace(/{DAYS}/g, daysContext)
       .replace(/{DESTINATION}/g, options.destination || '');
 
     const userPrompt = `${prompt}${additionalContext ? `\n\nExtra context: ${additionalContext}` : ''}`;

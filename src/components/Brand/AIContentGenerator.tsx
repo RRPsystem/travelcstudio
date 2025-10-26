@@ -178,6 +178,11 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
           const imageUrl = await aiTravelService.generateImage(currentInput);
           response = imageUrl ? `![Generated Image](${imageUrl})\n\nAfbeelding gegenereerd voor: "${currentInput}"` : 'Kon geen afbeelding genereren.';
         } else {
+          // Find descriptions for selected options
+          const vacationTypeObj = moreSettings.find(s => s.id === selectedMoreSetting);
+          const routeTypeObj = routeTypes.find(r => r.id === selectedRouteType);
+          const daysObj = dayOptions.find(d => d.id === selectedDays);
+
           response = await edgeAIService.generateContent(
             selectedContentType,
             selectedContentType === 'route' ? `Route van ${routeFrom} naar ${routeTo}` : currentInput,
@@ -185,8 +190,11 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
             additionalData,
             {
               vacationType: selectedMoreSetting || 'algemene',
+              vacationTypeDescription: vacationTypeObj?.description,
               routeType: selectedRouteType,
+              routeTypeDescription: routeTypeObj?.description,
               days: selectedDays,
+              daysDescription: daysObj?.description,
               destination: currentInput
             }
           );
