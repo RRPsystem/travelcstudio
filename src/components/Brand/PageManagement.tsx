@@ -28,6 +28,17 @@ export function PageManagement() {
     }
   }, [user?.brand_id]);
 
+  useEffect(() => {
+    const handleFocus = () => {
+      if (user?.brand_id) {
+        loadPages(user.brand_id, false);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [user?.brand_id]);
+
   const loadPages = async (brandId: string, showLoading = true) => {
     try {
       if (showLoading) setLoading(true);
