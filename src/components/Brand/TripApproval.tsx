@@ -166,16 +166,31 @@ export function TripApproval() {
       });
 
       const builderBaseUrl = 'https://www.ai-websitestudio.nl';
-      const apiBaseUrl = jwtResponse.api_url || import.meta.env.VITE_SUPABASE_URL;
+      const apiBaseUrl = jwtResponse.api_url || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
       const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
-      const returnUrl = `${appUrl}/#/brand/trips`;
+      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}`;
 
       const tripSlug = assignment.trip.slug;
       const tripId = assignment.trip.id;
 
-      const deeplink = `${builderBaseUrl}?api=${encodeURIComponent(apiBaseUrl)}&apikey=${encodeURIComponent(apiKey)}&brand_id=${user.brand_id}&token=${encodeURIComponent(jwtResponse.token)}&content_type=trips&slug=${encodeURIComponent(tripSlug)}&id=${encodeURIComponent(tripId)}&return_url=${encodeURIComponent(returnUrl)}#/mode/travel`;
+      const params = new URLSearchParams({
+        api: apiBaseUrl,
+        brand_id: user.brand_id,
+        token: jwtResponse.token,
+        apikey: apiKey,
+        slug: tripSlug,
+        id: tripId,
+        author_type: 'brand',
+        author_id: user.id,
+        content_type: 'trip',
+        return_url: returnUrl,
+        mode: 'travel'
+      });
+
+      const deeplink = `${builderBaseUrl}?${params.toString()}`;
+
+      console.log('🔗 Opening trip edit deeplink:', deeplink);
 
       const result = window.open(deeplink, '_blank');
 
@@ -256,13 +271,26 @@ export function TripApproval() {
       });
 
       const builderBaseUrl = 'https://www.ai-websitestudio.nl';
-      const apiBaseUrl = jwtResponse.api_url || import.meta.env.VITE_SUPABASE_URL;
+      const apiBaseUrl = jwtResponse.api_url || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
       const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
-      const returnUrl = appUrl;
+      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}`;
 
-      const deeplink = `${builderBaseUrl}?api=${encodeURIComponent(apiBaseUrl)}&apikey=${encodeURIComponent(apiKey)}&brand_id=${user.brand_id}&token=${encodeURIComponent(jwtResponse.token)}&content_type=trips&return_url=${encodeURIComponent(returnUrl)}#/mode/travel`;
+      const params = new URLSearchParams({
+        api: apiBaseUrl,
+        brand_id: user.brand_id,
+        token: jwtResponse.token,
+        apikey: apiKey,
+        author_type: 'brand',
+        author_id: user.id,
+        content_type: 'trip',
+        return_url: returnUrl,
+        mode: 'travel'
+      });
+
+      const deeplink = `${builderBaseUrl}?${params.toString()}`;
+
+      console.log('🔗 Opening trip creation deeplink:', deeplink);
 
       window.open(deeplink, '_blank');
     } catch (error) {
