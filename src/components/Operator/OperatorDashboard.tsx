@@ -27,9 +27,11 @@ import {
   Clock,
   Map,
   MessageCircle,
-  Bell
+  Bell,
+  ClipboardCheck
 } from 'lucide-react';
 import RoadmapManagement from './RoadmapManagement';
+import TestManagement from './TestManagement';
 
 export function OperatorDashboard() {
   const { user, signOut } = useAuth();
@@ -67,6 +69,7 @@ export function OperatorDashboard() {
 
   const sidebarItems = [
     { id: 'overview', label: 'System Overview', icon: BarChart3 },
+    { id: 'test-management', label: 'Test Management', icon: ClipboardCheck },
     { id: 'monitoring', label: 'Monitoring & Alerts', icon: Bell },
     { id: 'api-settings', label: 'API Settings', icon: Key },
     { id: 'gpt-management', label: 'GPT Management', icon: Bot },
@@ -135,6 +138,7 @@ export function OperatorDashboard() {
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
                 {activeSection === 'overview' && 'System Overview'}
+                {activeSection === 'test-management' && 'Test Management'}
                 {activeSection === 'monitoring' && 'Monitoring & Alerts'}
                 {activeSection === 'api-settings' && 'API Settings'}
                 {activeSection === 'gpt-management' && 'GPT Management'}
@@ -147,6 +151,7 @@ export function OperatorDashboard() {
               </h1>
               <p className="text-gray-600 mt-1">
                 {activeSection === 'overview' && 'Monitor system performance and key metrics'}
+                {activeSection === 'test-management' && 'Manage testing rounds and review feedback from testers'}
                 {activeSection === 'monitoring' && 'Real-time error tracking, alerts, and performance monitoring'}
                 {activeSection === 'api-settings' && 'Configure API keys and external service credentials'}
                 {activeSection === 'gpt-management' && 'Configure custom GPTs and content generation'}
@@ -315,6 +320,7 @@ export function OperatorDashboard() {
             </div>
           )}
 
+          {activeSection === 'test-management' && <TestManagement />}
           {activeSection === 'monitoring' && <MonitoringDashboard />}
           {activeSection === 'api-settings' && <APISettings />}
           {activeSection === 'gpt-management' && <GPTManagement />}

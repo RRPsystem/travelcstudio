@@ -14,8 +14,9 @@ import { NewPage } from './NewPage';
 import { AgentManagement } from './AgentManagement';
 import { MenuBuilder } from './MenuBuilder';
 import { FooterBuilder } from './FooterBuilder';
-import { Users, Settings, Plus, Bot, Sparkles, Import as FileImport, ChevronDown, ChevronRight, LayoutGrid as Layout, FileText, Globe, Newspaper, MapPin, Plane, Share2, Map, ArrowRight, Menu } from 'lucide-react';
+import { Users, Settings, Plus, Bot, Sparkles, Import as FileImport, ChevronDown, ChevronRight, LayoutGrid as Layout, FileText, Globe, Newspaper, MapPin, Plane, Share2, Map, ArrowRight, Menu, ClipboardCheck } from 'lucide-react';
 import RoadmapBoard from './RoadmapBoard';
+import TestDashboard from '../Testing/TestDashboard';
 
 export function BrandDashboard() {
   const { user, signOut } = useAuth();
@@ -170,6 +171,7 @@ export function BrandDashboard() {
     { id: 'dashboard', label: 'Dashboard', icon: Sparkles },
     { id: 'agents', label: 'Agents', icon: Users },
     { id: 'social-media', label: 'Social Media', icon: Share2 },
+    { id: 'testing', label: 'Test Dashboard', icon: ClipboardCheck },
   ];
 
   const websiteManagementItems = [
@@ -461,6 +463,7 @@ export function BrandDashboard() {
                   {activeSection === 'ai-travelbro' && 'AI TravelBRO'}
                   {activeSection === 'ai-import' && 'AI TravelImport'}
                   {activeSection === 'social-media' && 'Social Media Manager'}
+                  {activeSection === 'testing' && 'Test Dashboard'}
                   {activeSection === 'roadmap' && 'Roadmap'}
                 </h1>
                 <p className="text-gray-600 mt-1">
@@ -476,6 +479,7 @@ export function BrandDashboard() {
                   {activeSection === 'ai-travelbro' && 'Your AI travel assistant'}
                   {activeSection === 'ai-import' && 'Import travel data with AI'}
                   {activeSection === 'social-media' && 'Manage your social media presence'}
+                  {activeSection === 'testing' && 'Test features and provide feedback'}
                   {activeSection === 'roadmap' && 'Vote on features and track development progress'}
                 </p>
               </div>
@@ -585,6 +589,7 @@ export function BrandDashboard() {
           {activeSection === 'ai-travelbro' && <TravelBro />}
           {activeSection === 'social-media' && <SocialMedia />}
           {activeSection === 'agents' && <AgentManagement />}
+          {activeSection === 'testing' && <TestDashboard />}
           {activeSection === 'roadmap' && <RoadmapBoard />}
 
           {activeSection === 'ai-import' && (

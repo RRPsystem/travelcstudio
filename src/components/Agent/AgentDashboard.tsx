@@ -6,8 +6,9 @@ import { SocialMedia } from '../Brand/AITools/SocialMedia';
 import { AIContentGenerator } from '../Brand/AIContentGenerator';
 import AgentProfileEdit from './AgentProfileEdit';
 import { HelpBot } from '../shared/HelpBot';
-import { Bot, User, ChevronDown, ChevronRight, Share2, Plane, Sparkles, Import as FileImport, Map, ArrowRight, Bell } from 'lucide-react';
+import { Bot, User, ChevronDown, ChevronRight, Share2, Plane, Sparkles, Import as FileImport, Map, ArrowRight, Bell, ClipboardCheck } from 'lucide-react';
 import RoadmapBoard from '../Brand/RoadmapBoard';
+import TestDashboard from '../Testing/TestDashboard';
 
 export function AgentDashboard() {
   const { user, signOut } = useAuth();
@@ -71,6 +72,7 @@ export function AgentDashboard() {
     { id: 'dashboard', label: 'Dashboard', icon: Sparkles },
     { id: 'profile', label: 'Profiel', icon: User },
     { id: 'social-media', label: 'Social Media', icon: Share2 },
+    { id: 'testing', label: 'Test Dashboard', icon: ClipboardCheck },
   ];
 
   const aiToolsItems = [
@@ -238,6 +240,7 @@ export function AgentDashboard() {
                 {activeSection === 'dashboard' && 'Dashboard'}
                 {activeSection === 'profile' && 'Profiel'}
                 {activeSection === 'social-media' && 'Social Media'}
+                {activeSection === 'testing' && 'Test Dashboard'}
                 {activeSection === 'ai-content' && 'Travel Content Generator'}
                 {activeSection === 'ai-import' && 'Reis Import'}
                 {activeSection === 'ai-travelbro' && 'AI TravelBRO'}
@@ -247,6 +250,7 @@ export function AgentDashboard() {
                 {activeSection === 'dashboard' && 'Welkom terug bij je agent dashboard'}
                 {activeSection === 'profile' && 'Beheer je profiel en instellingen'}
                 {activeSection === 'social-media' && 'Beheer je social media accounts en posts'}
+                {activeSection === 'testing' && 'Test features and provide feedback'}
                 {activeSection === 'ai-content' && 'Generate travel content with AI'}
                 {activeSection === 'ai-import' && 'Import travel data with AI'}
                 {activeSection === 'ai-travelbro' && 'Your AI travel assistant'}
@@ -356,6 +360,7 @@ export function AgentDashboard() {
 
           {activeSection === 'profile' && <AgentProfileEdit />}
           {activeSection === 'social-media' && <SocialMedia />}
+          {activeSection === 'testing' && <TestDashboard />}
           {activeSection === 'ai-content' && <AIContentGenerator />}
           {activeSection === 'ai-travelbro' && <TravelBro />}
           {activeSection === 'roadmap' && <RoadmapBoard />}
