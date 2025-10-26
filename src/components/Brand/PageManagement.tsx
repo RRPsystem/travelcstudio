@@ -33,7 +33,7 @@ export function PageManagement() {
       if (showLoading) setLoading(true);
 
       const { data, error } = await supabase
-        .from('website_pages')
+        .from('pages')
         .select('*')
         .eq('brand_id', brandId)
         .or('content_type.eq.page,content_type.is.null')
@@ -91,13 +91,13 @@ export function PageManagement() {
 
     try {
       const { data: originalPage } = await supabase
-        .from('website_pages')
+        .from('pages')
         .select('*')
         .eq('id', pageId)
         .single();
 
       if (originalPage) {
-        await supabase.from('website_pages').insert({
+        await supabase.from('pages').insert({
           brand_id: originalPage.brand_id,
           owner_user_id: originalPage.owner_user_id,
           title: `${originalPage.title} (kopie)`,
@@ -120,7 +120,7 @@ export function PageManagement() {
 
     try {
       const { error } = await supabase
-        .from('website_pages')
+        .from('pages')
         .delete()
         .eq('id', pageId)
         .eq('brand_id', user.brand_id);
@@ -158,7 +158,7 @@ export function PageManagement() {
       }
 
       const { error } = await supabase
-        .from('website_pages')
+        .from('pages')
         .update(updateData)
         .eq('id', pageId)
         .eq('brand_id', user.brand_id);
@@ -177,7 +177,7 @@ export function PageManagement() {
 
     try {
       const { error } = await supabase
-        .from('website_pages')
+        .from('pages')
         .update({
           show_in_menu: !currentValue,
           updated_at: new Date().toISOString()
