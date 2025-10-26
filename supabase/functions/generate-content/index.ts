@@ -110,7 +110,22 @@ Deno.serve(async (req: Request) => {
       .replace(/{DAYS}/g, daysContext)
       .replace(/{DESTINATION}/g, options.destination || '');
 
-    const userPrompt = `${prompt}${additionalContext ? `\n\nExtra context: ${additionalContext}` : ''}`;
+    // Build comprehensive user prompt based on content type
+    let userPrompt = prompt;
+
+    if (contentType === 'destination') {
+      userPrompt = `Schrijf een volledige bestemmingstekst over: ${prompt}`;
+    } else if (contentType === 'route') {
+      userPrompt = `Schrijf een volledige routebeschrijving voor: ${prompt}`;
+    } else if (contentType === 'planning') {
+      userPrompt = `Maak een volledige dagplanning voor: ${prompt}`;
+    } else if (contentType === 'hotel') {
+      userPrompt = `Geef een volledig hotel overzicht voor: ${prompt}`;
+    }
+
+    if (additionalContext) {
+      userPrompt += `\n\nExtra context: ${additionalContext}`;
+    }
 
     // Use GPT config settings or provided options
     const modelToUse = options.model || gptConfig?.model || 'gpt-3.5-turbo';
@@ -118,6 +133,9 @@ Deno.serve(async (req: Request) => {
     const temperature = options.temperature !== undefined ? options.temperature : (gptConfig?.temperature || 0.7);
 
     console.log(`Using GPT config: ${gptConfig?.name || 'default'} (${modelToUse})`);
+    console.log(`Writing Style: "${writingStyle}"`);
+    console.log(`Vacation Type: "${vacationTypeContext}"`);
+    console.log(`System Prompt (first 200 chars): ${systemPrompt.substring(0, 200)}...`);
 
     // Update usage count
     if (gptConfig) {
