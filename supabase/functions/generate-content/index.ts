@@ -59,7 +59,19 @@ Deno.serve(async (req: Request) => {
     const body: GenerateContentRequest = await req.json();
     const { contentType, prompt, writingStyle = 'professional', additionalContext = '', options = {} } = body;
 
-    // Build system prompt
+    // Get GPT configuration from database
+    const { data: gptConfig, error: gptError } = await supabaseClient
+      .from('gpt_models')
+      .select('*')
+      .eq('content_type', contentType)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (gptError) {
+      console.error('Error fetching GPT config:', gptError);
+    }
+
+    // Build system prompt with route instruction helper
     const getRouteInstruction = (routeType: string) => {
       switch (routeType) {
         case 'snelle-route': return 'Focus op de snelste route met minimale reistijd.';
@@ -70,31 +82,37 @@ Deno.serve(async (req: Request) => {
       }
     };
 
-    const getSystemPrompt = (contentType: string) => {
-      const basePrompts: Record<string, string> = {
-        destination: `Je bent een professionele reisschrijver die boeiende bestemmingsteksten schrijft over {DESTINATION}. Schrijf in {WRITING_STYLE} stijl voor {VACATION_TYPE} reizigers. Gebruik actuele informatie en maak de tekst aantrekkelijk.`,
-        route: `Je bent een routeplanner die gedetailleerde routebeschrijvingen maakt. {ROUTE_TYPE_INSTRUCTION} Geef praktische informatie over de route, bezienswaardigheden onderweg, en reistips. Schrijf in {WRITING_STYLE} stijl voor {VACATION_TYPE} reizigers.`,
-        planning: `Je bent een reisplanner die {DAYS} dagplanningen maakt voor {DESTINATION}. Geef een praktische planning met tijden, activiteiten, en tips. Schrijf in {WRITING_STYLE} stijl voor {VACATION_TYPE} reizigers.`,
-        hotel: `Je bent een hotelexpert die hotelzoekresultaten presenteert voor {VACATION_TYPE} reizigers. Geef gedetailleerde informatie over hotels, voorzieningen, en boekingsadvies. Schrijf in {WRITING_STYLE} stijl.`,
-        image: `Je bent een AI die afbeeldingsbeschrijvingen genereert voor DALL-E. Maak een gedetailleerde, visuele beschrijving voor een {VACATION_TYPE} reisafbeelding in {WRITING_STYLE} stijl.`
-      };
+    // Use GPT config if available, otherwise use defaults
+    let systemPrompt = gptConfig?.system_prompt || options.systemPrompt || `Je bent een professionele reisschrijver die boeiende bestemmingsteksten schrijft over {DESTINATION}. Schrijf in {WRITING_STYLE} stijl voor {VACATION_TYPE} reizigers.`;
 
-      let systemPrompt = options.systemPrompt || basePrompts[contentType] || basePrompts.destination;
+    // Replace variables in system prompt
+    systemPrompt = systemPrompt
+      .replace(/{WRITING_STYLE}/g, writingStyle)
+      .replace(/{VACATION_TYPE}/g, options.vacationType || 'algemene')
+      .replace(/{ROUTE_TYPE}/g, options.routeType || '')
+      .replace(/{ROUTE_TYPE_INSTRUCTION}/g, getRouteInstruction(options.routeType || ''))
+      .replace(/{DAYS}/g, options.days || '')
+      .replace(/{DESTINATION}/g, options.destination || '');
 
-      // Replace variables
-      systemPrompt = systemPrompt
-        .replace(/{WRITING_STYLE}/g, writingStyle)
-        .replace(/{VACATION_TYPE}/g, options.vacationType || 'algemene')
-        .replace(/{ROUTE_TYPE}/g, options.routeType || '')
-        .replace(/{ROUTE_TYPE_INSTRUCTION}/g, getRouteInstruction(options.routeType || ''))
-        .replace(/{DAYS}/g, options.days || '')
-        .replace(/{DESTINATION}/g, options.destination || '');
-
-      return systemPrompt;
-    };
-
-    const systemPrompt = getSystemPrompt(contentType);
     const userPrompt = `${prompt}${additionalContext ? `\n\nExtra context: ${additionalContext}` : ''}`;
+
+    // Use GPT config settings or provided options
+    const modelToUse = options.model || gptConfig?.model || 'gpt-3.5-turbo';
+    const maxTokens = options.maxTokens || gptConfig?.max_tokens || 1500;
+    const temperature = options.temperature !== undefined ? options.temperature : (gptConfig?.temperature || 0.7);
+
+    console.log(`Using GPT config: ${gptConfig?.name || 'default'} (${modelToUse})`);
+
+    // Update usage count
+    if (gptConfig) {
+      await supabaseClient
+        .from('gpt_models')
+        .update({
+          usage_count: (gptConfig.usage_count || 0) + 1,
+          last_used: new Date().toISOString()
+        })
+        .eq('id', gptConfig.id);
+    }
 
     // Call OpenAI API
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -104,13 +122,13 @@ Deno.serve(async (req: Request) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: options.model || 'gpt-3.5-turbo',
+        model: modelToUse,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        max_tokens: options.maxTokens || 1500,
-        temperature: options.temperature || 0.7,
+        max_tokens: maxTokens,
+        temperature: temperature,
       }),
     });
 
