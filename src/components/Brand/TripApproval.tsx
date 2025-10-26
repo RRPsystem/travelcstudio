@@ -154,6 +154,23 @@ export function TripApproval() {
     }
   };
 
+  const handlePreview = async (assignment: TripAssignment) => {
+    if (!user?.brand_id || !assignment.page_id) return;
+
+    const { data: domains } = await supabase
+      .from('brand_domains')
+      .select('domain')
+      .eq('brand_id', user.brand_id)
+      .eq('is_verified', true)
+      .maybeSingle();
+
+    const previewUrl = domains?.domain
+      ? `https://${domains.domain}/${assignment.trip.slug}`
+      : `/preview?brand_id=${user.brand_id}&slug=${assignment.trip.slug}`;
+
+    window.open(previewUrl, '_blank');
+  };
+
   const handleEdit = async (assignment: TripAssignment) => {
     if (!user?.brand_id || !user?.id) return;
 
@@ -166,7 +183,8 @@ export function TripApproval() {
         'content:read',
         'content:write'
       ], {
-        contentType: 'trips'
+        contentType: 'trips',
+        pageId: assignment.page_id
       });
 
       const builderBaseUrl = 'https://www.ai-websitestudio.nl';
@@ -174,24 +192,31 @@ export function TripApproval() {
       const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
       const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/content/trips`;
 
-      const tripSlug = assignment.trip.slug;
-      const tripId = assignment.trip.id;
-
       const params = new URLSearchParams({
         api: apiBaseUrl,
         brand_id: user.brand_id,
         token: jwtResponse.token,
         apikey: apiKey,
         content_type: 'trips',
-        slug: tripSlug,
-        id: tripId,
         return_url: returnUrl
       });
+
+      if (assignment.page_id) {
+        params.append('page_id', assignment.page_id);
+      } else {
+        params.append('slug', assignment.trip.slug);
+        params.append('id', assignment.trip.id);
+      }
 
       const deeplink = `${builderBaseUrl}?${params.toString()}`;
 
       console.log('🔗 Opening trip edit deeplink:', deeplink);
-      console.log('Trip details:', { slug: tripSlug, title: assignment.trip.title, id: tripId });
+      console.log('Trip details:', {
+        page_id: assignment.page_id,
+        slug: assignment.trip.slug,
+        title: assignment.trip.title,
+        id: assignment.trip.id
+      });
 
       const result = window.open(deeplink, '_blank');
 
@@ -429,6 +454,15 @@ export function TripApproval() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-center gap-2">
+                      {assignment.is_published && assignment.page_id && (
+                        <button
+                          onClick={() => handlePreview(assignment)}
+                          className="text-green-600 hover:text-green-900 transition-colors"
+                          title="Preview"
+                        >
+                          <Eye className="h-5 w-5" />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleEdit(assignment)}
                         className="text-orange-600 hover:text-orange-900 transition-colors"
