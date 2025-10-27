@@ -18,6 +18,7 @@ export function TravelBroSetup() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [sourceUrls, setSourceUrls] = useState<string[]>(['']);
   const [travelers, setTravelers] = useState([{ name: '', age: '', relation: 'adult' }]);
+  const [gptInstructions, setGptInstructions] = useState('');
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
@@ -34,6 +35,11 @@ export function TravelBroSetup() {
         .maybeSingle();
 
       setApiSettings(settings);
+
+      // Load default GPT instructions from operator settings if available
+      if (settings?.travelbro_gpt_instructions) {
+        setGptInstructions(settings.travelbro_gpt_instructions);
+      }
 
       const { data: sessions } = await db.supabase
         .from('travel_whatsapp_sessions')
@@ -113,6 +119,7 @@ export function TravelBroSetup() {
           parsed_data: parsedData || {},
           source_urls: filteredUrls,
           intake_template: intakeTemplate,
+          gpt_instructions: gptInstructions.trim(),
           created_by: user?.id,
         })
         .select()
@@ -125,6 +132,12 @@ export function TravelBroSetup() {
       setPdfFile(null);
       setSourceUrls(['']);
       setTravelers([{ name: '', age: '', relation: 'adult' }]);
+      // Reset to default instructions
+      if (apiSettings?.travelbro_gpt_instructions) {
+        setGptInstructions(apiSettings.travelbro_gpt_instructions);
+      } else {
+        setGptInstructions('');
+      }
       setActiveTab('active');
       loadData();
     } catch (error) {
@@ -464,6 +477,29 @@ export function TravelBroSetup() {
                   <Plus size={16} />
                   <span>Reiziger toevoegen</span>
                 </button>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Bot className="inline w-4 h-4 mr-1" />
+                  AI Instructies (optioneel)
+                </label>
+                <p className="text-xs text-gray-500 mb-3">
+                  Geef context over deze reis. Bijvoorbeeld: "Dit stel gaat op huwelijksreis", "Budget reis voor studenten", "Luxe familie vakantie". De AI gebruikt dit om gepersonaliseerd te reageren.
+                </p>
+                <textarea
+                  value={gptInstructions}
+                  onChange={(e) => setGptInstructions(e.target.value)}
+                  placeholder="Bijv: Dit is een huwelijksreis voor een jong stel. Ze zijn avontuurlijk en houden van cultuur en natuur. Focus op romantische en unieke ervaringen."
+                  rows={4}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  {gptInstructions.length === 0 && apiSettings?.travelbro_gpt_instructions ?
+                    '💡 Standaard template wordt gebruikt als je dit leeg laat' :
+                    `${gptInstructions.length} karakters`
+                  }
+                </p>
               </div>
 
               <button
