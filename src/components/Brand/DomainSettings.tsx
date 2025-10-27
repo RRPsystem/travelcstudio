@@ -342,57 +342,177 @@ export function DomainSettings() {
                   )}
 
                   {domain.status === 'pending' && (
-                    <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <h4 className="font-semibold text-sm text-gray-900 mb-2">DNS Verificatie Vereist</h4>
-                      <p className="text-sm text-gray-700 mb-3">
-                        Voeg de volgende TXT record toe aan je DNS instellingen:
-                      </p>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between bg-white p-3 rounded border border-gray-200">
-                          <div className="flex-1">
-                            <div className="text-xs text-gray-500">Type</div>
-                            <div className="font-mono text-sm">TXT</div>
+                    <div className="mt-4 space-y-4">
+                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <h4 className="font-semibold text-sm text-gray-900 mb-2">Stap 1: Verificatie Record</h4>
+                        <p className="text-sm text-gray-700 mb-3">
+                          Voeg eerst deze TXT record toe voor verificatie:
+                        </p>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between bg-white p-3 rounded border border-gray-200">
+                            <div className="flex-1">
+                              <div className="text-xs text-gray-500">Type</div>
+                              <div className="font-mono text-sm">TXT</div>
+                            </div>
+                            <div className="flex-1">
+                              <div className="text-xs text-gray-500">Naam</div>
+                              <div className="font-mono text-sm">_bolt-verify</div>
+                            </div>
+                            <button
+                              onClick={() => copyToClipboard('_bolt-verify')}
+                              className="p-2 text-gray-400 hover:text-gray-600"
+                              title="Kopieer naam"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
                           </div>
-                          <div className="flex-1">
-                            <div className="text-xs text-gray-500">Naam</div>
-                            <div className="font-mono text-sm">_bolt-verify</div>
+                          <div className="flex items-center justify-between bg-white p-3 rounded border border-gray-200">
+                            <div className="flex-1">
+                              <div className="text-xs text-gray-500">Waarde</div>
+                              <div className="font-mono text-sm truncate">{domain.verification_token}</div>
+                            </div>
+                            <button
+                              onClick={() => copyToClipboard(domain.verification_token)}
+                              className="p-2 text-gray-400 hover:text-gray-600"
+                              title="Kopieer waarde"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
                           </div>
-                          <button
-                            onClick={() => copyToClipboard('_bolt-verify')}
-                            className="p-2 text-gray-400 hover:text-gray-600"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <div className="flex items-center justify-between bg-white p-3 rounded border border-gray-200">
-                          <div className="flex-1">
-                            <div className="text-xs text-gray-500">Waarde</div>
-                            <div className="font-mono text-sm truncate">{domain.verification_token}</div>
-                          </div>
-                          <button
-                            onClick={() => copyToClipboard(domain.verification_token)}
-                            className="p-2 text-gray-400 hover:text-gray-600"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
                         </div>
                       </div>
-                      <p className="text-xs text-gray-600 mt-3">
-                        Het kan 5-30 minuten duren voordat DNS wijzigingen doorgevoerd zijn.
-                      </p>
+
+                      <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                        <h4 className="font-semibold text-sm text-gray-900 mb-2">Stap 2: Apex Domain (@ record)</h4>
+                        <p className="text-sm text-gray-700 mb-3">
+                          Voor het hoofddomein (bijv. mijnreisbureau.nl):
+                        </p>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between bg-white p-3 rounded border border-gray-200">
+                            <div className="flex-1">
+                              <div className="text-xs text-gray-500">Type</div>
+                              <div className="font-mono text-sm">A</div>
+                            </div>
+                            <div className="flex-1">
+                              <div className="text-xs text-gray-500">Naam</div>
+                              <div className="font-mono text-sm">@ (of leeg laten)</div>
+                            </div>
+                            <button
+                              onClick={() => copyToClipboard('@')}
+                              className="p-2 text-gray-400 hover:text-gray-600"
+                              title="Kopieer naam"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="flex items-center justify-between bg-white p-3 rounded border border-gray-200">
+                            <div className="flex-1">
+                              <div className="text-xs text-gray-500">Waarde / IP</div>
+                              <div className="font-mono text-sm">76.76.21.21</div>
+                            </div>
+                            <button
+                              onClick={() => copyToClipboard('76.76.21.21')}
+                              className="p-2 text-gray-400 hover:text-gray-600"
+                              title="Kopieer IP adres"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-2">
+                          Dit is het Vercel IP adres waar je website wordt gehost
+                        </p>
+                      </div>
+
+                      <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                        <h4 className="font-semibold text-sm text-gray-900 mb-2">Stap 3: WWW Subdomain</h4>
+                        <p className="text-sm text-gray-700 mb-3">
+                          Voor www.mijnreisbureau.nl:
+                        </p>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between bg-white p-3 rounded border border-gray-200">
+                            <div className="flex-1">
+                              <div className="text-xs text-gray-500">Type</div>
+                              <div className="font-mono text-sm">CNAME</div>
+                            </div>
+                            <div className="flex-1">
+                              <div className="text-xs text-gray-500">Naam</div>
+                              <div className="font-mono text-sm">www</div>
+                            </div>
+                            <button
+                              onClick={() => copyToClipboard('www')}
+                              className="p-2 text-gray-400 hover:text-gray-600"
+                              title="Kopieer naam"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="flex items-center justify-between bg-white p-3 rounded border border-gray-200">
+                            <div className="flex-1">
+                              <div className="text-xs text-gray-500">Waarde / Target</div>
+                              <div className="font-mono text-sm">cname.vercel-dns.com</div>
+                            </div>
+                            <button
+                              onClick={() => copyToClipboard('cname.vercel-dns.com')}
+                              className="p-2 text-gray-400 hover:text-gray-600"
+                              title="Kopieer target"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                        <p className="text-xs text-gray-600">
+                          <strong>Let op:</strong> Het kan 5-30 minuten duren voordat DNS wijzigingen zijn doorgevoerd.
+                          Begin met stap 1 (verificatie), wacht tot deze is geverifieerd, en voeg daarna stap 2 en 3 toe.
+                        </p>
+                      </div>
                     </div>
                   )}
 
                   {domain.status === 'verified' && domain.dns_verified_at && (
-                    <p className="text-sm text-green-600 mt-2">
-                      ✓ Geverifieerd op {new Date(domain.dns_verified_at).toLocaleDateString('nl-NL', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </p>
+                    <div className="mt-4 space-y-4">
+                      <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-sm text-green-700 flex items-center gap-2">
+                          <Check className="w-4 h-4" />
+                          <span>
+                            <strong>Geverifieerd!</strong> Je domein is succesvol geverifieerd op {new Date(domain.dns_verified_at).toLocaleDateString('nl-NL', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </p>
+                      </div>
+
+                      <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                        <h4 className="font-semibold text-sm text-gray-900 mb-3">Actieve DNS Records</h4>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex items-center gap-3">
+                            <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
+                            <span className="font-mono text-xs bg-white px-2 py-1 rounded border">TXT _bolt-verify</span>
+                            <span className="text-gray-600">Verificatie</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
+                            <span className="font-mono text-xs bg-white px-2 py-1 rounded border">A @ → 76.76.21.21</span>
+                            <span className="text-gray-600">Hoofddomein</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
+                            <span className="font-mono text-xs bg-white px-2 py-1 rounded border">CNAME www → cname.vercel-dns.com</span>
+                            <span className="text-gray-600">WWW subdomain</span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-3">
+                          SSL certificaat wordt automatisch gegenereerd en vernieuwd.
+                        </p>
+                      </div>
+                    </div>
                   )}
                 </div>
 
@@ -436,13 +556,43 @@ export function DomainSettings() {
         <div className="flex items-start space-x-3">
           <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <h4 className="font-semibold text-sm text-gray-900 mb-1">DNS Instellingen Help</h4>
-            <ul className="text-sm text-gray-700 space-y-1">
-              <li>• Voeg de TXT record toe bij je domein provider (bijv. TransIP, Mijndomein)</li>
-              <li>• Gebruik exact de aangegeven naam: <code className="bg-white px-1 rounded">_bolt-verify</code></li>
-              <li>• Kopieer de verificatie token exact zoals aangegeven</li>
-              <li>• Wacht 5-30 minuten en klik op verificatie controleren</li>
-            </ul>
+            <h4 className="font-semibold text-sm text-gray-900 mb-2">DNS Instellingen Help</h4>
+            <div className="text-sm text-gray-700 space-y-3">
+              <div>
+                <strong>Waar voeg ik deze records toe?</strong>
+                <p className="mt-1">Log in bij je domein provider (bijv. TransIP, Mijndomein, GoDaddy) en ga naar de DNS management sectie.</p>
+              </div>
+              <div>
+                <strong>Belangrijke tips:</strong>
+                <ul className="mt-1 space-y-1 ml-4">
+                  <li>• Gebruik exact de aangegeven namen en waarden</li>
+                  <li>• Bij sommige providers moet je bij "Naam" het domein weglaten (dus alleen <code className="bg-white px-1 rounded">_bolt-verify</code> in plaats van <code className="bg-white px-1 rounded">_bolt-verify.mijndomein.nl</code>)</li>
+                  <li>• TTL kan je meestal op de standaard waarde laten (3600 seconden)</li>
+                  <li>• Alle 3 de records zijn nodig voor een volledig werkende setup</li>
+                  <li>• SSL certificaten worden automatisch aangemaakt na verificatie</li>
+                </ul>
+              </div>
+              <div>
+                <strong>Populaire providers:</strong>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  <a href="https://www.transip.nl" target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:text-orange-700 flex items-center gap-1">
+                    TransIP <ExternalLink className="w-3 h-3" />
+                  </a>
+                  <span className="text-gray-400">•</span>
+                  <a href="https://www.mijndomein.nl" target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:text-orange-700 flex items-center gap-1">
+                    Mijndomein <ExternalLink className="w-3 h-3" />
+                  </a>
+                  <span className="text-gray-400">•</span>
+                  <a href="https://www.versio.nl" target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:text-orange-700 flex items-center gap-1">
+                    Versio <ExternalLink className="w-3 h-3" />
+                  </a>
+                  <span className="text-gray-400">•</span>
+                  <a href="https://www.godaddy.com" target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:text-orange-700 flex items-center gap-1">
+                    GoDaddy <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
