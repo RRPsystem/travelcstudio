@@ -27,12 +27,10 @@ Deno.serve(async (req: Request) => {
   try {
     const { test } = await req.json();
 
-    // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get Google Maps API key from database
     const { data: apiSettings, error: dbError } = await supabase
       .from('api_settings')
       .select('api_key, service_name')
@@ -54,75 +52,172 @@ Deno.serve(async (req: Request) => {
     }
 
     const apiKey = apiSettings.api_key;
-    console.log('✅ Google Maps API key found, length:', apiKey.length);
+    console.log('\u2705 Google Maps API key found, length:', apiKey.length);
 
-    let testUrl = '';
+    let response: Response;
     let testDescription = '';
 
-    // Different test types
     switch (test) {
-      case 'places-search':
-        testUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=Eiffel+Tower+Paris&key=${apiKey}&language=nl`;
-        testDescription = 'Text Search API - Searching for Eiffel Tower';
+      case 'places-search': {
+        testDescription = 'Places API (New) - Text Search for Eiffel Tower';
+        console.log(`\ud83e\uddea Testing: ${testDescription}`);
+
+        response = await fetch('https://places.googleapis.com/v1/places:searchText', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': apiKey,
+            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location'
+          },
+          body: JSON.stringify({
+            textQuery: 'Eiffel Tower Paris',
+            languageCode: 'nl'
+          })
+        });
         break;
-      
-      case 'places-nearby':
-        // Amsterdam coordinates
-        testUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=52.3676,4.9041&radius=5000&type=tourist_attraction&key=${apiKey}&language=nl`;
-        testDescription = 'Nearby Search API - Tourist attractions in Amsterdam';
+      }
+
+      case 'places-nearby': {
+        testDescription = 'Places API (New) - Nearby Search Amsterdam';
+        console.log(`\ud83e\uddea Testing: ${testDescription}`);
+
+        response = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': apiKey,
+            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.types'
+          },
+          body: JSON.stringify({
+            includedTypes: ['tourist_attraction'],
+            maxResultCount: 5,
+            locationRestriction: {
+              circle: {
+                center: {
+                  latitude: 52.3676,
+                  longitude: 4.9041
+                },
+                radius: 5000.0
+              }
+            },
+            languageCode: 'nl'
+          })
+        });
         break;
-      
-      case 'geocoding':
-        testUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=Amsterdam,Netherlands&key=${apiKey}`;
+      }
+
+      case 'geocoding': {
         testDescription = 'Geocoding API - Geocoding Amsterdam';
+        console.log(`\ud83e\uddea Testing: ${testDescription}`);
+
+        response = await fetch(
+          `https://maps.googleapis.com/maps/api/geocode/json?address=Amsterdam,Netherlands&key=${apiKey}`
+        );
         break;
-      
-      case 'directions':
-        testUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=Amsterdam&destination=Paris&key=${apiKey}&language=nl`;
-        testDescription = 'Directions API - Route from Amsterdam to Paris';
+      }
+
+      case 'directions': {
+        testDescription = 'Routes API - Route Amsterdam to Paris';
+        console.log(`\ud83e\uddea Testing: ${testDescription}`);
+
+        response = await fetch(
+          `https://routes.googleapis.com/directions/v2:computeRoutes`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': apiKey,
+              'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline'
+            },
+            body: JSON.stringify({
+              origin: {
+                address: 'Amsterdam, Netherlands'
+              },
+              destination: {
+                address: 'Paris, France'
+              },
+              travelMode: 'DRIVE',
+              languageCode: 'nl',
+              units: 'METRIC'
+            })
+          }
+        );
         break;
-      
-      default:
-        // Default: simple places search
-        testUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=Amsterdam&key=${apiKey}&language=nl`;
-        testDescription = 'Text Search API - Searching for Amsterdam';
+      }
+
+      default: {
+        testDescription = 'Places API (New) - Text Search Amsterdam';
+        console.log(`\ud83e\uddea Testing: ${testDescription}`);
+
+        response = await fetch('https://places.googleapis.com/v1/places:searchText', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': apiKey,
+            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress'
+          },
+          body: JSON.stringify({
+            textQuery: 'Amsterdam',
+            languageCode: 'nl'
+          })
+        });
+      }
     }
 
-    console.log(`🧪 Testing: ${testDescription}`);
-    console.log(`📍 URL: ${testUrl.replace(apiKey, 'API_KEY_HIDDEN')}`);
-
-    const response = await fetch(testUrl);
     const data = await response.json();
 
-    console.log('📊 Response status:', data.status);
-    console.log('📊 Response:', JSON.stringify(data).substring(0, 500));
+    console.log('\ud83d\udcca Response status:', response.status);
+    console.log('\ud83d\udcca Response:', JSON.stringify(data).substring(0, 500));
 
-    if (data.status === 'OK') {
+    if (response.ok) {
+      let resultsCount = 0;
+      let firstResult = null;
+      let summary = 'Success';
+
+      if (data.places) {
+        resultsCount = data.places.length;
+        firstResult = data.places[0];
+        summary = `Found ${resultsCount} places`;
+      } else if (data.routes) {
+        resultsCount = data.routes.length;
+        firstResult = data.routes[0];
+        const route = data.routes[0];
+        const duration = route?.duration ? `${Math.round(parseInt(route.duration.replace('s', '')) / 60)} min` : 'unknown';
+        const distance = route?.distanceMeters ? `${Math.round(route.distanceMeters / 1000)} km` : 'unknown';
+        summary = `Found ${resultsCount} routes (${duration}, ${distance})`;
+      } else if (data.results) {
+        resultsCount = data.results.length;
+        firstResult = data.results[0];
+        summary = `Found ${resultsCount} results`;
+      }
+
       return new Response(
         JSON.stringify({
           success: true,
           apiKeyFound: true,
           test: testDescription,
           result: {
-            status: data.status,
-            resultsCount: data.results?.length || 0,
-            firstResult: data.results?.[0] || data.routes?.[0] || null,
-            summary: data.results ? `Found ${data.results.length} results` : 
-                     data.routes ? `Found ${data.routes.length} routes` : 'Success'
+            status: 'OK',
+            resultsCount,
+            firstResult,
+            summary
           }
         } as TestResult),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } else {
+      const errorMessage = data.error?.message || data.error_message || 'Unknown error';
+      const errorStatus = data.error?.status || data.status || 'UNKNOWN';
+
       return new Response(
         JSON.stringify({
           success: false,
           apiKeyFound: true,
           test: testDescription,
-          error: `API returned status: ${data.status}`,
+          error: `API returned error: ${errorStatus}`,
           details: {
-            status: data.status,
-            error_message: data.error_message,
+            status: errorStatus,
+            error_message: errorMessage,
             fullResponse: data
           }
         } as TestResult),
@@ -131,7 +226,7 @@ Deno.serve(async (req: Request) => {
     }
 
   } catch (error) {
-    console.error('❌ Test error:', error);
+    console.error('\u274c Test error:', error);
     return new Response(
       JSON.stringify({
         success: false,
