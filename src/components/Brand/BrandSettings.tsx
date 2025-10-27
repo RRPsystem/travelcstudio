@@ -172,9 +172,14 @@ export function BrandSettings() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="mb-6">
-        <div className="flex space-x-1 border-b border-gray-200">
+    <div className="h-full flex flex-col">
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">Brand Instellingen</h1>
+        <p className="text-gray-600">Beheer je brand en domein instellingen</p>
+      </div>
+
+      <div className="border-b border-gray-200 bg-white px-6">
+        <div className="flex space-x-1">
           <button
             type="button"
             onClick={() => setActiveTab('general')}
@@ -207,10 +212,14 @@ export function BrandSettings() {
         </div>
       </div>
 
-      {activeTab === 'domains' ? (
-        <DomainSettings />
-      ) : (
-        <div className="bg-white rounded-lg shadow-sm border">
+      <div className="flex-1 overflow-auto">
+        {activeTab === 'domains' ? (
+          <div className="p-6">
+            <DomainSettings />
+          </div>
+        ) : (
+          <div className="p-6 max-w-4xl mx-auto">
+            <div className="bg-white rounded-lg shadow-sm border">
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
@@ -476,9 +485,11 @@ export function BrandSettings() {
                 <span>{saving ? 'Saving...' : 'Save Changes'}</span>
               </button>
             </div>
-        </form>
+            </form>
+            </div>
+          </div>
+        )}
       </div>
-      )}
     </div>
   );
 }

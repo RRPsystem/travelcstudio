@@ -444,7 +444,7 @@ export function BrandDashboard() {
       </div>
 
       <div className="flex-1 flex flex-col">
-        {!['nieuwsbeheer', 'destinations', 'trips'].includes(activeSection) && (
+        {!['nieuwsbeheer', 'destinations', 'trips', 'settings'].includes(activeSection) && (
           <header className="bg-white border-b border-gray-200 px-6 py-4">
             <div className="flex items-center justify-between">
               <div>
@@ -459,12 +459,10 @@ export function BrandDashboard() {
                   {activeSection === 'nieuwsbeheer' && 'Nieuwsbeheer'}
                   {activeSection === 'destinations' && 'Bestemmingen'}
                   {activeSection === 'trips' && 'Reizen'}
-                  {activeSection === 'settings' && 'Brand Settings'}
                   {activeSection === 'ai-content' && 'AI Content Generator'}
                   {activeSection === 'ai-travelbro' && 'AI TravelBRO'}
                   {activeSection === 'ai-import' && 'AI TravelImport'}
                   {activeSection === 'social-media' && 'Social Media Manager'}
-                  {activeSection === 'settings' && 'Brand Instellingen'}
                   {activeSection === 'testing' && 'Test Dashboard'}
                   {activeSection === 'roadmap' && 'Roadmap'}
                 </h1>
