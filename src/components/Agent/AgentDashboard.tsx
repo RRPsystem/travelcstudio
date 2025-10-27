@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/supabase';
 import { AIContentGenerator } from '../Brand/AIContentGenerator';
+import { SocialMediaManager } from '../Brand/SocialMediaManager';
 import AgentProfileEdit from './AgentProfileEdit';
 import { HelpBot } from '../shared/HelpBot';
 import { Bot, User, ChevronDown, ChevronRight, Share2, Plane, Sparkles, Import as FileImport, Map, ArrowRight, Bell, ClipboardCheck } from 'lucide-react';
@@ -357,12 +358,7 @@ export function AgentDashboard() {
           )}
 
           {activeSection === 'profile' && <AgentProfileEdit />}
-          {activeSection === 'social-media' && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">Social Media Management</h2>
-              <p className="text-gray-600">Social media tools coming soon...</p>
-            </div>
-          )}
+          {activeSection === 'social-media' && <SocialMediaManager />}
           {activeSection === 'testing' && <TestDashboard />}
           {activeSection === 'ai-content' && <AIContentGenerator />}
           {activeSection === 'ai-travelbro' && (
