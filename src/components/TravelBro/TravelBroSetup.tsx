@@ -6,13 +6,10 @@ import { Bot, Phone, MessageSquare, Users, Settings, CheckCircle, XCircle, Exter
 export function TravelBroSetup() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'new' | 'active' | 'sessions' | 'invite' | 'test' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'new' | 'active' | 'sessions' | 'invite' | 'settings'>('overview');
   const [apiSettings, setApiSettings] = useState<any>(null);
   const [whatsappSessions, setWhatsappSessions] = useState<any[]>([]);
   const [activeTravelBros, setActiveTravelBros] = useState<any[]>([]);
-  const [testPhone, setTestPhone] = useState('');
-  const [testMessage, setTestMessage] = useState('Hoi! Dit is een test bericht van TravelBRO.');
-  const [sendingTest, setSendingTest] = useState(false);
 
   const [newTripName, setNewTripName] = useState('');
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -267,36 +264,6 @@ export function TravelBroSetup() {
     }
   };
 
-  const testTwilioConnection = async () => {
-    if (!testPhone.trim()) {
-      alert('Vul een telefoonnummer in');
-      return;
-    }
-
-    setSendingTest(true);
-    try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/test-twilio`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          to: testPhone,
-          message: testMessage,
-        }),
-      });
-
-      if (!response.ok) throw new Error('Test failed');
-
-      alert('✅ Test bericht verzonden! Check je WhatsApp.');
-    } catch (error) {
-      console.error('Error testing Twilio:', error);
-      alert('❌ Fout bij verzenden test bericht. Check de console voor details.');
-    } finally {
-      setSendingTest(false);
-    }
-  };
 
   const copyWebhookUrl = () => {
     const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-webhook`;
@@ -418,7 +385,6 @@ export function TravelBroSetup() {
             { id: 'active', label: 'Actieve TravelBRO\'s', icon: Users },
             { id: 'invite', label: 'WhatsApp Uitnodiging', icon: Phone },
             { id: 'sessions', label: 'WhatsApp Sessies', icon: MessageSquare },
-            { id: 'test', label: 'Test', icon: Send },
             { id: 'settings', label: 'Instellingen', icon: Settings },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -1112,72 +1078,6 @@ export function TravelBroSetup() {
         </div>
       )}
 
-      {activeTab === 'test' && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Test WhatsApp Bericht</h3>
-
-            {isTwilioConfigured ? (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Telefoonnummer (inclusief landcode, bijv: +31612345678)
-                  </label>
-                  <input
-                    type="tel"
-                    value={testPhone}
-                    onChange={(e) => setTestPhone(e.target.value)}
-                    placeholder="+31612345678"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Test Bericht
-                  </label>
-                  <textarea
-                    value={testMessage}
-                    onChange={(e) => setTestMessage(e.target.value)}
-                    rows={4}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  />
-                </div>
-
-                <button
-                  onClick={testTwilioConnection}
-                  disabled={sendingTest || !testPhone.trim()}
-                  className="w-full bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-                >
-                  {sendingTest ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      <span>Verzenden...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Send size={18} />
-                      <span>Verstuur Test Bericht</span>
-                    </>
-                  )}
-                </button>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-blue-800">
-                    💡 Tip: Zorg dat je nummer eerst geautoriseerd is in je Twilio Sandbox voor WhatsApp tests.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p className="text-sm text-yellow-800">
-                  Configureer eerst Twilio in de Setup tab voordat je test berichten kunt versturen.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {activeTab === 'settings' && (
         <div className="space-y-6">
