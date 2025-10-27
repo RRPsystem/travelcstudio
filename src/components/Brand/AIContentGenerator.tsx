@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { edgeAIService } from '../../lib/apiServices';
+import { APIStatusChecker } from './APIStatusChecker';
 import { 
   X, 
   MapPin, 
@@ -60,6 +61,7 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showAPIStatus, setShowAPIStatus] = useState(false);
 
   const contentTypes = [
     { id: 'destination', label: 'Bestemmings tekst', icon: MapPin, color: 'border-orange-500 bg-orange-50' },
@@ -336,13 +338,20 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
     <div className="flex h-full bg-gray-50 relative">
       {/* Left Sidebar - Chat History */}
       <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200">
-          <button 
+        <div className="p-4 border-b border-gray-200 space-y-2">
+          <button
             onClick={() => setShowSlidingPanel(true)}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors"
           >
             <Plus size={16} />
             <span>Nieuwe Chat</span>
+          </button>
+          <button
+            onClick={() => setShowAPIStatus(true)}
+            className="w-full bg-orange-100 hover:bg-orange-200 text-orange-800 px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center space-x-2 transition-colors border border-orange-300"
+          >
+            <Globe size={14} />
+            <span>Check API Status</span>
           </button>
         </div>
 
@@ -833,10 +842,15 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
 
       {/* Overlay */}
       {showSlidingPanel && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40"
           onClick={() => setShowSlidingPanel(false)}
         />
+      )}
+
+      {/* API Status Modal */}
+      {showAPIStatus && (
+        <APIStatusChecker onClose={() => setShowAPIStatus(false)} />
       )}
     </div>
   );
