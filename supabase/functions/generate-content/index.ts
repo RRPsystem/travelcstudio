@@ -145,20 +145,52 @@ Deno.serve(async (req: Request) => {
       }
     };
 
-    // Helper: Fetch Google Maps directions
-    const fetchGoogleMapsRoute = async (origin: string, destination: string): Promise<string> => {
+    // Helper: Fetch Google Routes API directions (new API)
+    const fetchGoogleRoutesAPI = async (origin: string, destination: string, routeType: string = ''): Promise<string> => {
       if (!googleMapsApiKey) {
         console.log('⚠️ Google Maps not configured');
         return '';
       }
 
       try {
+        // Determine route preferences
+        let routeModifiers: any = {};
+
+        if (routeType === 'snelle-route') {
+          routeModifiers.avoidHighways = false;
+          routeModifiers.avoidTolls = false;
+        } else if (routeType === 'toeristische-route') {
+          routeModifiers.avoidHighways = true;
+          routeModifiers.avoidTolls = false;
+        }
+
+        // Use the new Routes API
         const response = await fetch(
-          `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&key=${googleMapsApiKey}&language=nl`
+          `https://routes.googleapis.com/directions/v2:computeRoutes`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': googleMapsApiKey,
+              'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.legs.steps.navigationInstruction,routes.legs.startLocation,routes.legs.endLocation'
+            },
+            body: JSON.stringify({
+              origin: {
+                address: origin
+              },
+              destination: {
+                address: destination
+              },
+              travelMode: 'DRIVE',
+              routingPreference: routeType === 'snelle-route' ? 'TRAFFIC_AWARE_OPTIMAL' : 'TRAFFIC_UNAWARE',
+              routeModifiers: Object.keys(routeModifiers).length > 0 ? routeModifiers : undefined,
+              languageCode: 'nl'
+            })
+          }
         );
 
         if (!response.ok) {
-          console.error('Google Maps API error:', response.status);
+          console.error('Google Routes API error:', response.status, await response.text());
           return '';
         }
 
@@ -166,28 +198,90 @@ Deno.serve(async (req: Request) => {
 
         if (data.routes && data.routes.length > 0) {
           const route = data.routes[0];
-          const leg = route.legs[0];
-          const steps = leg.steps.slice(0, 10).map((step: any) =>
-            step.html_instructions.replace(/<[^>]*>/g, '')
-          ).join('\n');
+          const leg = route.legs?.[0];
+
+          if (!leg) return '';
+
+          const distanceKm = (route.distanceMeters / 1000).toFixed(1);
+          const durationHours = Math.floor(parseInt(route.duration.replace('s', '')) / 3600);
+          const durationMinutes = Math.floor((parseInt(route.duration.replace('s', '')) % 3600) / 60);
+
+          let steps = '';
+          if (leg.steps) {
+            steps = leg.steps.slice(0, 10).map((step: any, idx: number) =>
+              `${idx + 1}. ${step.navigationInstruction?.instructions || 'Volg de weg'}`
+            ).join('\n');
+          }
 
           const routeInfo = `
-Afstand: ${leg.distance.text}
-Reistijd: ${leg.duration.text}
-Start: ${leg.start_address}
-Einde: ${leg.end_address}
+Afstand: ${distanceKm} km
+Reistijd: ${durationHours}u ${durationMinutes}min
+Start: ${origin}
+Einde: ${destination}
 
 Route stappen:
 ${steps}
           `;
 
-          console.log(`✅ Google Maps route fetched: ${origin} to ${destination}`);
+          console.log(`✅ Google Routes API: ${origin} naar ${destination}`);
           return routeInfo;
         }
 
         return '';
       } catch (error) {
-        console.error('Google Maps error:', error);
+        console.error('Google Routes API error:', error);
+        return '';
+      }
+    };
+
+    // Helper: Fetch Places API (New) for destinations
+    const fetchPlacesInfo = async (destination: string): Promise<string> => {
+      if (!googleMapsApiKey) {
+        console.log('⚠️ Google Places not configured');
+        return '';
+      }
+
+      try {
+        // Use the new Places API to search for the destination
+        const response = await fetch(
+          `https://places.googleapis.com/v1/places:searchText`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': googleMapsApiKey,
+              'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.types,places.editorialSummary'
+            },
+            body: JSON.stringify({
+              textQuery: destination,
+              languageCode: 'nl'
+            })
+          }
+        );
+
+        if (!response.ok) {
+          console.error('Google Places API error:', response.status, await response.text());
+          return '';
+        }
+
+        const data = await response.json();
+
+        if (data.places && data.places.length > 0) {
+          const place = data.places[0];
+
+          let placeInfo = `\n📍 ${place.displayName?.text || destination}`;
+          if (place.formattedAddress) placeInfo += `\n📮 Adres: ${place.formattedAddress}`;
+          if (place.rating) placeInfo += `\n⭐ Rating: ${place.rating}/5 (${place.userRatingCount || 0} reviews)`;
+          if (place.editorialSummary) placeInfo += `\n📝 ${place.editorialSummary.text}`;
+          if (place.types) placeInfo += `\n🏷️ Type: ${place.types.slice(0, 3).join(', ')}`;
+
+          console.log(`✅ Google Places API: ${destination}`);
+          return placeInfo;
+        }
+
+        return '';
+      } catch (error) {
+        console.error('Google Places API error:', error);
         return '';
       }
     };
@@ -196,15 +290,28 @@ ${steps}
     let realTimeContext = '';
 
     if (contentType === 'destination') {
+      // Use new Places API for destination info
+      const placesInfo = await fetchPlacesInfo(prompt);
+      if (placesInfo) {
+        realTimeContext = placesInfo;
+      }
+
+      // Also get general search results
       const searchQuery = `${prompt} travel guide tips 2024`;
-      realTimeContext = await fetchGoogleSearch(searchQuery);
+      const searchResults = await fetchGoogleSearch(searchQuery);
+      if (searchResults) {
+        realTimeContext += `\n\nReisinfo van web:\n${searchResults}`;
+      }
     } else if (contentType === 'route') {
       const routeMatch = prompt.match(/van\s+(.+?)\s+naar\s+(.+)/i) || prompt.match(/from\s+(.+?)\s+to\s+(.+)/i);
       if (routeMatch) {
         const origin = routeMatch[1].trim();
         const destination = routeMatch[2].trim();
-        realTimeContext = await fetchGoogleMapsRoute(origin, destination);
 
+        // Use new Routes API
+        realTimeContext = await fetchGoogleRoutesAPI(origin, destination, options.routeType || '');
+
+        // Get attractions along the route
         const searchQuery = `route ${origin} ${destination} bezienswaardigheden`;
         const searchResults = await fetchGoogleSearch(searchQuery);
         if (searchResults) {
@@ -212,8 +319,17 @@ ${steps}
         }
       }
     } else if (contentType === 'planning') {
+      // Use Places API for planning locations
+      const placesInfo = await fetchPlacesInfo(prompt);
+      if (placesInfo) {
+        realTimeContext = placesInfo;
+      }
+
       const searchQuery = `${prompt} dagplanning activiteiten 2024`;
-      realTimeContext = await fetchGoogleSearch(searchQuery);
+      const searchResults = await fetchGoogleSearch(searchQuery);
+      if (searchResults) {
+        realTimeContext += `\n\nActiviteiten info:\n${searchResults}`;
+      }
     } else if (contentType === 'hotel') {
       const searchQuery = `${prompt} hotels accommodatie 2024`;
       realTimeContext = await fetchGoogleSearch(searchQuery);
@@ -252,7 +368,8 @@ ${steps}
     console.log(`Route Type: "${routeTypeContext}"`);
     console.log(`\n🌐 Google APIs Status:`);
     console.log(`  - Google Search: ${googleSearchApiKey ? '✅ Configured' : '❌ Not configured'}`);
-    console.log(`  - Google Maps: ${googleMapsApiKey ? '✅ Configured' : '❌ Not configured'}`);
+    console.log(`  - Google Places API (New): ${googleMapsApiKey ? '✅ Configured' : '❌ Not configured'}`);
+    console.log(`  - Google Routes API: ${googleMapsApiKey ? '✅ Configured' : '❌ Not configured'}`);
     console.log(`  - Real-time context fetched: ${realTimeContext ? `✅ Yes (${realTimeContext.length} chars)` : '❌ No'}`);
     console.log(`User Prompt: "${userPrompt}"`);
     console.log(`\n=== FULL SYSTEM PROMPT ===\n${systemPrompt}\n=== END SYSTEM PROMPT ===\n`);
