@@ -333,7 +333,9 @@ export function APISettings() {
 
         const data = await response.json();
 
-        if (response.ok && data.status === 'OK') {
+        console.log('Google Maps API test response:', data);
+
+        if (data.status === 'OK') {
           const { error: updateError } = await supabase
             .from('api_settings')
             .update({
@@ -349,8 +351,12 @@ export function APISettings() {
           );
 
           alert('Google Maps API key werkt correct!');
+        } else if (data.status === 'REQUEST_DENIED') {
+          throw new Error(`Google Maps API Error: ${data.error_message || 'API key is mogelijk niet geactiveerd voor Geocoding API'}`);
+        } else if (data.status === 'INVALID_REQUEST') {
+          throw new Error('Google Maps API Error: Ongeldige request parameters');
         } else {
-          throw new Error(data.error_message || 'Google Maps API key is ongeldig');
+          throw new Error(`Google Maps API Error: ${data.status} - ${data.error_message || 'Onbekende fout'}`);
         }
       } else if (setting.provider === 'Google' && setting.service_name === 'Google Custom Search') {
         const searchEngineId = setting.metadata?.search_engine_id;
