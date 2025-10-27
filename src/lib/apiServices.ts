@@ -539,6 +539,47 @@ export class AITravelService {
     this.googleMaps = new GoogleMapsService();
   }
 
+  async getRouteFromEdgeFunction(from: string, to: string, routeType?: string): Promise<any> {
+    try {
+      const { supabase: supabaseClient } = await import('./supabase');
+      const { data: { session } } = await supabaseClient.auth.getSession();
+
+      if (!session) {
+        throw new Error('User not authenticated');
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-routes`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            from,
+            to,
+            routeType: routeType || 'snelle-route',
+            includeWaypoints: routeType === 'toeristische-route'
+          })
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Google Routes API error:', errorText);
+        throw new Error(`API request failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error calling google-routes edge function:', error);
+      throw error;
+    }
+  }
+
   async getActiveGPTModel(contentType: string): Promise<any | null> {
     try {
       const { db } = await import('./supabase');
@@ -597,11 +638,46 @@ export class AITravelService {
           additionalContext += `Bezienswaardigheden: ${places.map(p => p.name).join(', ')}`;
         }
       } else if (contentType === 'route' && additionalData.from && additionalData.to) {
-        const directions = await this.googleMaps.getDirections(additionalData.from, additionalData.to, additionalData.routeType);
-        
-        if (directions && directions.routes && directions.routes.length > 0) {
-          const route = directions.routes[0];
-          additionalContext = `Route informatie: ${route.summary || ''}\nAfstand: ${route.legs[0]?.distance?.text || ''}\nReistijd: ${route.legs[0]?.duration?.text || ''}`;
+        // Use the dedicated Google Routes edge function for reliable route data
+        try {
+          const routeData = await this.getRouteFromEdgeFunction(
+            additionalData.from,
+            additionalData.to,
+            additionalData.routeType
+          );
+
+          if (routeData.success && routeData.route) {
+            const { route } = routeData;
+            additionalContext = `Route informatie:\n`;
+            additionalContext += `- Van: ${additionalData.from}\n`;
+            additionalContext += `- Naar: ${additionalData.to}\n`;
+            additionalContext += `- Afstand: ${route.distance}\n`;
+            additionalContext += `- Reistijd: ${route.duration}\n`;
+            additionalContext += `- Route type: ${additionalData.routeType || 'standaard'}\n\n`;
+
+            // Add detailed steps
+            if (route.steps && route.steps.length > 0) {
+              additionalContext += `Route stappen:\n`;
+              route.steps.slice(0, 10).forEach((step, index) => {
+                additionalContext += `${index + 1}. ${step.instruction} (${step.distance})\n`;
+              });
+            }
+
+            // Add waypoints if available (for tourist routes)
+            if (route.waypoints && route.waypoints.length > 0) {
+              additionalContext += `\nBezienswaardigheden onderweg:\n`;
+              route.waypoints.forEach((wp) => {
+                additionalContext += `- ${wp.name}: ${wp.description || ''}\n`;
+              });
+            }
+          } else {
+            console.warn('Route data not available from edge function');
+            additionalContext = `Route van ${additionalData.from} naar ${additionalData.to}`;
+          }
+        } catch (routeError) {
+          console.error('Error fetching route from edge function:', routeError);
+          // Fallback to simple prompt
+          additionalContext = `Route van ${additionalData.from} naar ${additionalData.to}`;
         }
       } else if (contentType === 'hotel') {
         const hotels = await this.googleMaps.searchPlaces(prompt);
