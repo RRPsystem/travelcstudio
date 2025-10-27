@@ -6,7 +6,7 @@ import { Bot, Phone, MessageSquare, Users, Settings, CheckCircle, XCircle, Exter
 export function TravelBroSetup() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'new' | 'active' | 'sessions' | 'test' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'new' | 'active' | 'sessions' | 'invite' | 'test' | 'settings'>('overview');
   const [apiSettings, setApiSettings] = useState<any>(null);
   const [whatsappSessions, setWhatsappSessions] = useState<any[]>([]);
   const [activeTravelBros, setActiveTravelBros] = useState<any[]>([]);
@@ -30,6 +30,12 @@ export function TravelBroSetup() {
   const [travelbroDomain, setTravelbroDomain] = useState('');
   const [savingDomain, setSavingDomain] = useState(false);
   const [systemDefaultDomain, setSystemDefaultDomain] = useState<string>('');
+
+  const [sendingInvite, setSendingInvite] = useState(false);
+  const [invitePhone, setInvitePhone] = useState('');
+  const [inviteClientName, setInviteClientName] = useState('');
+  const [selectedTripForInvite, setSelectedTripForInvite] = useState<string>('');
+  const [skipIntake, setSkipIntake] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -328,6 +334,57 @@ export function TravelBroSetup() {
     }
   };
 
+  const sendWhatsAppInvite = async () => {
+    if (!selectedTripForInvite || !invitePhone.trim()) {
+      alert('Selecteer een TravelBRO en vul een telefoonnummer in');
+      return;
+    }
+
+    if (!isTwilioConfigured) {
+      alert('⚠️ WhatsApp is nog niet geconfigureerd. Ga naar de Settings tab.');
+      return;
+    }
+
+    setSendingInvite(true);
+    try {
+      const trip = activeTravelBros.find(t => t.id === selectedTripForInvite);
+      if (!trip) throw new Error('Trip niet gevonden');
+
+      const clientLink = getShareUrl(trip.share_token);
+      const brandName = brandData?.name || 'je reisagent';
+      const clientNameText = inviteClientName.trim() ? inviteClientName.trim() : 'Alex';
+
+      const message = skipIntake
+        ? `Hoi ${clientNameText}! 👋\n\nJe reisagent heeft een persoonlijke TravelBRO assistent voor je klaargezet voor: *${trip.name}*\n\nDaarna kun je direct hier in WhatsApp al je vragen stellen over de reis! ✈️\n\nIk ben 24/7 beschikbaar om je te helpen. Tot zo! 🌴`
+        : `Hoi ${clientNameText}! 👋\n\nJe reisagent heeft een persoonlijke TravelBRO assistent voor je klaargezet voor: *${trip.name}*\n\n📋 Vul eerst even je reisgegevens in via deze link:\n${clientLink}\n\nDaarna kun je direct hier in WhatsApp al je vragen stellen over de reis! ✈️\n\nIk ben 24/7 beschikbaar om je te helpen. Tot zo! 🌴`;
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/test-twilio`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          to: invitePhone,
+          message: message,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Verzenden mislukt');
+
+      alert(`✅ WhatsApp uitnodiging verzonden naar ${invitePhone}!`);
+      setInvitePhone('');
+      setInviteClientName('');
+      setSelectedTripForInvite('');
+      setSkipIntake(false);
+    } catch (error) {
+      console.error('Error sending invite:', error);
+      alert('❌ Fout bij verzenden uitnodiging: ' + (error instanceof Error ? error.message : 'Onbekende fout'));
+    } finally {
+      setSendingInvite(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center">
@@ -359,6 +416,7 @@ export function TravelBroSetup() {
             { id: 'overview', label: 'Overzicht', icon: Bot },
             { id: 'new', label: 'Nieuwe TravelBRO', icon: Plus },
             { id: 'active', label: 'Actieve TravelBRO\'s', icon: Users },
+            { id: 'invite', label: 'WhatsApp Uitnodiging', icon: Phone },
             { id: 'sessions', label: 'WhatsApp Sessies', icon: MessageSquare },
             { id: 'test', label: 'Test', icon: Send },
             { id: 'settings', label: 'Instellingen', icon: Settings },
@@ -857,6 +915,147 @@ export function TravelBroSetup() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'invite' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <Phone className="w-5 h-5 mr-2 text-orange-600" />
+              Stuur WhatsApp Uitnodiging
+            </h3>
+
+            {!isTwilioConfigured && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-yellow-800">WhatsApp niet geconfigureerd</h3>
+                    <p className="mt-1 text-sm text-yellow-700">
+                      Ga naar de Settings tab om je Twilio credentials in te vullen voordat je uitnodigingen kunt versturen.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Selecteer TravelBRO
+                </label>
+                <select
+                  value={selectedTripForInvite}
+                  onChange={(e) => setSelectedTripForInvite(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  disabled={activeTravelBros.length === 0}
+                >
+                  <option value="">-- Kies een reis --</option>
+                  {activeTravelBros.map((trip) => (
+                    <option key={trip.id} value={trip.id}>
+                      {trip.name}
+                    </option>
+                  ))}
+                </select>
+                {activeTravelBros.length === 0 && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Maak eerst een TravelBRO aan voordat je uitnodigingen kunt versturen
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Naam klant (optioneel)
+                </label>
+                <input
+                  type="text"
+                  value={inviteClientName}
+                  onChange={(e) => setInviteClientName(e.target.value)}
+                  placeholder="bijv. Alex"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  De naam wordt gebruikt in het welkomstbericht
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  WhatsApp Nummer
+                </label>
+                <input
+                  type="tel"
+                  value={invitePhone}
+                  onChange={(e) => setInvitePhone(e.target.value)}
+                  placeholder="+31612345678"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Inclusief landcode (bijv. +31 voor Nederland)
+                </p>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start">
+                  <input
+                    type="checkbox"
+                    id="skipIntake"
+                    checked={skipIntake}
+                    onChange={(e) => setSkipIntake(e.target.checked)}
+                    className="mt-1 h-4 w-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                  />
+                  <label htmlFor="skipIntake" className="ml-3 flex-1">
+                    <span className="text-sm font-medium text-gray-900">
+                      Intake formulier overslaan
+                    </span>
+                    <p className="text-xs text-gray-600 mt-1">
+                      Wanneer aangevinkt: klant kan direct chatten zonder intake in te vullen.
+                      Gebruik dit als je alleen WhatsApp wilt gebruiken zonder web intake.
+                    </p>
+                  </label>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-gray-900 mb-2">Preview bericht:</h4>
+                <div className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-white p-3 rounded border">
+                  {selectedTripForInvite ? (
+                    skipIntake ? (
+                      `Hoi ${inviteClientName.trim() || 'Alex'}! 👋\n\nJe reisagent heeft een persoonlijke TravelBRO assistent voor je klaargezet voor: *${activeTravelBros.find(t => t.id === selectedTripForInvite)?.name || '[Reis]'}*\n\nDaarna kun je direct hier in WhatsApp al je vragen stellen over de reis! ✈️\n\nIk ben 24/7 beschikbaar om je te helpen. Tot zo! 🌴`
+                    ) : (
+                      `Hoi ${inviteClientName.trim() || 'Alex'}! 👋\n\nJe reisagent heeft een persoonlijke TravelBRO assistent voor je klaargezet voor: *${activeTravelBros.find(t => t.id === selectedTripForInvite)?.name || '[Reis]'}*\n\n📋 Vul eerst even je reisgegevens in via deze link:\n${getShareUrl(activeTravelBros.find(t => t.id === selectedTripForInvite)?.share_token || '')}\n\nDaarna kun je direct hier in WhatsApp al je vragen stellen over de reis! ✈️\n\nIk ben 24/7 beschikbaar om je te helpen. Tot zo! 🌴`
+                    )
+                  ) : (
+                    'Selecteer eerst een TravelBRO om het bericht te zien'
+                  )}
+                </div>
+              </div>
+
+              <button
+                onClick={sendWhatsAppInvite}
+                disabled={sendingInvite || !isTwilioConfigured || !selectedTripForInvite || !invitePhone.trim()}
+                className="w-full flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+              >
+                {sendingInvite ? (
+                  <>
+                    <Loader className="w-5 h-5 animate-spin" />
+                    <span>Verzenden...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send size={20} />
+                    <span>Verstuur WhatsApp Uitnodiging</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
