@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db, supabase } from '../../lib/supabase';
-import { Bot, Phone, MessageSquare, Users, Settings, CheckCircle, XCircle, ExternalLink, Copy, Send, Plus, FileText, Link as LinkIcon, Trash2, Eye, Share2, Upload, Loader } from 'lucide-react';
+import { Bot, Phone, MessageSquare, Users, Settings, CheckCircle, XCircle, ExternalLink, Copy, Send, Plus, FileText, Link as LinkIcon, Trash2, Eye, Share2, Upload, Loader, Edit } from 'lucide-react';
 
 export function TravelBroSetup() {
   const { user } = useAuth();
@@ -135,10 +135,14 @@ export function TravelBroSetup() {
     }
   };
 
-  const copyShareLink = (shareToken: string) => {
-    const shareLink = `${window.location.origin}/travelbro/${shareToken}`;
-    navigator.clipboard.writeText(shareLink);
-    alert('✅ Share link gekopieerd!');
+  const copyClientLink = (shareToken: string) => {
+    const clientLink = `${window.location.origin}/travelbro/${shareToken}`;
+    navigator.clipboard.writeText(clientLink);
+    alert('✅ Client link gekopieerd! Deel deze met je klanten.');
+  };
+
+  const openClientPreview = (shareToken: string) => {
+    window.open(`/travelbro/${shareToken}`, '_blank');
   };
 
   const deleteTravelBro = async (id: string) => {
@@ -533,18 +537,27 @@ export function TravelBroSetup() {
 
                     <div className="flex items-center space-x-2 ml-4">
                       <button
-                        onClick={() => copyShareLink(trip.share_token)}
+                        onClick={() => copyClientLink(trip.share_token)}
                         className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                        title="Kopieer share link"
+                        title="Kopieer client link voor reizigers"
                       >
                         <Share2 size={18} />
                       </button>
                       <button
-                        onClick={() => window.open(`/travelbro/${trip.share_token}`, '_blank')}
+                        onClick={() => openClientPreview(trip.share_token)}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Bekijk"
+                        title="Bekijk client pagina"
                       >
                         <Eye size={18} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          alert('Edit functionaliteit komt binnenkort!');
+                        }}
+                        className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                        title="Bewerk TravelBRO"
+                      >
+                        <Edit size={18} />
                       </button>
                       <button
                         onClick={() => deleteTravelBro(trip.id)}
