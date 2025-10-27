@@ -47,6 +47,18 @@ interface ApiCostSummary {
   avg_response_time: number;
 }
 
+interface APIStatus {
+  id: string;
+  provider: string;
+  service_name: string;
+  is_active: boolean;
+  test_status: string;
+  last_tested: string | null;
+  usage_count: number;
+  usage_limit: number | null;
+  monthly_cost: number;
+}
+
 interface MetricData {
   name: string;
   current: number;
@@ -60,6 +72,7 @@ export function MonitoringDashboard() {
   const [errorSummary, setErrorSummary] = useState<ErrorSummary | null>(null);
   const [apiCosts, setApiCosts] = useState<ApiCostSummary | null>(null);
   const [metrics, setMetrics] = useState<MetricData[]>([]);
+  const [apiStatuses, setApiStatuses] = useState<APIStatus[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
@@ -75,8 +88,20 @@ export function MonitoringDashboard() {
       loadErrorSummary(),
       loadApiCosts(),
       loadMetrics(),
+      loadApiStatuses(),
     ]);
     setLastRefresh(new Date());
+  };
+
+  const loadApiStatuses = async () => {
+    const { data, error } = await supabase
+      .from('api_settings')
+      .select('id, provider, service_name, is_active, test_status, last_tested, usage_count, usage_limit, monthly_cost')
+      .order('provider');
+
+    if (!error && data) {
+      setApiStatuses(data);
+    }
   };
 
   const loadAlerts = async () => {
@@ -417,6 +442,58 @@ export function MonitoringDashboard() {
           </h3>
         </div>
         <div className="p-6">
+          <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg">
+            <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
+              <Zap className="mr-2" size={18} />
+              API Status Overview
+            </h4>
+            <div className="space-y-3">
+              {apiStatuses.length === 0 ? (
+                <div className="text-center text-gray-500 py-4">
+                  <p>Geen API configuraties gevonden</p>
+                </div>
+              ) : (
+                apiStatuses.map((api) => (
+                  <div key={api.id} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-shadow">
+                    <div className="flex items-center space-x-3 flex-1">
+                      {api.test_status === 'success' ? (
+                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                      ) : api.test_status === 'failed' ? (
+                        <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                      ) : (
+                        <AlertTriangle className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-gray-900 truncate">{api.service_name}</p>
+                        <p className="text-xs text-gray-500">{api.provider}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4 text-sm">
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">Status</p>
+                        <p className="font-medium">{api.is_active ? '🟢' : '🔴'}</p>
+                      </div>
+                      <div className="text-right min-w-[60px]">
+                        <p className="text-xs text-gray-500">Gebruik</p>
+                        <p className="font-medium">{api.usage_count || 0}</p>
+                      </div>
+                      <div className="text-right min-w-[70px]">
+                        <p className="text-xs text-gray-500">Kosten/mnd</p>
+                        <p className="font-medium text-green-600">${(api.monthly_cost || 0).toFixed(2)}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+              <div className="pt-3 border-t border-gray-300 flex justify-between items-center px-3">
+                <span className="font-semibold text-gray-900">Totale Maandelijkse Kosten</span>
+                <span className="font-bold text-green-600 text-xl">
+                  ${apiStatuses.reduce((sum, api) => sum + (api.monthly_cost || 0), 0).toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="p-4 border border-gray-200 rounded-lg">
               <p className="text-sm text-gray-600 mb-2">OpenAI Calls Today</p>
