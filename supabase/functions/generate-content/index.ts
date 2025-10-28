@@ -424,8 +424,12 @@ Deno.serve(async (req: Request) => {
         });
 
         // BOLT requirements: TIME_BUDGET limits + diversity
-        const maxStops = timeBudget === '1 dag' ? 4 : 7;
-        const minStops = timeBudget === '1 dag' ? 3 : 3;
+        // Handle both "1-dag" and "1 dag" formats
+        const normalizedTimeBudget = timeBudget?.replace(/-/g, ' ').trim().toLowerCase();
+        const is1Day = normalizedTimeBudget === '1 dag';
+
+        const maxStops = is1Day ? 4 : 7;
+        const minStops = is1Day ? 3 : 3;
 
         const diverseStops: RouteStop[] = [];
         const usedTypes = new Set<string>();
