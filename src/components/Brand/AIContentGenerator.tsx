@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { edgeAIService } from '../../lib/apiServices';
+import { supabase } from '../../lib/supabase';
 import { APIStatusChecker } from './APIStatusChecker';
 import { 
   X, 
@@ -29,6 +30,20 @@ interface ChatMessage {
   type: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  routeData?: {
+    distance: string;
+    duration: string;
+    steps: Array<{
+      instruction: string;
+      distance: string;
+      duration: string;
+    }>;
+    waypoints?: Array<{
+      name: string;
+      location: { lat: number; lng: number };
+      description?: string;
+    }>;
+  };
 }
 
 interface ChatSession {
@@ -178,9 +193,40 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
     setTimeout(async () => {
       try {
         let response = '';
+        let routeData = undefined;
+
         if (selectedContentType === 'image') {
           const imageUrl = await aiTravelService.generateImage(currentInput);
           response = imageUrl ? `![Generated Image](${imageUrl})\n\nAfbeelding gegenereerd voor: "${currentInput}"` : 'Kon geen afbeelding genereren.';
+        } else if (selectedContentType === 'route') {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) throw new Error('Not authenticated');
+
+          const routeResponse = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-routes`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                from: routeFrom,
+                to: routeTo,
+                routeType: selectedRouteType,
+                includeWaypoints: selectedRouteType === 'toeristische-route'
+              })
+            }
+          );
+
+          const routeResult = await routeResponse.json();
+
+          if (routeResult.success && routeResult.route) {
+            routeData = routeResult.route;
+            response = `Route van ${routeFrom} naar ${routeTo} is berekend.`;
+          } else {
+            response = `Kon geen route vinden: ${routeResult.error || 'Onbekende fout'}`;
+          }
         } else {
           // Find descriptions for selected options
           const vacationTypeObj = moreSettings.find(s => s.id === selectedMoreSetting);
@@ -189,7 +235,7 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
 
           response = await edgeAIService.generateContent(
             selectedContentType,
-            selectedContentType === 'route' ? `Route van ${routeFrom} naar ${routeTo}` : currentInput,
+            currentInput,
             selectedWritingStyle || 'professional',
             additionalData,
             {
@@ -203,12 +249,13 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
             }
           );
         }
-        
+
         const aiResponse: ChatMessage = {
           id: Date.now().toString(),
           type: 'assistant',
           content: response,
-          timestamp: new Date()
+          timestamp: new Date(),
+          routeData
         };
 
         setChatSessions(prev => prev.map(chat =>
@@ -436,10 +483,63 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
                         </div>
                       )}
                       <div
-                        className={`whitespace-pre-wrap ${message.type === 'user' ? 'text-white' : 'text-gray-900'}`}
+                        className={`${message.type === 'user' ? 'text-white' : 'text-gray-900'}`}
                         style={{ lineHeight: '1.6' }}
                       >
-                        {message.content}
+                        {message.routeData ? (
+                          <div className="space-y-4">
+                            <div className="bg-blue-50 rounded-lg p-4">
+                              <h4 className="font-semibold text-blue-900 mb-2">Route Overzicht</h4>
+                              <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                  <span className="text-gray-600">Afstand:</span>
+                                  <span className="ml-2 font-medium">{message.routeData.distance}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-600">Reistijd:</span>
+                                  <span className="ml-2 font-medium">{message.routeData.duration}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {message.routeData.waypoints && message.routeData.waypoints.length > 0 && (
+                              <div className="bg-green-50 rounded-lg p-4">
+                                <h4 className="font-semibold text-green-900 mb-3">
+                                  Bezienswaardigheden langs de route ({message.routeData.waypoints.length})
+                                </h4>
+                                <div className="space-y-2">
+                                  {message.routeData.waypoints.map((waypoint, idx) => (
+                                    <div key={idx} className="flex items-start space-x-2 text-sm">
+                                      <MapPin className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                                      <div>
+                                        <div className="font-medium text-gray-900">{waypoint.name}</div>
+                                        {waypoint.description && (
+                                          <div className="text-gray-600 text-xs">{waypoint.description}</div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="bg-gray-50 rounded-lg p-4">
+                              <h4 className="font-semibold text-gray-900 mb-3">Route stappen</h4>
+                              <div className="space-y-2 max-h-96 overflow-y-auto">
+                                {message.routeData.steps.map((step, idx) => (
+                                  <div key={idx} className="text-sm border-l-2 border-gray-300 pl-3 py-1">
+                                    <div className="text-gray-900">{step.instruction}</div>
+                                    <div className="text-gray-500 text-xs mt-1">
+                                      {step.distance} • {step.duration}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="whitespace-pre-wrap">{message.content}</div>
+                        )}
                       </div>
                     </div>
                   </div>
