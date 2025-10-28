@@ -42,25 +42,26 @@ const MAJOR_ROAD_PATTERN = /\b(I-?\d+|US-?\d+|CA-?\d+|State Route \d+|Highway \d
 const MAX_DETOUR_MINUTES = 15;
 
 function getRouteConstants(routeDistanceKm: number) {
-  if (routeDistanceKm < 150) {
-    return {
-      minKmFromOrigin: Math.min(10, routeDistanceKm * 0.15),
-      corridorIntervalKm: Math.max(15, routeDistanceKm / 6),
-      searchRadiusKm: 10
-    };
-  } else if (routeDistanceKm < 300) {
-    return {
-      minKmFromOrigin: 20,
-      corridorIntervalKm: 25,
-      searchRadiusKm: 8
-    };
-  } else {
-    return {
-      minKmFromOrigin: 30,
-      corridorIntervalKm: 40,
-      searchRadiusKm: 7
-    };
+  const minKmFromOrigin = 20;
+  const minKmBeforeDestination = 20;
+
+  const searchableDistance = routeDistanceKm - minKmFromOrigin - minKmBeforeDestination;
+
+  let corridorIntervalKm = 30;
+  let searchRadiusKm = 10;
+
+  if (searchableDistance < 50) {
+    corridorIntervalKm = 20;
+  } else if (searchableDistance > 200) {
+    corridorIntervalKm = 40;
   }
+
+  return {
+    minKmFromOrigin,
+    minKmBeforeDestination,
+    corridorIntervalKm,
+    searchRadiusKm
+  };
 }
 
 function decodePolyline(encoded: string): Array<{ lat: number; lng: number }> {
@@ -155,13 +156,15 @@ function extractCorridorPoints(
   encodedPolyline: string,
   intervalKm: number,
   skipFirstKm: number,
-  skipLastKm: number = 15
+  skipLastKm: number
 ): Array<{ lat: number; lng: number; corridorKm: number }> {
   const decodedPoints = decodePolyline(encodedPolyline);
   if (decodedPoints.length === 0) return [];
 
   const totalRouteDistance = calculatePolylineDistances(decodedPoints);
   const maxDistance = totalRouteDistance[totalRouteDistance.length - 1] / 1000;
+
+  const searchableZoneEnd = maxDistance - skipLastKm;
 
   const points = [];
   let distanceAccumulated = 0;
@@ -175,9 +178,8 @@ function extractCorridorPoints(
     totalDistance += segmentDistance;
 
     const currentKm = totalDistance / 1000;
-    const remainingKm = maxDistance - currentKm;
 
-    if (currentKm >= skipFirstKm && remainingKm >= skipLastKm && distanceAccumulated >= (intervalKm * 1000)) {
+    if (currentKm >= skipFirstKm && currentKm <= searchableZoneEnd && distanceAccumulated >= (intervalKm * 1000)) {
       points.push({
         lat: curr.lat,
         lng: curr.lng,
@@ -190,7 +192,7 @@ function extractCorridorPoints(
   if (points.length === 0 && maxDistance > (skipFirstKm + skipLastKm)) {
     const midIndex = Math.floor(decodedPoints.length / 2);
     const midDistance = totalRouteDistance[midIndex] / 1000;
-    if (midDistance >= skipFirstKm && (maxDistance - midDistance) >= skipLastKm) {
+    if (midDistance >= skipFirstKm && midDistance <= searchableZoneEnd) {
       points.push({
         lat: decodedPoints[midIndex].lat,
         lng: decodedPoints[midIndex].lng,
@@ -409,7 +411,7 @@ Deno.serve(async (req: Request) => {
       const routeDistanceKm = leg.distance.value / 1000;
       const routeConfig = getRouteConstants(routeDistanceKm);
 
-      console.log(`🔍 Route: ${routeDistanceKm.toFixed(0)}km | Config: skip=${routeConfig.minKmFromOrigin.toFixed(0)}km, interval=${routeConfig.corridorIntervalKm.toFixed(0)}km, radius=${routeConfig.searchRadiusKm}km`);
+      console.log(`🔍 Route: ${routeDistanceKm.toFixed(0)}km | Searching between km ${routeConfig.minKmFromOrigin}-${(routeDistanceKm - routeConfig.minKmBeforeDestination).toFixed(0)} (interval=${routeConfig.corridorIntervalKm}km, radius=${routeConfig.searchRadiusKm}km)`);
 
       const decodedPolyline = decodePolyline(polyline);
       const polylineDistances = calculatePolylineDistances(decodedPolyline);
@@ -418,9 +420,11 @@ Deno.serve(async (req: Request) => {
         polyline,
         routeConfig.corridorIntervalKm,
         routeConfig.minKmFromOrigin,
-        15
+        routeConfig.minKmBeforeDestination
       );
-      console.log(`📍 Extracted ${corridorPoints.length} corridor points`);
+
+      const corridorKms = corridorPoints.map(p => `${p.corridorKm.toFixed(0)}km`).join(', ');
+      console.log(`📍 Corridor points: ${corridorKms}`);
 
       const placesSearchUrl = 'https://places.googleapis.com/v1/places:searchText';
       const searchRadius = routeConfig.searchRadiusKm * 1000;
@@ -540,7 +544,7 @@ Deno.serve(async (req: Request) => {
         };
       });
 
-      console.log(`✅ Selected ${waypoints.length} corridor POIs (all between ${routeConfig.minKmFromOrigin.toFixed(0)}-${(routeDistanceKm - 15).toFixed(0)}km, detour ≤${MAX_DETOUR_MINUTES}min)`);
+      console.log(`✅ Selected ${waypoints.length} corridor POIs (all between km ${routeConfig.minKmFromOrigin}-${(routeDistanceKm - routeConfig.minKmBeforeDestination).toFixed(0)}, detour ≤${MAX_DETOUR_MINUTES}min)`);
     }
 
     const response: RouteResponse = {
