@@ -58,7 +58,6 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Get ALL API keys from database
     const { data: allSettings, error: settingsError } = await supabaseClient
       .from('api_settings')
       .select('provider, service_name, api_key, metadata');
@@ -81,11 +80,9 @@ Deno.serve(async (req: Request) => {
     const googleSearchEngineId = googleSearchSettings?.metadata?.search_engine_id;
     const googleMapsApiKey = googleMapsSettings?.api_key;
 
-    // Parse request body
     const body: GenerateContentRequest = await req.json();
     const { contentType, prompt, writingStyle = 'professional', additionalContext = '', options = {} } = body;
 
-    // Get GPT configuration from database
     const { data: gptConfig, error: gptError } = await supabaseClient
       .from('gpt_models')
       .select('*')
@@ -97,7 +94,6 @@ Deno.serve(async (req: Request) => {
       console.error('Error fetching GPT config:', gptError);
     }
 
-    // Build system prompt with route instruction helper
     const getRouteInstruction = (routeType: string) => {
       switch (routeType) {
         case 'snelle-route': return 'Focus op de snelste route met minimale reistijd.';
@@ -108,10 +104,8 @@ Deno.serve(async (req: Request) => {
       }
     };
 
-    // Use GPT config if available, otherwise use defaults
     let systemPrompt = gptConfig?.system_prompt || options.systemPrompt || `Je bent een professionele reisschrijver die boeiende bestemmingsteksten schrijft over {DESTINATION}. Schrijf in {WRITING_STYLE} stijl voor {VACATION_TYPE} reizigers.`;
 
-    // Build context descriptions
     const vacationTypeContext = options.vacationTypeDescription
       ? `${options.vacationType} (${options.vacationTypeDescription})`
       : options.vacationType || 'algemene';
@@ -124,7 +118,6 @@ Deno.serve(async (req: Request) => {
       ? `${options.days} (${options.daysDescription})`
       : options.days || '';
 
-    // Replace variables in system prompt
     systemPrompt = systemPrompt
       .replace(/{WRITING_STYLE}/g, writingStyle)
       .replace(/{VACATION_TYPE}/g, vacationTypeContext)
@@ -133,7 +126,6 @@ Deno.serve(async (req: Request) => {
       .replace(/{DAYS}/g, daysContext)
       .replace(/{DESTINATION}/g, options.destination || '');
 
-    // Helper: Compress route steps - filter only highway changes
     const compressSteps = (steps: any[]): CompressedStep[] => {
       const highwayRegex = /(I-\d+|US-\d+|[A-Z]{2}-\d+|A\d+|E\d+|N\d+)/gi;
       const compressed: CompressedStep[] = [];
@@ -145,7 +137,6 @@ Deno.serve(async (req: Request) => {
         if (matches && matches.length > 0) {
           const highway = matches[0];
 
-          // Skip duplicates
           if (compressed.length === 0 || compressed[compressed.length - 1].highway !== highway) {
             compressed.push({
               instruction: instruction.replace(/<[^>]*>/g, ''),
@@ -155,7 +146,6 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // Always include last step (destination entrance)
       if (steps.length > 0 && compressed.length > 0) {
         const lastStep = steps[steps.length - 1];
         const lastInstruction = lastStep.navigationInstruction?.instructions || lastStep.html_instructions || '';
@@ -168,16 +158,13 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // Limit to 5-6 steps
       return compressed.slice(0, 6);
     };
 
-    // Helper: Calculate detour time for a place
     const calculateDetour = async (currentLat: number, currentLng: number, placeLat: number, placeLng: number, destLat: number, destLng: number): Promise<number> => {
       if (!googleMapsApiKey) return 999;
 
       try {
-        // Calculate detour: (origin -> place -> destination) - (origin -> destination)
         const detourResponse = await fetch(
           `https://routes.googleapis.com/directions/v2:computeRoutes`,
           {
@@ -202,7 +189,6 @@ Deno.serve(async (req: Request) => {
         const detourData = await detourResponse.json();
         const detourDuration = parseInt(detourData.routes?.[0]?.duration?.replace('s', '') || '0');
 
-        // Direct route duration
         const directResponse = await fetch(
           `https://routes.googleapis.com/directions/v2:computeRoutes`,
           {
@@ -226,23 +212,20 @@ Deno.serve(async (req: Request) => {
         const directData = await directResponse.json();
         const directDuration = parseInt(directData.routes?.[0]?.duration?.replace('s', '') || '0');
 
-        return Math.round((detourDuration - directDuration) / 60); // minutes
+        return Math.round((detourDuration - directDuration) / 60);
       } catch (error) {
         console.error('Detour calculation error:', error);
         return 999;
       }
     };
 
-    // Helper: Find stops along route using Places API
     const findRouteStops = async (originLat: number, originLng: number, destLat: number, destLng: number, routeType: string): Promise<RouteStop[]> => {
       if (!googleMapsApiKey) return [];
 
       try {
-        // Calculate midpoint for search
         const midLat = (originLat + destLat) / 2;
         const midLng = (originLng + destLng) / 2;
 
-        // Search for places along route
         const searchResponse = await fetch(
           `https://places.googleapis.com/v1/places:searchNearby`,
           {
@@ -256,7 +239,7 @@ Deno.serve(async (req: Request) => {
               locationRestriction: {
                 circle: {
                   center: { latitude: midLat, longitude: midLng },
-                  radius: 50000 // 50km radius
+                  radius: 50000
                 }
               },
               includedTypes: routeType === 'toeristische-route'
@@ -278,7 +261,6 @@ Deno.serve(async (req: Request) => {
 
         console.log(`🔍 Found ${candidates.length} candidate stops`);
 
-        // Filter and score stops
         const stops: RouteStop[] = [];
         const seenPlaceIds = new Set<string>();
 
@@ -288,10 +270,8 @@ Deno.serve(async (req: Request) => {
           const placeLat = place.location.latitude;
           const placeLng = place.location.longitude;
 
-          // Calculate detour
           const detourMinutes = await calculateDetour(originLat, originLng, placeLat, placeLng, destLat, destLng);
 
-          // Only include if detour <= 15 minutes
           if (detourMinutes <= 15) {
             stops.push({
               name: place.displayName?.text || 'Unknown',
@@ -309,14 +289,12 @@ Deno.serve(async (req: Request) => {
           }
         }
 
-        // Sort by: rating (desc), detour (asc)
         stops.sort((a, b) => {
           const ratingDiff = (b.rating || 0) - (a.rating || 0);
           if (Math.abs(ratingDiff) > 0.5) return ratingDiff;
           return a.detour_minutes - b.detour_minutes;
         });
 
-        // Limit to 3-5 stops
         const selectedStops = stops.slice(0, 5);
         console.log(`✅ Selected ${selectedStops.length} stops (≤15 min detour)`);
 
@@ -327,7 +305,6 @@ Deno.serve(async (req: Request) => {
       }
     };
 
-    // Helper: Fetch Google Search results
     const fetchGoogleSearch = async (query: string): Promise<string> => {
       if (!googleSearchApiKey || !googleSearchEngineId) {
         console.log('⚠️ Google Search not configured');
@@ -357,7 +334,6 @@ Deno.serve(async (req: Request) => {
       }
     };
 
-    // Helper: Fetch complete route with all data
     const fetchCompleteRoute = async (origin: string, destination: string, routeType: string): Promise<any> => {
       if (!googleMapsApiKey) {
         console.log('⚠️ Google Maps not configured');
@@ -365,7 +341,6 @@ Deno.serve(async (req: Request) => {
       }
 
       try {
-        // Determine route preferences based on variant
         let routeModifiers: any = {};
         let routingPreference = 'TRAFFIC_UNAWARE';
 
@@ -378,7 +353,6 @@ Deno.serve(async (req: Request) => {
           routeModifiers.avoidTolls = false;
         }
 
-        // Use the new Routes API with full field mask
         const response = await fetch(
           `https://routes.googleapis.com/directions/v2:computeRoutes`,
           {
@@ -412,10 +386,8 @@ Deno.serve(async (req: Request) => {
 
           if (!leg) return null;
 
-          // Compress steps
           const compressedSteps = compressSteps(leg.steps || []);
 
-          // Find stops along route
           const originLoc = leg.startLocation.latLng;
           const destLoc = leg.endLocation.latLng;
           const stops = await findRouteStops(
@@ -426,16 +398,13 @@ Deno.serve(async (req: Request) => {
             routeType
           );
 
-          // Calculate durations
           const durationSeconds = parseInt(route.duration.replace('s', ''));
-          const durationNoStops = Math.round(durationSeconds / 60); // minutes
-          const estimatedStopTime = stops.length * 30; // 30 min per stop
+          const durationNoStops = Math.round(durationSeconds / 60);
+          const estimatedStopTime = stops.length * 30;
           const durationWithStops = durationNoStops + estimatedStopTime;
 
-          // Build route line from compressed steps
           const routeLine = compressedSteps.map(s => s.highway).filter(h => h !== 'FINAL').join(' → ');
 
-          // Build payload
           return {
             WRITING_STYLE: writingStyle,
             ROUTE_VARIANT: routeType === 'snelle-route' ? 'Snelweg' : routeType === 'toeristische-route' ? 'Toeristisch' : 'Mix',
@@ -454,10 +423,9 @@ Deno.serve(async (req: Request) => {
               detour_minutes: s.detour_minutes,
               reason: s.reason
             })),
-            EATERIES: [], // TODO: Add eateries search
+            EATERIES: [],
             SEASON_ALERTS: [],
             HOP_ON_HOP_OFF_AVAILABLE: false,
-            // Debug info
             _DEBUG: {
               steps_count: compressedSteps.length,
               stops_count: stops.length,
@@ -473,7 +441,6 @@ Deno.serve(async (req: Request) => {
       }
     };
 
-    // Helper: Fetch Places API (New) for destinations
     const fetchPlacesInfo = async (destination: string): Promise<string> => {
       if (!googleMapsApiKey) {
         console.log('⚠️ Google Places not configured');
@@ -524,7 +491,6 @@ Deno.serve(async (req: Request) => {
       }
     };
 
-    // Fetch real-time data based on content type
     let realTimeContext = '';
     let routePayload: any = null;
 
@@ -545,7 +511,6 @@ Deno.serve(async (req: Request) => {
         const origin = routeMatch[1].trim();
         const destination = routeMatch[2].trim();
 
-        // Fetch complete route with all optimizations
         routePayload = await fetchCompleteRoute(origin, destination, options.routeType || 'snelle-route');
 
         if (routePayload) {
@@ -568,20 +533,36 @@ Deno.serve(async (req: Request) => {
       realTimeContext = await fetchGoogleSearch(searchQuery);
     }
 
-    // Build comprehensive user prompt based on content type
     let userPrompt = prompt;
 
     if (contentType === 'destination') {
       userPrompt = `Schrijf een volledige bestemmingstekst over: ${prompt}`;
     } else if (contentType === 'route') {
-      userPrompt = `Schrijf een volledige routebeschrijving voor: ${prompt}\n\nGebruik ALLEEN de data uit het ROUTE PAYLOAD hierboven. Beschrijf de route, stops, en geef praktische tips.`;
+      if (routePayload) {
+        userPrompt = `Schrijf een uitgebreide routebeschrijving volgens de structuur in je system prompt.
+
+ROUTE GEGEVENS:
+Vertrek: ${routePayload.ORIGIN}
+Bestemming: ${routePayload.DESTINATION}
+Afstand: ${routePayload.DISTANCE_KM} km
+Reistijd zonder stops: ${routePayload.DURATION_NOSTOPS}
+Reistijd met stops: ${routePayload.DURATION_WITH_STOPS}
+Route: ${routePayload.ROUTE_LINE}
+
+STOPS ONDERWEG (gebruik deze):
+${routePayload.STOPS.map((stop: any, i: number) => `${i + 1}. ${stop.name} (${stop.detour_minutes} min omweg${stop.rating ? `, rating ${stop.rating}/5` : ''})`).join('\n')}
+
+Schrijf de routebeschrijving nu uit volgens de structuur. Maak het levendig en praktisch.`;
+      } else {
+        userPrompt = `Schrijf een volledige routebeschrijving voor: ${prompt}`;
+      }
     } else if (contentType === 'planning') {
       userPrompt = `Maak een volledige dagplanning voor: ${prompt}`;
     } else if (contentType === 'hotel') {
       userPrompt = `Geef een volledig hotel overzicht voor: ${prompt}`;
     }
 
-    if (realTimeContext) {
+    if (realTimeContext && contentType !== 'route') {
       userPrompt += `\n\n=== ACTUELE INFORMATIE (Gebruik deze data!) ===\n${realTimeContext}\n=== EINDE ACTUELE INFORMATIE ===`;
     }
 
@@ -589,7 +570,6 @@ Deno.serve(async (req: Request) => {
       userPrompt += `\n\nExtra context: ${additionalContext}`;
     }
 
-    // Use GPT config settings or provided options
     const modelToUse = options.model || gptConfig?.model || 'gpt-3.5-turbo';
     const maxTokens = options.maxTokens || gptConfig?.max_tokens || 1500;
     const temperature = options.temperature !== undefined ? options.temperature : (gptConfig?.temperature || 0.7);
@@ -613,7 +593,6 @@ Deno.serve(async (req: Request) => {
       console.log(`  - Route line: ${routePayload.ROUTE_LINE}`);
     }
 
-    // Update usage count
     if (gptConfig) {
       await supabaseClient
         .from('gpt_models')
@@ -624,7 +603,6 @@ Deno.serve(async (req: Request) => {
         .eq('id', gptConfig.id);
     }
 
-    // Call OpenAI API
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
