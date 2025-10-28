@@ -282,14 +282,10 @@ Deno.serve(async (req: Request) => {
                 locationRestriction: {
                   circle: {
                     center: { latitude: point.lat, longitude: point.lng },
-                    radius: routeType === 'toeristische-route' ? 12000 : 8000 // Verhoogd: 12km voor scenic, 8km voor fast
+                    radius: 15000
                   }
                 },
-                includedTypes: routeType === 'toeristische-route'
-                  ? ['tourist_attraction', 'park', 'natural_feature', 'museum', 'cafe', 'restaurant']
-                  : ['tourist_attraction', 'park', 'museum', 'cafe', 'restaurant'],
-                maxResultCount: 15, // Verhoogd van 10 naar 15
-                languageCode: 'nl'
+                maxResultCount: 20
               })
             }
           );
@@ -310,34 +306,22 @@ Deno.serve(async (req: Request) => {
             const placeLat = place.location?.latitude;
             const placeLng = place.location?.longitude;
 
-            if (!placeLat || !placeLng) {
-              console.warn(`⚠️ Place ${place.displayName?.text} heeft geen locatie`);
-              continue;
-            }
+            if (!placeLat || !placeLng) continue;
 
-            // Accept all places with decent rating or no rating (new places)
-            const hasDecentRating = !place.rating || place.rating >= 3.0;
-            const estimatedDetour = 8;
-
-            if (hasDecentRating) {
-              const stopData = {
-                name: place.displayName?.text || 'Unknown',
-                place_id: place.id,
-                types: place.types || [],
-                rating: place.rating,
-                detour_minutes: estimatedDetour,
-                reason: `${place.displayName?.text || 'Interessante stop'} (${estimatedDetour} min omweg)`,
-                location: {
-                  lat: placeLat,
-                  lng: placeLng
-                }
-              };
-              allStops.push(stopData);
-              seenPlaceIds.add(place.id);
-              console.log(`✅ Added stop: ${stopData.name} (rating: ${place.rating || 'N/A'})`);
-            } else {
-              console.log(`⏭️ Skipped ${place.displayName?.text}: rating ${place.rating} too low`);
-            }
+            // Include ALL places - let selection logic handle quality
+            allStops.push({
+              name: place.displayName?.text || 'Unknown',
+              place_id: place.id,
+              types: place.types || [],
+              rating: place.rating || 0,
+              detour_minutes: 10,
+              reason: `${place.displayName?.text || 'Stop'} langs de route`,
+              location: {
+                lat: placeLat,
+                lng: placeLng
+              }
+            });
+            seenPlaceIds.add(place.id);
           }
         }
 
