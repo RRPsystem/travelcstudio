@@ -426,7 +426,7 @@ Deno.serve(async (req: Request) => {
       const corridorKms = corridorPoints.map(p => `${p.corridorKm.toFixed(0)}km`).join(', ');
       console.log(`📍 Corridor points: ${corridorKms}`);
 
-      const placesSearchUrl = 'https://places.googleapis.com/v1/places:searchText';
+      const placesSearchUrl = 'https://places.googleapis.com/v1/places:searchNearby';
       const searchRadius = routeConfig.searchRadiusKm * 1000;
 
       const allCandidates = [];
@@ -437,7 +437,25 @@ Deno.serve(async (req: Request) => {
           console.log(`🔎 Searching near km ${point.corridorKm.toFixed(0)} (${point.lat.toFixed(4)}, ${point.lng.toFixed(4)})`);
 
           const searchBody = {
-            textQuery: "scenic viewpoint tourist attraction park museum landmark nature cafe restaurant",
+            includedTypes: [
+              'tourist_attraction',
+              'park',
+              'natural_feature',
+              'museum',
+              'art_gallery',
+              'viewpoint',
+              'landmark',
+              'point_of_interest',
+              'cafe',
+              'restaurant',
+              'bakery',
+              'lake',
+              'beach',
+              'waterfall',
+              'castle',
+              'garden',
+              'playground'
+            ],
             locationRestriction: {
               circle: {
                 center: {
@@ -447,8 +465,8 @@ Deno.serve(async (req: Request) => {
                 radius: searchRadius
               }
             },
-            maxResultCount: 5,
-            languageCode: "nl"
+            maxResultCount: 20,
+            languageCode: 'nl'
           };
 
           const response = await fetch(placesSearchUrl, {
@@ -456,7 +474,7 @@ Deno.serve(async (req: Request) => {
             headers: {
               'Content-Type': 'application/json',
               'X-Goog-Api-Key': googleMapsApiKey,
-              'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.id,places.types,places.rating'
+              'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.types'
             },
             body: JSON.stringify(searchBody)
           });
