@@ -55,6 +55,9 @@ const POI_BLACKLIST = [
   'golf'
 ];
 
+const EATERY_TYPES = ['restaurant', 'cafe', 'bakery', 'ice_cream_shop', 'fast_food'];
+const KID_FRIENDLY_KEYWORDS = ['kids', 'kinder', 'child', 'family', 'enfant', 'playground', 'speelhoek', 'speeltuin', 'pizza', 'pancake', 'diner', 'ijs', 'ice cream', 'gelato'];
+
 const MAJOR_ROAD_PATTERN = /\b(I-?\d+|US-?\d+|CA-?\d+|State Route \d+|Highway \d+|A\d+|D\d+|SS\d+|N\d+|M\d+|E\d+|Route \d+|Autoroute|Route nationale|Route départementale|Périphérique|Rocade)\b/i;
 const MAX_DETOUR_MINUTES = 15;
 
@@ -287,6 +290,29 @@ async function calculateDetourMinutes(
   }
 
   return 999;
+}
+
+function isKidFriendly(place: any): boolean {
+  const name = (place.displayName?.text || '').toLowerCase();
+  const description = (place.editorialSummary?.text || '').toLowerCase();
+  const combinedText = `${name} ${description}`;
+
+  return KID_FRIENDLY_KEYWORDS.some(keyword => combinedText.includes(keyword.toLowerCase()));
+}
+
+function scoreEatery(eatery: any, detourMinutes: number, usedCuisines: string[]): number {
+  const rating = eatery.rating || 3.0;
+  const kidFriendly = isKidFriendly(eatery);
+  const cuisine = eatery.types?.[0] || 'restaurant';
+  const isNewCuisine = !usedCuisines.includes(cuisine);
+
+  let score = 0;
+  score -= detourMinutes * 0.5;
+  score += rating * 0.3;
+  score += kidFriendly ? 0.2 : 0;
+  score += isNewCuisine ? 0.15 : 0;
+
+  return score;
 }
 
 function calculateTourismScore(types: string[], rating?: number): number {
@@ -634,6 +660,142 @@ Deno.serve(async (req: Request) => {
       console.log(`✅ Selected ${waypoints.length} corridor POIs (all between km ${routeConfig.minKmFromOrigin}-${(routeDistanceKm - routeConfig.minKmBeforeDestination).toFixed(0)}, detour ≤${MAX_DETOUR_MINUTES}min)`);
     }
 
+    let eateriesOnRoute: any[] = [];
+    let eateriesAtArrival: any[] = [];
+
+    if (includeWaypoints) {
+      console.log('\n🍽️ Searching for eateries...');
+
+      const allEateries: any[] = [];
+      const usedCuisines: string[] = [];
+
+      const eateryPoints = corridorPoints.filter((_, idx) => idx % 2 === 0);
+
+      for (const point of eateryPoints) {
+        try {
+          const searchBody = {
+            includedTypes: EATERY_TYPES,
+            locationRestriction: {
+              circle: {
+                center: { latitude: point.lat, longitude: point.lng },
+                radius: routeConfig.searchRadiusKm * 1000
+              }
+            },
+            maxResultCount: 10,
+            languageCode: 'nl'
+          };
+
+          const response = await fetch(placesSearchUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': googleMapsApiKey,
+              'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.types,places.location,places.rating,places.priceLevel,places.editorialSummary'
+            },
+            body: JSON.stringify(searchBody)
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const places = data.places || [];
+
+            for (const place of places) {
+              const poiLocation = { lat: place.location?.latitude || 0, lng: place.location?.longitude || 0 };
+              const distanceFromOrigin = haversineDistance(poiLocation, originPoint) / 1000;
+
+              if (distanceFromOrigin >= routeConfig.minKmFromOrigin) {
+                const detourMinutes = await calculateDetourMinutes(poiLocation, point, googleMapsApiKey);
+
+                if (detourMinutes <= MAX_DETOUR_MINUTES) {
+                  allEateries.push({
+                    name: place.displayName?.text || 'Unknown',
+                    address: place.formattedAddress || '',
+                    type: place.types?.[0] || 'restaurant',
+                    location: poiLocation,
+                    detourMinutes,
+                    kidFriendly: isKidFriendly(place),
+                    priceLevel: place.priceLevel || 2,
+                    rating: place.rating || 3.0,
+                    placeId: place.id
+                  });
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('❌ Eatery search error:', error);
+        }
+      }
+
+      const uniqueEateries = Array.from(new Map(allEateries.map(e => [e.placeId, e])).values());
+      const scoredEateries = uniqueEateries.map(e => ({
+        ...e,
+        score: scoreEatery(e, e.detourMinutes, usedCuisines)
+      })).sort((a, b) => b.score - a.score);
+
+      eateriesOnRoute = scoredEateries.slice(0, 3).map(e => {
+        usedCuisines.push(e.type);
+        return {
+          name: e.name,
+          address: e.address,
+          type: e.type,
+          detour_min: e.detourMinutes,
+          kid_friendly: e.kidFriendly,
+          price_level: e.priceLevel,
+          rating: e.rating,
+          note: e.kidFriendly ? 'Geschikt voor kinderen' : ''
+        };
+      });
+
+      try {
+        const arrivalLocation = decodedPolyline[decodedPolyline.length - 1];
+        const arrivalSearchBody = {
+          includedTypes: EATERY_TYPES,
+          locationRestriction: {
+            circle: {
+              center: { latitude: arrivalLocation.lat, longitude: arrivalLocation.lng },
+              radius: 1000
+            }
+          },
+          maxResultCount: 10,
+          languageCode: 'nl'
+        };
+
+        const response = await fetch(placesSearchUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': googleMapsApiKey,
+            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.types,places.location,places.rating,places.priceLevel,places.editorialSummary'
+          },
+          body: JSON.stringify(arrivalSearchBody)
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const places = data.places || [];
+
+          eateriesAtArrival = places.slice(0, 3).map((place: any) => ({
+            name: place.displayName?.text || 'Unknown',
+            address: place.formattedAddress || '',
+            type: place.types?.[0] || 'restaurant',
+            distance_m: Math.round(haversineDistance(
+              { lat: place.location?.latitude || 0, lng: place.location?.longitude || 0 },
+              arrivalLocation
+            )),
+            kid_friendly: isKidFriendly(place),
+            price_level: place.priceLevel || 2,
+            rating: place.rating || 3.0,
+            note: 'In centrum nabij aankomst'
+          }));
+        }
+      } catch (error) {
+        console.error('❌ Arrival eatery search error:', error);
+      }
+
+      console.log(`✅ Found ${eateriesOnRoute.length} eateries on route, ${eateriesAtArrival.length} at arrival`);
+    }
+
     const response: RouteResponse = {
       success: true,
       route: {
@@ -641,6 +803,8 @@ Deno.serve(async (req: Request) => {
         duration: leg.duration.text,
         steps: compressedSteps,
         waypoints: waypoints.length > 0 ? waypoints : undefined,
+        eateriesOnRoute: eateriesOnRoute.length > 0 ? eateriesOnRoute : undefined,
+        eateriesAtArrival: eateriesAtArrival.length > 0 ? eateriesAtArrival : undefined,
         overview: {
           summary: route.summary || `Route van ${from} naar ${to}`,
           distanceMeters: leg.distance.value,
