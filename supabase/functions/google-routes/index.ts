@@ -10,21 +10,19 @@ const corsHeaders = {
 const POI_WHITELIST = [
   'tourist_attraction',
   'park',
-  'natural_feature',
   'museum',
   'art_gallery',
-  'viewpoint',
-  'landmark',
-  'point_of_interest',
   'cafe',
   'restaurant',
   'bakery',
-  'lake',
   'beach',
-  'waterfall',
-  'castle',
   'garden',
-  'playground'
+  'playground',
+  'campground',
+  'hiking_area',
+  'national_park',
+  'visitor_center',
+  'scenic_overlook'
 ];
 
 const POI_BLACKLIST = [
@@ -440,21 +438,18 @@ Deno.serve(async (req: Request) => {
             includedTypes: [
               'tourist_attraction',
               'park',
-              'natural_feature',
               'museum',
               'art_gallery',
-              'viewpoint',
-              'landmark',
-              'point_of_interest',
               'cafe',
               'restaurant',
               'bakery',
-              'lake',
               'beach',
-              'waterfall',
-              'castle',
               'garden',
-              'playground'
+              'playground',
+              'campground',
+              'hiking_area',
+              'national_park',
+              'visitor_center'
             ],
             locationRestriction: {
               circle: {
