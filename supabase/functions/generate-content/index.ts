@@ -282,11 +282,15 @@ Deno.serve(async (req: Request) => {
                 locationRestriction: {
                   circle: {
                     center: { latitude: point.lat, longitude: point.lng },
-                    radius: 12000
+                    radius: 8000
                   }
                 },
-                includedTypes: ['tourist_attraction', 'park', 'museum', 'art_gallery', 'aquarium', 'zoo', 'amusement_park'],
-                maxResultCount: 15
+                includedTypes: [
+                  'tourist_attraction', 'park', 'viewpoint', 'museum', 'playground',
+                  'cafe', 'restaurant', 'bakery', 'landmark', 'beach', 'lake',
+                  'waterfall', 'castle', 'garden', 'art_gallery', 'aquarium', 'zoo'
+                ],
+                maxResultCount: 20
               })
             }
           );
@@ -334,22 +338,37 @@ Deno.serve(async (req: Request) => {
           return a.detour_minutes - b.detour_minutes;
         });
 
+        // BOLT requirements: TIME_BUDGET limits + diversity
+        const maxStops = timeBudget === '1 dag' ? 4 : 7;
+        const minStops = timeBudget === '1 dag' ? 3 : 3;
+
         const diverseStops: RouteStop[] = [];
         const usedTypes = new Set<string>();
+        const typeGroups = {
+          nature: ['park', 'viewpoint', 'beach', 'lake', 'waterfall', 'garden'],
+          culture: ['museum', 'castle', 'landmark', 'art_gallery', 'tourist_attraction'],
+          food: ['cafe', 'restaurant', 'bakery'],
+          family: ['playground', 'zoo', 'aquarium']
+        };
 
+        // First pass: ensure diversity across type groups
         for (const stop of allStops) {
+          if (diverseStops.length >= maxStops) break;
+
           const primaryType = stop.types[0];
 
-          if (!usedTypes.has(primaryType) || (stop.rating && stop.rating >= 4.5)) {
+          // Add if we haven't used this exact type yet
+          if (!usedTypes.has(primaryType)) {
             diverseStops.push(stop);
             usedTypes.add(primaryType);
           }
-
-          if (timeBudget === '1 dag' && diverseStops.length >= 3) break;
-          if (diverseStops.length >= 5) break;
+          // Or add high-rated attractions even if type is duplicate
+          else if (stop.rating && stop.rating >= 4.5 && diverseStops.length < maxStops) {
+            diverseStops.push(stop);
+          }
         }
 
-        console.log(`\u2705 Selected ${diverseStops.length} diverse stops (max ${timeBudget === '1 dag' ? '3-4' : '4-5'} for time budget)`);
+        console.log(`\u2705 Selected ${diverseStops.length} diverse stops (min ${minStops}, max ${maxStops} for "${timeBudget || 'no limit'}")`);
 
         return diverseStops;
       } catch (error) {
