@@ -446,7 +446,7 @@ export function TravelBroSetup() {
         ? `Hoi ${clientNameText}! 👋\n\nJe reisagent heeft een persoonlijke TravelBRO assistent voor je klaargezet voor: *${selectedTrip.name}*\n\nJe kun je direct hier in WhatsApp al je vragen stellen over de reis! ✈️\n\nIk ben 24/7 beschikbaar om je te helpen. Tot zo! 🌴`
         : `Hoi ${clientNameText}! 👋\n\nJe reisagent heeft een persoonlijke TravelBRO assistent voor je klaargezet voor: *${selectedTrip.name}*\n\n📋 Vul eerst even je reisgegevens in via deze link:\n${clientLink}\n\nDaarna kun je direct hier in WhatsApp al je vragen stellen over de reis! ✈️\n\nIk ben 24/7 beschikbaar om je te helpen. Tot zo! 🌴`;
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/test-twilio`, {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -455,10 +455,15 @@ export function TravelBroSetup() {
         body: JSON.stringify({
           to: invitePhone,
           message: message,
+          brandId: user?.brand_id,
         }),
       });
 
-      if (!response.ok) throw new Error('Verzenden mislukt');
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Verzenden mislukt');
+      }
 
       alert(`✅ WhatsApp uitnodiging verzonden naar ${invitePhone}!`);
       setInvitePhone('');
