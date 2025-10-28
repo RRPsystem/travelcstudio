@@ -204,16 +204,23 @@ function extractCorridorPoints(
 
 function compressStepsToMajorTransitions(steps: any[]): Array<{ instruction: string; distance: string; duration: string }> {
   const compressed = [];
+  let lastRoadName = '';
 
   for (const step of steps) {
     const instruction = step.html_instructions?.replace(/<[^>]*>/g, '') || '';
 
     if (MAJOR_ROAD_PATTERN.test(instruction)) {
-      compressed.push({
-        instruction,
-        distance: step.distance.text,
-        duration: step.duration.text
-      });
+      const roadMatch = instruction.match(MAJOR_ROAD_PATTERN);
+      const roadName = roadMatch ? roadMatch[0] : '';
+
+      if (roadName && roadName !== lastRoadName) {
+        compressed.push({
+          instruction,
+          distance: step.distance.text,
+          duration: step.duration.text
+        });
+        lastRoadName = roadName;
+      }
     }
   }
 
@@ -227,13 +234,16 @@ function compressStepsToMajorTransitions(steps: any[]): Array<{ instruction: str
   }
 
   const lastStep = steps[steps.length - 1];
-  if (lastStep) {
+  if (lastStep && compressed.length > 0) {
     const lastInstruction = lastStep.html_instructions?.replace(/<[^>]*>/g, '') || 'Aankomst bestemming';
-    compressed.push({
-      instruction: lastInstruction,
-      distance: lastStep.distance.text,
-      duration: lastStep.duration.text
-    });
+    const lastEntry = compressed[compressed.length - 1];
+    if (!lastInstruction.includes(lastEntry.instruction.substring(0, 20))) {
+      compressed.push({
+        instruction: lastInstruction,
+        distance: lastStep.distance.text,
+        duration: lastStep.duration.text
+      });
+    }
   }
 
   return compressed.slice(0, 6);
@@ -413,6 +423,7 @@ Deno.serve(async (req: Request) => {
 
       const decodedPolyline = decodePolyline(polyline);
       const polylineDistances = calculatePolylineDistances(decodedPolyline);
+      const originPoint = decodedPolyline[0];
 
       const corridorPoints = extractCorridorPoints(
         polyline,
@@ -495,8 +506,12 @@ Deno.serve(async (req: Request) => {
                 };
 
                 const distanceFromCorridorPoint = haversineDistance(poiLocation, point) / 1000;
+                const distanceFromOrigin = haversineDistance(poiLocation, originPoint) / 1000;
+                const projectedPosition = projectPointOnPolyline(poiLocation, decodedPolyline, polylineDistances);
 
-                if (distanceFromCorridorPoint <= routeConfig.searchRadiusKm) {
+                if (distanceFromCorridorPoint <= routeConfig.searchRadiusKm &&
+                    distanceFromOrigin >= routeConfig.minKmFromOrigin &&
+                    projectedPosition.distanceKm >= routeConfig.minKmFromOrigin) {
                   const detourMinutes = await calculateDetourMinutes(
                     poiLocation,
                     point,
@@ -532,9 +547,28 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      const uniqueCandidates = Array.from(
-        new Map(allCandidates.map(poi => [poi.placeId, poi])).values()
-      );
+      const clusterRadius = 0.15;
+      const clusteredCandidates: any[] = [];
+      const processed = new Set<string>();
+
+      for (const candidate of allCandidates) {
+        if (processed.has(candidate.placeId)) continue;
+
+        const cluster = allCandidates.filter(other => {
+          if (processed.has(other.placeId)) return false;
+          const distance = haversineDistance(candidate.location, other.location) / 1000;
+          return distance <= clusterRadius;
+        });
+
+        const bestInCluster = cluster.reduce((best, current) =>
+          current.score > best.score ? current : best
+        );
+
+        clusteredCandidates.push(bestInCluster);
+        cluster.forEach(poi => processed.add(poi.placeId));
+      }
+
+      const uniqueCandidates = clusteredCandidates;
 
       const sortedPOIs = uniqueCandidates.sort((a, b) => b.score - a.score);
 
