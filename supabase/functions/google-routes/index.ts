@@ -385,6 +385,8 @@ interface RouteResponse {
       corridorKm?: number;
       detourMinutes?: number;
     }>;
+    eateriesOnRoute?: any[];
+    eateriesAtArrival?: any[];
     overview: {
       summary: string;
       distanceMeters: number;
@@ -472,6 +474,9 @@ Deno.serve(async (req: Request) => {
     console.log(`📋 Compressed ${leg.steps.length} steps → ${compressedSteps.length} major transitions`);
 
     let waypoints = [];
+    let eateriesOnRoute: any[] = [];
+    let eateriesAtArrival: any[] = [];
+
     if (includeWaypoints && routeType === 'toeristische-route') {
       const polyline = route.overview_polyline?.points;
       if (!polyline) {
@@ -658,12 +663,7 @@ Deno.serve(async (req: Request) => {
       });
 
       console.log(`✅ Selected ${waypoints.length} corridor POIs (all between km ${routeConfig.minKmFromOrigin}-${(routeDistanceKm - routeConfig.minKmBeforeDestination).toFixed(0)}, detour ≤${MAX_DETOUR_MINUTES}min)`);
-    }
 
-    let eateriesOnRoute: any[] = [];
-    let eateriesAtArrival: any[] = [];
-
-    if (includeWaypoints) {
       console.log('\n🍽️ Searching for eateries...');
 
       const allEateries: any[] = [];
