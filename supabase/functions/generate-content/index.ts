@@ -731,12 +731,39 @@ Deno.serve(async (req: Request) => {
         realTimeContext += `\n\nReisinfo van web:\n${searchResults}`;
       }
     } else if (contentType === 'route') {
+      // CRITICAL: Routes REQUIRE Google Maps API for stops
+      if (!googleMapsApiKey) {
+        return new Response(
+          JSON.stringify({
+            error: 'GOOGLE_MAPS_API_NOT_CONFIGURED',
+            message: 'Google Maps API is niet geconfigureerd. Routes kunnen niet gegenereerd worden zonder Google Maps API key voor route planning en stops.'
+          }),
+          {
+            status: 503,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+
       const routeMatch = prompt.match(/van\s+(.+?)\s+naar\s+(.+)/i) || prompt.match(/from\s+(.+?)\s+to\s+(.+)/i);
       if (routeMatch) {
         const origin = routeMatch[1].trim();
         const destination = routeMatch[2].trim();
 
         routePayload = await fetchCompleteRoute(origin, destination, options.routeType || 'snelle-route', options.days);
+
+        if (!routePayload) {
+          return new Response(
+            JSON.stringify({
+              error: 'ROUTE_CALCULATION_FAILED',
+              message: `Route van ${origin} naar ${destination} kon niet berekend worden. Mogelijke oorzaken:\n- Google Routes API error\n- Ongeldige locatie namen\n- Route te lang of onmogelijk\n\nControleer de locatie namen en probeer opnieuw.`
+            }),
+            {
+              status: 422,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
+        }
       }
     } else if (contentType === 'planning') {
       const placesInfo = await fetchPlacesInfo(prompt);
@@ -763,8 +790,18 @@ Deno.serve(async (req: Request) => {
         const stopsCount = routePayload.STOPS.length;
 
         if (stopsCount === 0) {
-          // No stops found - create a basic route description WITHOUT inventing stops
-          userPrompt = `Schrijf een routebeschrijving van ${routePayload.ORIGIN} naar ${routePayload.DESTINATION}.\n\nROUTE GEGEVENS:\n- Afstand: ${routePayload.DISTANCE_KM} km\n- Reistijd: ${routePayload.DURATION_NOSTOPS}\n- Route: ${routePayload.ROUTE_LINE}\n\nKRITIEKE INSTRUCTIE:\nEr zijn GEEN specifieke stops gevonden voor deze route. Schrijf daarom een KORTE, EENVOUDIGE routebeschrijving met:\n\n1. Een korte intro (2-3 zinnen) over de route\n2. Route-overzicht met afstand en reistijd\n3. De hoofdwegen die je neemt (uit ROUTE_LINE)\n4. Algemene tips (beste vertrektijd, tankstations, etc.)\n\nVerzin GEEN stops, plaatsen of attracties. Houd het simpel en feitelijk. Max 200 woorden.`;
+          // NO FALLBACK! Return error instead of generating generic text
+          return new Response(
+            JSON.stringify({
+              error: 'NO_STOPS_FOUND',
+              message: `Geen interessante stops gevonden langs de route ${routePayload.ORIGIN} → ${routePayload.DESTINATION}. Dit kan komen door:\n- Te weinig toeristische attracties langs deze route\n- Google Places API configuratie problemen\n- Route via afgelegen gebied\n\nRoute details:\n- Afstand: ${routePayload.DISTANCE_KM} km\n- Route: ${routePayload.ROUTE_LINE}\n\nProbeer een andere route of neem contact op met de beheerder.`,
+              route_data: routePayload
+            }),
+            {
+              status: 422,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
         } else {
           userPrompt = `🚨 STRIKTE REGELS - LEES DIT EERST:
 1. Gebruik ALLEEN de ${stopsCount} stops hieronder - GEEN andere plaatsen verzinnen
