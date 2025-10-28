@@ -33,10 +33,29 @@ const POI_BLACKLIST = [
   'shopping_mall',
   'gas_station',
   'atm',
-  'bank'
+  'bank',
+  'store',
+  'clothing_store',
+  'convenience_store',
+  'electronics_store',
+  'furniture_store',
+  'hardware_store',
+  'home_goods_store',
+  'jewelry_store',
+  'shoe_store',
+  'sporting_goods_store',
+  'hotel',
+  'lodging',
+  'real_estate_agency',
+  'car_dealer',
+  'car_rental',
+  'car_repair',
+  'car_wash',
+  'parking',
+  'golf'
 ];
 
-const MAJOR_ROAD_PATTERN = /\b(I-?\d+|US-?\d+|CA-?\d+|State Route \d+|Highway \d+|A\d+|D\d+|SS\d+|N\d+|M\d+|E\d+|Route \d+)\b/i;
+const MAJOR_ROAD_PATTERN = /\b(I-?\d+|US-?\d+|CA-?\d+|State Route \d+|Highway \d+|A\d+|D\d+|SS\d+|N\d+|M\d+|E\d+|Route \d+|Autoroute|Route nationale|Route départementale|Périphérique|Rocade)\b/i;
 const MAX_DETOUR_MINUTES = 15;
 
 function getRouteConstants(routeDistanceKm: number) {
@@ -270,25 +289,46 @@ async function calculateDetourMinutes(
   return 999;
 }
 
-function scorePOI(poi: any, detourMinutes: number, previousTypes: string[]): number {
+function calculateTourismScore(types: string[], rating?: number): number {
+  const HIGH_VALUE = ['tourist_attraction', 'museum', 'art_gallery', 'park', 'national_park', 'beach', 'garden', 'playground', 'campground', 'hiking_area', 'visitor_center'];
+  const MEDIUM_VALUE = ['cafe', 'restaurant', 'bakery'];
+
   let score = 0;
 
+  for (const type of types) {
+    if (HIGH_VALUE.includes(type)) score += 3;
+    else if (MEDIUM_VALUE.includes(type)) score += 1;
+  }
+
+  if (rating && rating >= 4.5) score += 3;
+  else if (rating && rating >= 4.0) score += 2;
+  else if (rating && rating >= 3.5) score += 1;
+
+  return score;
+}
+
+function scorePOI(poi: any, detourMinutes: number, previousTypes: string[]): number {
   const types = poi.types || [];
   const primaryTypes = types.filter((t: string) => POI_WHITELIST.includes(t));
 
-  if (primaryTypes.length > 0) {
-    score += 0.5;
+  const tourismScore = calculateTourismScore(types, poi.rating);
+
+  if (tourismScore < 3) {
+    return 0;
   }
+
+  let score = tourismScore * 0.4;
 
   score -= (detourMinutes / MAX_DETOUR_MINUTES) * 0.3;
 
-  if (poi.rating) {
-    score += (poi.rating / 5) * 0.2;
+  const newTypes = primaryTypes.filter((t: string) => !previousTypes.includes(t));
+  if (newTypes.length > 0) {
+    score += newTypes.length * 0.25;
   }
 
-  const typeOverlap = primaryTypes.filter((t: string) => previousTypes.includes(t)).length;
-  if (typeOverlap > 0) {
-    score -= 0.2;
+  const hasTopAttraction = types.includes('tourist_attraction');
+  if (hasTopAttraction) {
+    score += 0.5;
   }
 
   return score;
