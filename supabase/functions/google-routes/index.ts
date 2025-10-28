@@ -7,6 +7,85 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
+function decodePolyline(encoded: string): Array<{ lat: number; lng: number }> {
+  const points = [];
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+
+  while (index < encoded.length) {
+    let shift = 0;
+    let result = 0;
+    let byte;
+
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+
+    const deltaLat = (result & 1) ? ~(result >> 1) : (result >> 1);
+    lat += deltaLat;
+
+    shift = 0;
+    result = 0;
+
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+
+    const deltaLng = (result & 1) ? ~(result >> 1) : (result >> 1);
+    lng += deltaLng;
+
+    points.push({
+      lat: lat / 1e5,
+      lng: lng / 1e5
+    });
+  }
+
+  return points;
+}
+
+function extractPointsAlongRoute(encodedPolyline: string, intervalMeters: number): Array<{ lat: number; lng: number }> {
+  const decodedPoints = decodePolyline(encodedPolyline);
+  if (decodedPoints.length === 0) return [];
+
+  const points = [decodedPoints[0]];
+  let distanceAccumulated = 0;
+
+  for (let i = 1; i < decodedPoints.length; i++) {
+    const prev = decodedPoints[i - 1];
+    const curr = decodedPoints[i];
+    const segmentDistance = haversineDistance(prev, curr);
+    distanceAccumulated += segmentDistance;
+
+    if (distanceAccumulated >= intervalMeters) {
+      points.push(curr);
+      distanceAccumulated = 0;
+    }
+  }
+
+  if (points.length < 2) {
+    points.push(decodedPoints[Math.floor(decodedPoints.length / 2)]);
+  }
+
+  return points;
+}
+
+function haversineDistance(point1: { lat: number; lng: number }, point2: { lat: number; lng: number }): number {
+  const R = 6371000;
+  const dLat = (point2.lat - point1.lat) * Math.PI / 180;
+  const dLng = (point2.lng - point1.lng) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(point1.lat * Math.PI / 180) * Math.cos(point2.lat * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 interface RouteRequest {
   from: string;
   to: string;
@@ -57,12 +136,10 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get Google Maps API key from database
     const { data: apiSettings, error: dbError } = await supabase
       .from('api_settings')
       .select('api_key')
@@ -80,19 +157,15 @@ Deno.serve(async (req: Request) => {
 
     const googleMapsApiKey = apiSettings.api_key;
 
-    // Determine travel mode and route preferences based on routeType
     let travelMode = 'DRIVE';
     let avoid = [];
     
     if (routeType === 'snelle-route') {
-      // Prefer fastest route - don't avoid anything
       avoid = [];
     } else if (routeType === 'toeristische-route') {
-      // Prefer scenic routes - avoid highways
       avoid = ['highways'];
     }
 
-    // Build Directions API URL
     let directionsUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(from)}&destination=${encodeURIComponent(to)}&mode=driving&key=${googleMapsApiKey}&language=nl`;
     
     if (avoid.length > 0) {
@@ -120,42 +193,116 @@ Deno.serve(async (req: Request) => {
 
     console.log('✅ Route found:', leg.distance.text, leg.duration.text);
 
-    // Get waypoints/points of interest along the route if requested
     let waypoints = [];
     if (includeWaypoints && routeType === 'toeristische-route') {
-      // Get midpoint for places search
-      const midLat = (leg.start_location.lat + leg.end_location.lat) / 2;
-      const midLng = (leg.start_location.lng + leg.end_location.lng) / 2;
+      console.log('🔍 Searching for scenic stops along route...');
 
-      // Search for tourist attractions near the route
-      const placesUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${midLat},${midLng}&radius=20000&type=tourist_attraction&key=${googleMapsApiKey}&language=nl`;
-      
-      console.log('Searching for tourist attractions along route...');
-      const placesResponse = await fetch(placesUrl);
-      const placesData = await placesResponse.json();
+      const polyline = route.overview_polyline?.points;
+      if (!polyline) {
+        console.error('❌ No polyline in route response');
+        return new Response(
+          JSON.stringify({ success: false, error: 'No route polyline available' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
-      if (placesData.status === 'OK' && placesData.results) {
-        waypoints = placesData.results.slice(0, 5).map((place: any) => ({
-          name: place.name,
-          location: {
-            lat: place.geometry.location.lat,
-            lng: place.geometry.location.lng
-          },
-          placeId: place.place_id,
-          description: place.vicinity
-        }));
-        console.log(`✅ Found ${waypoints.length} tourist attractions`);
+      const placesSearchUrl = 'https://places.googleapis.com/v1/places:searchText';
+      const searchRadius = 5000;
+
+      const supportedTypes = [
+        'tourist_attraction',
+        'park',
+        'museum',
+        'art_gallery',
+        'natural_feature',
+        'point_of_interest'
+      ];
+
+      const routePoints = extractPointsAlongRoute(polyline, 50000);
+      console.log(`📍 Extracted ${routePoints.length} search points along route`);
+
+      const allStops = [];
+      for (const point of routePoints) {
+        try {
+          const searchBody = {
+            textQuery: "scenic viewpoint tourist attraction park museum",
+            locationBias: {
+              circle: {
+                center: {
+                  latitude: point.lat,
+                  longitude: point.lng
+                },
+                radius: searchRadius
+              }
+            },
+            includedTypes: supportedTypes,
+            maxResultCount: 5,
+            languageCode: "nl"
+          };
+
+          console.log(`🔎 Searching near ${point.lat.toFixed(2)},${point.lng.toFixed(2)}...`);
+
+          const response = await fetch(placesSearchUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': googleMapsApiKey,
+              'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.id,places.types'
+            },
+            body: JSON.stringify(searchBody)
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`❌ Places API error at point ${point.lat},${point.lng}: ${response.status} ${errorText}\n`);
+            continue;
+          }
+
+          const data = await response.json();
+          if (data.places && data.places.length > 0) {
+            console.log(`✅ Found ${data.places.length} places near ${point.lat.toFixed(2)},${point.lng.toFixed(2)}`);
+            for (const place of data.places) {
+              allStops.push({
+                name: place.displayName?.text || 'Unknown',
+                location: {
+                  lat: place.location?.latitude,
+                  lng: place.location?.longitude
+                },
+                placeId: place.id,
+                description: place.formattedAddress || ''
+              });
+            }
+          } else {
+            console.log(`⚠️ No places found near ${point.lat.toFixed(2)},${point.lng.toFixed(2)}`);
+          }
+        } catch (error) {
+          console.error(`❌ Error searching point ${point.lat},${point.lng}:`, error);
+        }
+      }
+
+      const uniqueStops = Array.from(
+        new Map(allStops.map(stop => [stop.placeId, stop])).values()
+      );
+      waypoints = uniqueStops.slice(0, 10);
+
+      console.log(`\n📊 FINAL RESULTS:`);
+      console.log(`   - Search points: ${routePoints.length}`);
+      console.log(`   - Total stops found: ${allStops.length}`);
+      console.log(`   - Unique stops: ${uniqueStops.length}`);
+      console.log(`   - Returning: ${waypoints.length} stops\n`);
+
+      if (waypoints.length === 0) {
+        console.error('❌ NO STOPS FOUND! This is the problem.\n');
       }
     }
 
-    // Format the response
     const response: RouteResponse = {
       success: true,
       route: {
         distance: leg.distance.text,
         duration: leg.duration.text,
         steps: leg.steps.map((step: any) => ({
-          instruction: step.html_instructions.replace(/<[^>]*>/g, ''), // Remove HTML tags
+          instruction: step.html_instructions.replace(/<[^>]*>/g, ''),
           distance: step.distance.text,
           duration: step.duration.text
         })),
