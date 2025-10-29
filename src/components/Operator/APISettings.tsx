@@ -95,13 +95,16 @@ export function APISettings() {
     try {
       let query = supabase
         .from('api_settings')
-        .select('twilio_account_sid, twilio_auth_token, twilio_whatsapp_number, brand_id')
-        .eq('provider', 'Twilio');
+        .select('twilio_account_sid, twilio_auth_token, twilio_whatsapp_number, brand_id');
 
       if (selectedBrandId === 'all') {
-        query = query.is('brand_id', null);
+        query = query
+          .eq('provider', 'system')
+          .eq('service_name', 'Twilio WhatsApp');
       } else {
-        query = query.eq('brand_id', selectedBrandId);
+        query = query
+          .eq('provider', 'Twilio')
+          .eq('brand_id', selectedBrandId);
       }
 
       const { data, error: fetchError } = await query.maybeSingle();
@@ -214,13 +217,16 @@ export function APISettings() {
     try {
       let query = supabase
         .from('api_settings')
-        .select('id')
-        .eq('provider', 'Twilio');
+        .select('id');
 
       if (selectedBrandId === 'all') {
-        query = query.is('brand_id', null);
+        query = query
+          .eq('provider', 'system')
+          .eq('service_name', 'Twilio WhatsApp');
       } else {
-        query = query.eq('brand_id', selectedBrandId);
+        query = query
+          .eq('provider', 'Twilio')
+          .eq('brand_id', selectedBrandId);
       }
 
       const { data: existing } = await query.maybeSingle();
@@ -237,8 +243,8 @@ export function APISettings() {
           .from('api_settings')
           .insert({
             brand_id: selectedBrandId === 'all' ? null : selectedBrandId,
-            provider: 'Twilio',
-            service_name: 'WhatsApp',
+            provider: selectedBrandId === 'all' ? 'system' : 'Twilio',
+            service_name: selectedBrandId === 'all' ? 'Twilio WhatsApp' : 'WhatsApp',
             ...twilioSettings
           });
 
