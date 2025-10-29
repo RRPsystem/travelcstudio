@@ -82,14 +82,14 @@ export function TravelBroSetup() {
         .from('api_settings')
         .select('*')
         .eq('provider', 'system')
-        .eq('service_name', 'Twilio')
+        .eq('service_name', 'Twilio WhatsApp')
         .maybeSingle();
 
       setApiSettings({
         ...settings,
         twilio_account_sid: systemTwilio?.twilio_account_sid || settings?.twilio_account_sid,
         twilio_auth_token: systemTwilio?.twilio_auth_token || settings?.twilio_auth_token,
-        twilio_phone_number: systemTwilio?.twilio_phone_number || settings?.twilio_phone_number,
+        twilio_whatsapp_number: systemTwilio?.twilio_whatsapp_number || settings?.twilio_whatsapp_number,
       });
 
       const { data: brand } = await db.supabase
