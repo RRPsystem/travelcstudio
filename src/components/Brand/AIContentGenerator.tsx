@@ -774,27 +774,29 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
               </div>
             </div>
 
-            {/* More Settings */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Meer Instellingen:</h3>
-              <div className="grid grid-cols-3 gap-2">
-                {moreSettings.map((setting) => (
-                  <button
-                    key={setting.id}
-                    onClick={() => setSelectedMoreSetting(setting.id)}
-                    className={`p-2 border-2 rounded-lg transition-all shadow-sm hover:shadow-md ${
-                      selectedMoreSetting === setting.id
-                        ? 'border-orange-500 bg-orange-50 shadow-md'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
-                    }`}
-                  >
-                    <div className="text-base mb-0.5">{setting.icon}</div>
-                    <div className="text-xs font-medium text-gray-900">{setting.label}</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">{setting.description}</div>
-                  </button>
-                ))}
+            {/* More Settings (hide for route content type) */}
+            {selectedContentType !== 'route' && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Meer Instellingen:</h3>
+                <div className="grid grid-cols-3 gap-2">
+                  {moreSettings.map((setting) => (
+                    <button
+                      key={setting.id}
+                      onClick={() => setSelectedMoreSetting(setting.id)}
+                      className={`p-2 border-2 rounded-lg transition-all shadow-sm hover:shadow-md ${
+                        selectedMoreSetting === setting.id
+                          ? 'border-orange-500 bg-orange-50 shadow-md'
+                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                      }`}
+                    >
+                      <div className="text-base mb-0.5">{setting.icon}</div>
+                      <div className="text-xs font-medium text-gray-900">{setting.label}</div>
+                      <div className="text-[10px] text-gray-500 mt-0.5">{setting.description}</div>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Route Type (only show for route content type) */}
             {selectedContentType === 'route' && (
