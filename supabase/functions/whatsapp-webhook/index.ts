@@ -235,6 +235,62 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    const cleanBody = body.trim().toUpperCase();
+
+    if (cleanBody.length >= 6 && cleanBody.length <= 12) {
+      const { data: matchingTrip } = await supabase
+        .from('travel_trips')
+        .select('*, brand_id')
+        .ilike('share_token', `${cleanBody}%`)
+        .maybeSingle();
+
+      if (matchingTrip) {
+        console.log('Opt-in code matched:', { code: cleanBody, tripId: matchingTrip.id });
+
+        let { data: apiSettings } = await supabase
+          .from('api_settings')
+          .select('twilio_account_sid, twilio_auth_token, twilio_whatsapp_number')
+          .eq('provider', 'Twilio')
+          .eq('brand_id', matchingTrip.brand_id)
+          .maybeSingle();
+
+        if (!apiSettings?.twilio_account_sid || !apiSettings?.twilio_auth_token) {
+          const { data: systemSettings } = await supabase
+            .from('api_settings')
+            .select('twilio_account_sid, twilio_auth_token, twilio_whatsapp_number')
+            .eq('provider', 'system')
+            .eq('service_name', 'Twilio WhatsApp')
+            .maybeSingle();
+
+          if (systemSettings?.twilio_account_sid && systemSettings?.twilio_auth_token) {
+            apiSettings = systemSettings;
+          }
+        }
+
+        if (apiSettings) {
+          const clientLink = `https://${matchingTrip.travelbro_domain || 'travelbro.iwillio.com'}/${matchingTrip.share_token}`;
+
+          const welcomeMessage = matchingTrip.skip_intake
+            ? `✅ Welkom bij TravelBRO! Je bent nu verbonden met je persoonlijke reisassistent voor: *${matchingTrip.name}*\n\nJe kunt me direct al je vragen stellen over de reis! ✈️ Ik ben 24/7 beschikbaar. 🌴`
+            : `✅ Welkom bij TravelBRO! Je bent nu verbonden met je persoonlijke reisassistent voor: *${matchingTrip.name}*\n\n📋 Vul eerst even je reisgegevens in:\n${clientLink}\n\nDaarna kun je me direct al je vragen stellen! ✈️ Ik ben 24/7 beschikbaar. 🌴`;
+
+          await sendWhatsAppMessage(
+            from,
+            welcomeMessage,
+            apiSettings.twilio_account_sid,
+            apiSettings.twilio_auth_token,
+            apiSettings.twilio_whatsapp_number || to
+          );
+
+          await getOrCreateSession(supabase, matchingTrip.id, matchingTrip.brand_id, from);
+        }
+
+        return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
+          headers: { 'Content-Type': 'text/xml' },
+        });
+      }
+    }
+
     const { data: trip } = await supabase
       .from('travel_trips')
       .select('*')

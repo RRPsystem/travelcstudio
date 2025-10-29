@@ -519,6 +519,41 @@ export function TravelBroSetup() {
     }
   };
 
+  const generateOptInCode = () => {
+    if (!selectedTrip) {
+      alert('Selecteer eerst een reis');
+      return;
+    }
+
+    const code = selectedTrip.share_token.substring(0, 8).toUpperCase();
+    const whatsappNumber = apiSettings?.twilio_whatsapp_number || '+14155238886';
+    const cleanNumber = whatsappNumber.replace('whatsapp:', '').replace('+', '');
+    const clientNameText = inviteClientName.trim() || 'Reiziger';
+
+    const message = `📱 WhatsApp Uitnodiging voor ${clientNameText}
+
+🔐 Activatie Code: ${code}
+
+Stuur de klant het volgende bericht:
+
+━━━━━━━━━━━━━━━━━━━━━
+"Hoi ${clientNameText}! 👋
+
+Voor jouw reis "${selectedTrip.name}" hebben we een persoonlijke TravelBRO assistent klaargezet.
+
+Stuur de volgende code naar dit nummer om te starten:
+
+📱 +${cleanNumber}
+🔐 Code: ${code}
+
+Stuur gewoon de code als bericht en je TravelBRO is direct beschikbaar! ✈️"
+━━━━━━━━━━━━━━━━━━━━━
+
+De klant kan nu de code sturen en daarna direct chatten zonder template restricties!`;
+
+    alert(message);
+  };
+
   const sendWhatsAppInvite = async () => {
     if (!selectedTrip || !invitePhone.trim()) {
       alert('Vul een telefoonnummer in');
@@ -1458,23 +1493,41 @@ export function TravelBroSetup() {
                     </label>
                   </div>
 
-                  <button
-                    onClick={sendWhatsAppInvite}
-                    disabled={sendingInvite || !isTwilioConfigured || !invitePhone.trim()}
-                    className="w-full flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-                  >
-                    {sendingInvite ? (
-                      <>
-                        <Loader className="w-5 h-5 animate-spin" />
-                        <span>Verzenden...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Send size={20} />
-                        <span>Verstuur WhatsApp Uitnodiging</span>
-                      </>
-                    )}
-                  </button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={generateOptInCode}
+                      disabled={!selectedTrip}
+                      className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg font-semibold transition-colors"
+                    >
+                      <Phone size={20} />
+                      <span>Opt-in Code</span>
+                    </button>
+
+                    <button
+                      onClick={sendWhatsAppInvite}
+                      disabled={sendingInvite || !isTwilioConfigured || !invitePhone.trim()}
+                      className="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg font-semibold transition-colors"
+                    >
+                      {sendingInvite ? (
+                        <>
+                          <Loader className="w-5 h-5 animate-spin" />
+                          <span>Verzenden...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send size={20} />
+                          <span>Template</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4">
+                    <p className="text-xs text-amber-900">
+                      <strong>💡 Tip:</strong> Gebruik de <strong>Opt-in Code</strong> optie om template problemen te vermijden.
+                      De klant stuurt eerst een code naar jouw WhatsApp nummer, waarna je 24 uur vrij kunt chatten!
+                    </p>
+                  </div>
                 </div>
               </div>
 
