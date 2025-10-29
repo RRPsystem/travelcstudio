@@ -532,12 +532,7 @@ export function TravelBroSetup() {
 
     setSendingInvite(true);
     try {
-      const clientLink = getShareUrl(selectedTrip.share_token);
-      const clientNameText = inviteClientName.trim() ? inviteClientName.trim() : 'Alex';
-
-      const message = skipIntake
-        ? `Hoi ${clientNameText}! 👋\n\nJe reisagent heeft een persoonlijke TravelBRO assistent voor je klaargezet voor: *${selectedTrip.name}*\n\nJe kun je direct hier in WhatsApp al je vragen stellen over de reis! ✈️\n\nIk ben 24/7 beschikbaar om je te helpen. Tot zo! 🌴`
-        : `Hoi ${clientNameText}! 👋\n\nJe reisagent heeft een persoonlijke TravelBRO assistent voor je klaargezet voor: *${selectedTrip.name}*\n\n📋 Vul eerst even je reisgegevens in via deze link:\n${clientLink}\n\nDaarna kun je direct hier in WhatsApp al je vragen stellen over de reis! ✈️\n\nIk ben 24/7 beschikbaar om je te helpen. Tot zo! 🌴`;
+      const clientNameText = inviteClientName.trim() ? inviteClientName.trim() : 'Reiziger';
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp`, {
         method: 'POST',
@@ -547,8 +542,12 @@ export function TravelBroSetup() {
         },
         body: JSON.stringify({
           to: invitePhone,
-          message: message,
           brandId: user?.brand_id,
+          useTemplate: true,
+          templateSid: 'HX01a2453a98f1070954288e9c01d7bfa3',
+          templateVariables: {
+            '1': clientNameText
+          }
         }),
       });
 
