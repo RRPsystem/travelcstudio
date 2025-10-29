@@ -519,174 +519,22 @@ export function TravelBroSetup() {
     }
   };
 
-  const generateQRCode = () => {
-    if (!selectedTrip) {
-      alert('Selecteer eerst een reis');
-      return;
-    }
+  const [showQRCode, setShowQRCode] = useState(false);
+
+  const toggleQRCode = () => {
+    setShowQRCode(!showQRCode);
+  };
+
+  const getQRCodeData = () => {
+    if (!selectedTrip) return null;
 
     const code = selectedTrip.share_token.substring(0, 8).toUpperCase();
     const whatsappNumber = apiSettings?.twilio_whatsapp_number || '+14155238886';
     const cleanNumber = whatsappNumber.replace('whatsapp:', '').replace('+', '');
-
     const whatsappUrl = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(code)}`;
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(whatsappUrl)}`;
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(whatsappUrl)}`;
 
-    const qrWindow = window.open('', '_blank', 'width=500,height=700');
-    if (qrWindow) {
-      const clientNameText = inviteClientName.trim() || 'Reiziger';
-      qrWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>WhatsApp QR Code - ${selectedTrip.name}</title>
-          <style>
-            body {
-              font-family: system-ui, -apple-system, sans-serif;
-              max-width: 500px;
-              margin: 0 auto;
-              padding: 20px;
-              text-align: center;
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              min-height: 100vh;
-            }
-            .container {
-              background: white;
-              border-radius: 20px;
-              padding: 30px;
-              box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            }
-            h1 {
-              color: #1f2937;
-              font-size: 24px;
-              margin-bottom: 10px;
-            }
-            .trip-name {
-              color: #6b7280;
-              font-size: 16px;
-              margin-bottom: 20px;
-            }
-            .qr-code {
-              margin: 20px 0;
-              padding: 20px;
-              background: white;
-              border-radius: 15px;
-              border: 3px solid #f3f4f6;
-            }
-            .qr-code img {
-              width: 100%;
-              max-width: 300px;
-              height: auto;
-            }
-            .code {
-              font-size: 28px;
-              font-weight: bold;
-              color: #ea580c;
-              letter-spacing: 3px;
-              margin: 20px 0;
-              padding: 15px;
-              background: #fff7ed;
-              border-radius: 10px;
-              border: 2px dashed #ea580c;
-            }
-            .instructions {
-              text-align: left;
-              background: #f0fdf4;
-              padding: 20px;
-              border-radius: 10px;
-              margin-top: 20px;
-              border-left: 4px solid #22c55e;
-            }
-            .instructions h3 {
-              color: #166534;
-              margin-top: 0;
-              font-size: 16px;
-            }
-            .instructions ol {
-              color: #166534;
-              margin: 10px 0 0 0;
-              padding-left: 20px;
-            }
-            .instructions li {
-              margin: 8px 0;
-              line-height: 1.5;
-            }
-            .info-box {
-              background: #dbeafe;
-              padding: 15px;
-              border-radius: 10px;
-              margin-top: 20px;
-              border-left: 4px solid #3b82f6;
-              text-align: left;
-            }
-            .info-box strong {
-              color: #1e40af;
-              display: block;
-              margin-bottom: 5px;
-            }
-            .info-box p {
-              color: #1e40af;
-              margin: 5px 0;
-              font-size: 14px;
-              line-height: 1.5;
-            }
-            .print-btn {
-              background: #059669;
-              color: white;
-              border: none;
-              padding: 12px 30px;
-              border-radius: 8px;
-              font-size: 16px;
-              font-weight: 600;
-              cursor: pointer;
-              margin-top: 20px;
-            }
-            .print-btn:hover {
-              background: #047857;
-            }
-            @media print {
-              body {
-                background: white;
-              }
-              .print-btn {
-                display: none;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <h1>📱 WhatsApp QR Code</h1>
-            <div class="trip-name">Voor ${clientNameText} - ${selectedTrip.name}</div>
-
-            <div class="qr-code">
-              <img src="${qrCodeUrl}" alt="QR Code" />
-            </div>
-
-            <div class="code">${code}</div>
-
-            <div class="instructions">
-              <h3>✅ Hoe te gebruiken:</h3>
-              <ol>
-                <li><strong>Scan de QR code</strong> met je telefoon, of</li>
-                <li><strong>Stuur de code</strong> (${code}) naar +${cleanNumber}</li>
-                <li><strong>Chat direct</strong> met je TravelBRO assistent!</li>
-              </ol>
-            </div>
-
-            <div class="info-box">
-              <strong>💡 Over de 24-uur regel:</strong>
-              <p>WhatsApp Business heeft een 24-uur regel: na elk bericht van jou kunnen wij 24 uur lang vrij antwoorden.</p>
-              <p><strong>Voor een 4-weken vakantie is dit geen probleem!</strong> Elke vraag die je stelt herstart de 24-uur window. Zolang je af en toe een vraag stelt, blijft het gesprek actief. ✈️</p>
-            </div>
-
-            <button class="print-btn" onclick="window.print()">🖨️ Printen</button>
-          </div>
-        </body>
-        </html>
-      `);
-      qrWindow.document.close();
-    }
+    return { code, cleanNumber, qrCodeUrl };
   };
 
   const sendWhatsAppInvite = async () => {
@@ -1628,20 +1476,62 @@ export function TravelBroSetup() {
                     </label>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={generateQRCode}
-                      disabled={!selectedTrip}
-                      className="flex items-center justify-center space-x-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg font-semibold transition-colors"
-                    >
-                      <Phone size={20} />
-                      <span>📱 QR Code</span>
-                    </button>
+                  <button
+                    onClick={toggleQRCode}
+                    disabled={!selectedTrip}
+                    className="w-full flex items-center justify-center space-x-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg font-semibold transition-colors mb-4"
+                  >
+                    <Phone size={20} />
+                    <span>{showQRCode ? 'Verberg' : 'Toon'} QR Code</span>
+                  </button>
 
+                  {showQRCode && selectedTrip && (() => {
+                    const qrData = getQRCodeData();
+                    if (!qrData) return null;
+                    return (
+                      <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-6 mb-4 border-2 border-purple-200">
+                        <div className="text-center">
+                          <h4 className="text-lg font-semibold text-gray-900 mb-3">📱 Scan & Start</h4>
+
+                          <div className="bg-white rounded-lg p-4 inline-block shadow-md mb-4">
+                            <img
+                              src={qrData.qrCodeUrl}
+                              alt="QR Code"
+                              className="w-48 h-48 mx-auto"
+                            />
+                          </div>
+
+                          <div className="bg-orange-100 rounded-lg p-3 mb-4 border-2 border-dashed border-orange-400">
+                            <p className="text-xs text-gray-600 mb-1">Of stuur deze code:</p>
+                            <p className="text-2xl font-bold text-orange-600 tracking-wider">{qrData.code}</p>
+                            <p className="text-xs text-gray-600 mt-1">naar +{qrData.cleanNumber}</p>
+                          </div>
+
+                          <div className="bg-blue-50 rounded-lg p-3 text-left text-xs">
+                            <p className="text-blue-900 mb-2">
+                              <strong>✅ Hoe werkt het:</strong>
+                            </p>
+                            <p className="text-blue-800 mb-1">1. Klant scant QR code → WhatsApp opent automatisch</p>
+                            <p className="text-blue-800 mb-1">2. Code staat al ingevuld, klant tikt op verzenden</p>
+                            <p className="text-blue-800 mb-3">3. Direct chatten zonder template problemen!</p>
+
+                            <p className="text-blue-900 font-semibold mb-1">⏰ 24-uur regel:</p>
+                            <p className="text-blue-800">
+                              Na elk bericht van de klant kun je 24 uur vrij antwoorden.
+                              Voor vakanties geen probleem: elke vraag herstart de timer!
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <div className="border-t pt-4">
+                    <p className="text-sm text-gray-600 mb-3">Of gebruik een template (vereist goedkeuring):</p>
                     <button
                       onClick={sendWhatsAppInvite}
                       disabled={sendingInvite || !isTwilioConfigured || !invitePhone.trim()}
-                      className="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg font-semibold transition-colors"
+                      className="w-full flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg font-semibold transition-colors"
                     >
                       {sendingInvite ? (
                         <>
@@ -1651,19 +1541,10 @@ export function TravelBroSetup() {
                       ) : (
                         <>
                           <Send size={20} />
-                          <span>Template</span>
+                          <span>Verstuur via Template</span>
                         </>
                       )}
                     </button>
-                  </div>
-
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-                    <p className="text-xs text-blue-900 mb-2">
-                      <strong>📱 QR Code (Aanbevolen):</strong> Genereer een QR code die klanten kunnen scannen. Ze sturen automatisch de activatie code en kunnen daarna direct chatten!
-                    </p>
-                    <p className="text-xs text-blue-800">
-                      <strong>⏰ Over de 24-uur regel:</strong> Na elk bericht van de klant krijg je 24 uur om vrij te antwoorden. Voor een 4-weken vakantie is dit geen probleem - elke vraag herstart de timer!
-                    </p>
                   </div>
                 </div>
               </div>
