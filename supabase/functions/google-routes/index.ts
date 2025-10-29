@@ -794,7 +794,15 @@ Deno.serve(async (req: Request) => {
       }
 
       console.log(`✅ Found ${eateriesOnRoute.length} eateries on route, ${eateriesAtArrival.length} at arrival`);
+      console.log('📊 Eateries on route:', JSON.stringify(eateriesOnRoute, null, 2));
+      console.log('📊 Eateries at arrival:', JSON.stringify(eateriesAtArrival, null, 2));
     }
+
+    console.log('📦 Building response with:', {
+      waypoints: waypoints.length,
+      eateriesOnRoute: eateriesOnRoute.length,
+      eateriesAtArrival: eateriesAtArrival.length
+    });
 
     const response: RouteResponse = {
       success: true,

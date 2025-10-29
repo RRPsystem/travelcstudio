@@ -221,6 +221,13 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
 
           const routeResult = await routeResponse.json();
 
+          console.log('=== ROUTE API RESPONSE ===');
+          console.log('Full response:', JSON.stringify(routeResult, null, 2));
+          console.log('Has eateries on route?', !!routeResult.route?.eateriesOnRoute);
+          console.log('Has eateries at arrival?', !!routeResult.route?.eateriesAtArrival);
+          console.log('Eateries on route:', routeResult.route?.eateriesOnRoute);
+          console.log('Eateries at arrival:', routeResult.route?.eateriesAtArrival);
+
           if (routeResult.success && routeResult.route) {
             routeData = routeResult.route;
             response = `Route van ${routeFrom} naar ${routeTo} is berekend.`;
