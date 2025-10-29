@@ -224,134 +224,154 @@ function extractCorridorPoints(
   return points;
 }
 
-function compressStepsToMajorTransitions(steps: any[], routeType?: string): Array<{ instruction: string; distance: string; duration: string }> {
-  if (routeType === 'toeristische-route') {
-    return compressForScenicRoute(steps);
+function compressStepsToMajorTransitions(steps: any[], routeType?: string, totalDistanceKm?: number): Array<{ instruction: string; distance: string; duration: string }> {
+  const km = totalDistanceKm || 0;
+
+  const targetSteps =
+    km <= 200 ? 7 :
+    km <= 500 ? 10 :
+    km <= 900 ? 13 : 15;
+
+  const MIN_STEPS = 5;
+  const MAX_STEPS = 15;
+
+  const majorSteps = steps.filter(step => isMajorTransition(step));
+
+  let selected = selectMajorTransitions(majorSteps, steps, targetSteps);
+
+  selected = ensureAnchorCities(selected, steps, km);
+
+  if (selected.length < MIN_STEPS && steps.length >= MIN_STEPS) {
+    selected = distributeEvenly(steps, MIN_STEPS);
   }
 
-  return compressForFastRoute(steps);
+  if (selected.length > MAX_STEPS) {
+    selected = mergeMinorTransitions(selected, MAX_STEPS);
+  }
+
+  selected = forceEndAtGateway(selected, steps);
+
+  return selected.map(step => ({
+    instruction: step.html_instructions?.replace(/<[^>]*>/g, '') || '',
+    distance: step.distance.text,
+    duration: step.duration.text
+  }));
 }
 
-function compressForScenicRoute(steps: any[]): Array<{ instruction: string; distance: string; duration: string }> {
-  const compressed = [];
-  const significantSteps = [];
+function isMajorTransition(step: any): boolean {
+  const instruction = step.html_instructions?.replace(/<[^>]*>/g, '') || '';
 
-  for (const step of steps) {
-    const instruction = step.html_instructions?.replace(/<[^>]*>/g, '') || '';
-    const distance = step.distance.value || 0;
+  const hasMajorRoad = /\b(A|E|N|D|M|SS|US|I|CA|SR|Highway|Route|Autoroute)-?\s?\d+/i.test(instruction);
 
-    const isSignificant =
-      distance > 1000 ||
-      instruction.toLowerCase().includes('turn') ||
-      instruction.toLowerCase().includes('exit') ||
-      instruction.toLowerCase().includes('merge') ||
-      instruction.toLowerCase().includes('continue') ||
-      /\b(road|street|avenue|boulevard|drive|way|route|highway)\b/i.test(instruction);
+  const hasExitNumber = /exit\s+\d+|afrit\s+\d+|sortie\s+\d+/i.test(instruction);
 
-    if (isSignificant) {
-      significantSteps.push(step);
-    }
-  }
+  const isInterchange = /interchange|knooppunt|échangeur|junction/i.test(instruction);
 
-  const stepInterval = Math.max(1, Math.floor(significantSteps.length / 8));
+  const isRing = /ring|rocade|périphérique|beltway/i.test(instruction);
 
-  for (let i = 0; i < significantSteps.length; i += stepInterval) {
-    const step = significantSteps[i];
-    const instruction = step.html_instructions?.replace(/<[^>]*>/g, '') || '';
-    compressed.push({
-      instruction,
-      distance: step.distance.text,
-      duration: step.duration.text
-    });
-  }
+  const isTollOrPass = /toll|tol|péage|tunnel|pass|col/i.test(instruction);
 
-  if (steps.length > 0) {
-    const lastStep = steps[steps.length - 1];
-    const lastInstruction = lastStep.html_instructions?.replace(/<[^>]*>/g, '') || 'Aankomst bestemming';
-    if (compressed.length === 0 || !lastInstruction.includes(compressed[compressed.length - 1].instruction.substring(0, 20))) {
-      compressed.push({
-        instruction: lastInstruction,
-        distance: lastStep.distance.text,
-        duration: lastStep.duration.text
-      });
-    }
-  }
+  const isGateway = /enter|entrance|visitor center|park entrance|toegang/i.test(instruction);
 
-  return compressed;
+  return hasMajorRoad || hasExitNumber || isInterchange || isRing || isTollOrPass || isGateway;
 }
 
-function compressForFastRoute(steps: any[]): Array<{ instruction: string; distance: string; duration: string }> {
-  const compressed = [];
-  let cumulativeDistance = 0;
-  let cumulativeDuration = 0;
-  let lastMajorRoad = '';
-  let currentSegment: any = null;
+function selectMajorTransitions(majorSteps: any[], allSteps: any[], target: number): any[] {
+  if (majorSteps.length === 0) return [];
 
-  for (const step of steps) {
+  if (majorSteps.length <= target) {
+    return majorSteps;
+  }
+
+  const selected = [];
+  const interval = Math.floor(majorSteps.length / target);
+
+  for (let i = 0; i < majorSteps.length; i += interval) {
+    if (selected.length < target) {
+      selected.push(majorSteps[i]);
+    }
+  }
+
+  return selected;
+}
+
+function ensureAnchorCities(selected: any[], allSteps: any[], km: number): any[] {
+  if (km <= 500) return selected;
+
+  const anchorSpacing = 120;
+  const anchorsNeeded = Math.floor(km / anchorSpacing);
+
+  if (anchorsNeeded <= 1) return selected;
+
+  let cumulativeKm = 0;
+  const anchors: any[] = [];
+
+  for (const step of allSteps) {
+    cumulativeKm += (step.distance.value || 0) / 1000;
+
     const instruction = step.html_instructions?.replace(/<[^>]*>/g, '') || '';
-    const distanceValue = step.distance.value || 0;
-    const durationValue = step.duration.value || 0;
+    const hasCity = /\b[A-Z][a-zé]{3,}\b/.test(instruction);
 
-    if (MAJOR_ROAD_PATTERN.test(instruction)) {
-      const roadMatch = instruction.match(MAJOR_ROAD_PATTERN);
-      const roadName = roadMatch ? roadMatch[0] : '';
-
-      if (roadName && roadName !== lastMajorRoad) {
-        if (currentSegment) {
-          compressed.push(currentSegment);
-        }
-
-        currentSegment = {
-          instruction,
-          distance: step.distance.text,
-          duration: step.duration.text,
-          distanceValue,
-          durationValue
-        };
-        lastMajorRoad = roadName;
-        cumulativeDistance = distanceValue;
-        cumulativeDuration = durationValue;
-      } else if (currentSegment) {
-        cumulativeDistance += distanceValue;
-        cumulativeDuration += durationValue;
-        currentSegment.distance = formatDistance(cumulativeDistance);
-        currentSegment.duration = formatDuration(cumulativeDuration);
-      }
-    } else if (currentSegment) {
-      cumulativeDistance += distanceValue;
-      cumulativeDuration += durationValue;
-      currentSegment.distance = formatDistance(cumulativeDistance);
-      currentSegment.duration = formatDuration(cumulativeDuration);
+    if (hasCity && cumulativeKm >= anchorSpacing * (anchors.length + 1)) {
+      anchors.push(step);
     }
   }
 
-  if (currentSegment) {
-    compressed.push(currentSegment);
-  }
-
-  if (compressed.length === 0 && steps.length > 0) {
-    const firstInstruction = steps[0].html_instructions?.replace(/<[^>]*>/g, '') || 'Vertrek';
-    compressed.push({
-      instruction: firstInstruction,
-      distance: steps[0].distance.text,
-      duration: steps[0].duration.text
-    });
-  }
-
-  const lastStep = steps[steps.length - 1];
-  if (lastStep && compressed.length > 0) {
-    const lastInstruction = lastStep.html_instructions?.replace(/<[^>]*>/g, '') || 'Aankomst bestemming';
-    const lastEntry = compressed[compressed.length - 1];
-    if (!lastInstruction.includes(lastEntry.instruction.substring(0, 20))) {
-      compressed.push({
-        instruction: lastInstruction,
-        distance: lastStep.distance.text,
-        duration: lastStep.duration.text
-      });
+  const combined = [...selected];
+  for (const anchor of anchors) {
+    if (!combined.find(s => s === anchor)) {
+      combined.push(anchor);
     }
   }
 
-  return compressed.map(({ instruction, distance, duration }) => ({ instruction, distance, duration }));
+  return combined.sort((a, b) =>
+    allSteps.indexOf(a) - allSteps.indexOf(b)
+  );
+}
+
+function distributeEvenly(steps: any[], count: number): any[] {
+  if (steps.length <= count) return steps;
+
+  const selected = [];
+  const interval = Math.floor(steps.length / count);
+
+  for (let i = 0; i < steps.length && selected.length < count; i += interval) {
+    selected.push(steps[i]);
+  }
+
+  return selected;
+}
+
+function mergeMinorTransitions(steps: any[], maxSteps: number): any[] {
+  if (steps.length <= maxSteps) return steps;
+
+  const merged = [];
+  const interval = Math.ceil(steps.length / maxSteps);
+
+  for (let i = 0; i < steps.length; i += interval) {
+    merged.push(steps[i]);
+  }
+
+  return merged.slice(0, maxSteps);
+}
+
+function forceEndAtGateway(selected: any[], allSteps: any[]): any[] {
+  if (allSteps.length === 0) return selected;
+
+  const lastStep = allSteps[allSteps.length - 1];
+  const instruction = lastStep.html_instructions?.replace(/<[^>]*>/g, '') || '';
+
+  const isGateway =
+    /enter|entrance|visitor center|park entrance|toegang|centrum/i.test(instruction) ||
+    /destination|bestemming|arrivée/i.test(instruction);
+
+  if (isGateway && !selected.includes(lastStep)) {
+    selected.push(lastStep);
+  } else if (!selected.includes(lastStep)) {
+    selected[selected.length - 1] = lastStep;
+  }
+
+  return selected;
 }
 
 function formatDistance(meters: number): string {
@@ -571,8 +591,9 @@ Deno.serve(async (req: Request) => {
 
     console.log(`✅ Route found: ${leg.distance.text}, ${leg.duration.text}`);
 
-    const compressedSteps = compressStepsToMajorTransitions(leg.steps, routeType);
-    console.log(`📋 Compressed ${leg.steps.length} steps → ${compressedSteps.length} major transitions (${routeType || 'default'})`);
+    const routeDistanceKm = leg.distance.value / 1000;
+    const compressedSteps = compressStepsToMajorTransitions(leg.steps, routeType, routeDistanceKm);
+    console.log(`📋 Compressed ${leg.steps.length} steps → ${compressedSteps.length} major transitions (${routeDistanceKm.toFixed(0)}km, ${routeType || 'default'})`);
 
     let waypoints = [];
     let eateriesOnRoute: any[] = [];
