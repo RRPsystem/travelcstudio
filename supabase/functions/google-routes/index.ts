@@ -224,26 +224,109 @@ function extractCorridorPoints(
   return points;
 }
 
-function compressStepsToMajorTransitions(steps: any[]): Array<{ instruction: string; distance: string; duration: string }> {
+function compressStepsToMajorTransitions(steps: any[], routeType?: string): Array<{ instruction: string; distance: string; duration: string }> {
+  if (routeType === 'toeristische-route') {
+    return compressForScenicRoute(steps);
+  }
+
+  return compressForFastRoute(steps);
+}
+
+function compressForScenicRoute(steps: any[]): Array<{ instruction: string; distance: string; duration: string }> {
   const compressed = [];
-  let lastRoadName = '';
+  const significantSteps = [];
 
   for (const step of steps) {
     const instruction = step.html_instructions?.replace(/<[^>]*>/g, '') || '';
+    const distance = step.distance.value || 0;
+
+    const isSignificant =
+      distance > 1000 ||
+      instruction.toLowerCase().includes('turn') ||
+      instruction.toLowerCase().includes('exit') ||
+      instruction.toLowerCase().includes('merge') ||
+      instruction.toLowerCase().includes('continue') ||
+      /\b(road|street|avenue|boulevard|drive|way|route|highway)\b/i.test(instruction);
+
+    if (isSignificant) {
+      significantSteps.push(step);
+    }
+  }
+
+  const stepInterval = Math.max(1, Math.floor(significantSteps.length / 8));
+
+  for (let i = 0; i < significantSteps.length; i += stepInterval) {
+    const step = significantSteps[i];
+    const instruction = step.html_instructions?.replace(/<[^>]*>/g, '') || '';
+    compressed.push({
+      instruction,
+      distance: step.distance.text,
+      duration: step.duration.text
+    });
+  }
+
+  if (steps.length > 0) {
+    const lastStep = steps[steps.length - 1];
+    const lastInstruction = lastStep.html_instructions?.replace(/<[^>]*>/g, '') || 'Aankomst bestemming';
+    if (compressed.length === 0 || !lastInstruction.includes(compressed[compressed.length - 1].instruction.substring(0, 20))) {
+      compressed.push({
+        instruction: lastInstruction,
+        distance: lastStep.distance.text,
+        duration: lastStep.duration.text
+      });
+    }
+  }
+
+  return compressed;
+}
+
+function compressForFastRoute(steps: any[]): Array<{ instruction: string; distance: string; duration: string }> {
+  const compressed = [];
+  let cumulativeDistance = 0;
+  let cumulativeDuration = 0;
+  let lastMajorRoad = '';
+  let currentSegment: any = null;
+
+  for (const step of steps) {
+    const instruction = step.html_instructions?.replace(/<[^>]*>/g, '') || '';
+    const distanceValue = step.distance.value || 0;
+    const durationValue = step.duration.value || 0;
 
     if (MAJOR_ROAD_PATTERN.test(instruction)) {
       const roadMatch = instruction.match(MAJOR_ROAD_PATTERN);
       const roadName = roadMatch ? roadMatch[0] : '';
 
-      if (roadName && roadName !== lastRoadName) {
-        compressed.push({
+      if (roadName && roadName !== lastMajorRoad) {
+        if (currentSegment) {
+          compressed.push(currentSegment);
+        }
+
+        currentSegment = {
           instruction,
           distance: step.distance.text,
-          duration: step.duration.text
-        });
-        lastRoadName = roadName;
+          duration: step.duration.text,
+          distanceValue,
+          durationValue
+        };
+        lastMajorRoad = roadName;
+        cumulativeDistance = distanceValue;
+        cumulativeDuration = durationValue;
+      } else if (currentSegment) {
+        cumulativeDistance += distanceValue;
+        cumulativeDuration += durationValue;
+        currentSegment.distance = formatDistance(cumulativeDistance);
+        currentSegment.duration = formatDuration(cumulativeDuration);
       }
+    } else if (currentSegment) {
+      cumulativeDistance += distanceValue;
+      cumulativeDuration += durationValue;
+      currentSegment.distance = formatDistance(cumulativeDistance);
+      currentSegment.duration = formatDuration(cumulativeDuration);
     }
+  }
+
+  if (currentSegment) {
+    compressed.push(currentSegment);
   }
 
   if (compressed.length === 0 && steps.length > 0) {
@@ -268,7 +351,25 @@ function compressStepsToMajorTransitions(steps: any[]): Array<{ instruction: str
     }
   }
 
-  return compressed;
+  return compressed.map(({ instruction, distance, duration }) => ({ instruction, distance, duration }));
+}
+
+function formatDistance(meters: number): string {
+  const km = meters / 1000;
+  if (km < 1) {
+    return `${Math.round(meters)} m`;
+  }
+  return `${km.toFixed(1)} km`;
+}
+
+function formatDuration(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  if (hours > 0) {
+    return minutes > 0 ? `${hours} uur ${minutes} min.` : `${hours} uur`;
+  }
+  return `${minutes} min.`;
 }
 
 async function calculateDetourMinutes(
@@ -470,8 +571,8 @@ Deno.serve(async (req: Request) => {
 
     console.log(`✅ Route found: ${leg.distance.text}, ${leg.duration.text}`);
 
-    const compressedSteps = compressStepsToMajorTransitions(leg.steps);
-    console.log(`📋 Compressed ${leg.steps.length} steps → ${compressedSteps.length} major transitions`);
+    const compressedSteps = compressStepsToMajorTransitions(leg.steps, routeType);
+    console.log(`📋 Compressed ${leg.steps.length} steps → ${compressedSteps.length} major transitions (${routeType || 'default'})`);
 
     let waypoints = [];
     let eateriesOnRoute: any[] = [];
