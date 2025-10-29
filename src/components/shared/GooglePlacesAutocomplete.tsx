@@ -124,7 +124,10 @@ export function GooglePlacesAutocomplete({
           {suggestions.map((place) => (
             <button
               key={place.place_id}
-              onClick={() => handleSelect(place)}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleSelect(place);
+              }}
               className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
             >
               <div className="flex items-start gap-3">
