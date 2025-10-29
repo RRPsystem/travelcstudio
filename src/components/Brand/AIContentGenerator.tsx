@@ -214,7 +214,7 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
                 from: routeFrom,
                 to: routeTo,
                 routeType: selectedRouteType,
-                includeWaypoints: selectedRouteType === 'toeristische-route'
+                includeWaypoints: true
               })
             }
           );

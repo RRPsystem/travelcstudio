@@ -477,7 +477,7 @@ Deno.serve(async (req: Request) => {
     let eateriesOnRoute: any[] = [];
     let eateriesAtArrival: any[] = [];
 
-    if (includeWaypoints && routeType === 'toeristische-route') {
+    if (includeWaypoints) {
       const polyline = route.overview_polyline?.points;
       if (!polyline) {
         console.error('❌ No polyline in route response');
@@ -504,7 +504,7 @@ Deno.serve(async (req: Request) => {
       );
 
       const corridorKms = corridorPoints.map(p => `${p.corridorKm.toFixed(0)}km`).join(', ');
-      console.log(`�� Corridor points: ${corridorKms}`);
+      console.log(`📍 Corridor points: ${corridorKms}`);
 
       const placesSearchUrl = 'https://places.googleapis.com/v1/places:searchNearby';
       const searchRadius = routeConfig.searchRadiusKm * 1000;
