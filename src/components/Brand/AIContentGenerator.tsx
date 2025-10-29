@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { edgeAIService } from '../../lib/apiServices';
 import { supabase } from '../../lib/supabase';
 import { APIStatusChecker } from './APIStatusChecker';
+import { GooglePlacesAutocomplete } from '../shared/GooglePlacesAutocomplete';
 import { 
   X, 
   MapPin, 
@@ -71,6 +72,8 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
   const [currentInput, setCurrentInput] = useState('');
   const [routeFrom, setRouteFrom] = useState('');
   const [routeTo, setRouteTo] = useState('');
+  const [routeFromPlaceId, setRouteFromPlaceId] = useState('');
+  const [routeToPlaceId, setRouteToPlaceId] = useState('');
   
   // Chat state
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
@@ -880,29 +883,25 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
                     <h4 className="text-md font-medium text-gray-800">Route Details:</h4>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Van:</label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={routeFrom}
-                          onChange={(e) => setRouteFrom(e.target.value)}
-                          placeholder="Startlocatie"
-                          className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                        />
-                        <Mic className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      </div>
+                      <GooglePlacesAutocomplete
+                        value={routeFrom}
+                        onChange={(value, placeId) => {
+                          setRouteFrom(value);
+                          if (placeId) setRouteFromPlaceId(placeId);
+                        }}
+                        placeholder="Startlocatie"
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Naar:</label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={routeTo}
-                          onChange={(e) => setRouteTo(e.target.value)}
-                          placeholder="Eindlocatie"
-                          className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                        />
-                        <Mic className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      </div>
+                      <GooglePlacesAutocomplete
+                        value={routeTo}
+                        onChange={(value, placeId) => {
+                          setRouteTo(value);
+                          if (placeId) setRouteToPlaceId(placeId);
+                        }}
+                        placeholder="Eindlocatie"
+                      />
                     </div>
                   </div>
                 )}
