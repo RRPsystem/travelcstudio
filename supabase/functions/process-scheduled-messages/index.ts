@@ -88,17 +88,46 @@ Deno.serve(async (req: Request) => {
           continue;
         }
 
+        let templateSid = null;
+        let templateVariables = null;
+
+        if (msg.template_name) {
+          const { data: template } = await supabase
+            .from('whatsapp_templates')
+            .select('template_sid, variables')
+            .eq('name', msg.template_name)
+            .eq('is_active', true)
+            .or(`brand_id.eq.${msg.brand_id},brand_id.is.null`)
+            .maybeSingle();
+
+          if (template) {
+            templateSid = template.template_sid;
+            templateVariables = msg.template_variables || {};
+          } else {
+            console.warn(`Template "${msg.template_name}" not found for message ${msg.id}`);
+          }
+        }
+
+        const sendPayload: any = {
+          to: phoneNumber,
+          brandId: msg.brand_id
+        };
+
+        if (templateSid) {
+          sendPayload.useTemplate = true;
+          sendPayload.templateSid = templateSid;
+          sendPayload.templateVariables = templateVariables;
+        } else {
+          sendPayload.message = msg.message_content;
+        }
+
         const sendResponse = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${supabaseServiceKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            to: phoneNumber,
-            message: msg.message_content,
-            brandId: msg.brand_id
-          }),
+          body: JSON.stringify(sendPayload),
         });
 
         const sendResult = await sendResponse.json();
