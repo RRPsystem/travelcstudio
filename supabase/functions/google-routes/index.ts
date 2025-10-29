@@ -59,7 +59,7 @@ const EATERY_TYPES = ['restaurant', 'cafe', 'bakery', 'ice_cream_shop', 'fast_fo
 const KID_FRIENDLY_KEYWORDS = ['kids', 'kinder', 'child', 'family', 'enfant', 'playground', 'speelhoek', 'speeltuin', 'pizza', 'pancake', 'diner', 'ijs', 'ice cream', 'gelato'];
 
 const MAJOR_ROAD_PATTERN = /\b(I-?\d+|US-?\d+|CA-?\d+|State Route \d+|Highway \d+|A\d+|D\d+|SS\d+|N\d+|M\d+|E\d+|Route \d+|Autoroute|Route nationale|Route départementale|Périphérique|Rocade)\b/i;
-const MAX_DETOUR_MINUTES = 15;
+const MAX_DETOUR_MINUTES = 30;
 
 function getRouteConstants(routeDistanceKm: number) {
   const minKmFromOrigin = 20;
