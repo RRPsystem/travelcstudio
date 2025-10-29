@@ -131,7 +131,8 @@ Deno.serve(async (req: Request) => {
       const { data: googleSettings } = await supabase
         .from('api_settings')
         .select('api_key')
-        .eq('provider', 'Google Maps')
+        .eq('service_name', 'Google Maps API')
+        .eq('is_active', true)
         .maybeSingle();
 
       if (!googleSettings?.api_key) {
