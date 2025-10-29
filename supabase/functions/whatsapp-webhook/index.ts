@@ -291,16 +291,33 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const { data: trip } = await supabase
-      .from('travel_trips')
-      .select('*')
-      .eq('whatsapp_number', to)
-      .eq('whatsapp_enabled', true)
-      .eq('is_active', true)
+    const { data: existingSession } = await supabase
+      .from('travel_whatsapp_sessions')
+      .select('*, travel_trips(*)')
+      .eq('phone_number', from)
+      .order('last_message_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
+    let trip = null;
+
+    if (existingSession?.travel_trips) {
+      trip = existingSession.travel_trips;
+      console.log('Found trip via existing session:', trip.id);
+    } else {
+      const { data: tripByNumber } = await supabase
+        .from('travel_trips')
+        .select('*')
+        .eq('whatsapp_number', to)
+        .eq('whatsapp_enabled', true)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      trip = tripByNumber;
+    }
+
     if (!trip) {
-      console.log('No active trip found for WhatsApp number:', to);
+      console.log('No active trip found for phone:', from, 'or WhatsApp number:', to);
       return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
         headers: { 'Content-Type': 'text/xml' },
       });
