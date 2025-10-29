@@ -10,7 +10,16 @@ interface GenerateContentRequest {
   contentType: string;
   prompt: string;
   writingStyle?: string;
-  additionalContext?: string;
+  additionalContext?: string | {
+    from?: string;
+    to?: string;
+    distance?: string;
+    duration?: string;
+    waypoints?: any[];
+    eateriesOnRoute?: any[];
+    eateriesAtArrival?: any[];
+    [key: string]: any;
+  };
   options?: {
     vacationType?: string;
     vacationTypeDescription?: string;
@@ -573,7 +582,51 @@ Deno.serve(async (req: Request) => {
     };
 
     let userPrompt = prompt;
-    if (routePayload) {
+
+    if (contentType === 'route' && additionalContext && typeof additionalContext === 'object') {
+      const ctx = additionalContext as any;
+
+      userPrompt += `\n\n## Route Informatie:\n`;
+      userPrompt += `- Afstand: ${ctx.distance || 'Onbekend'}\n`;
+      userPrompt += `- Reistijd: ${ctx.duration || 'Onbekend'}\n`;
+
+      if (ctx.waypoints && ctx.waypoints.length > 0) {
+        userPrompt += `\n## Bezienswaardigheden onderweg (${ctx.waypoints.length}):\n`;
+        ctx.waypoints.forEach((wp: any, idx: number) => {
+          userPrompt += `${idx + 1}. ${wp.name} (km ${wp.corridorKm}, omweg ${wp.detourMinutes} min)\n`;
+          if (wp.description) userPrompt += `   ${wp.description}\n`;
+        });
+      }
+
+      if (ctx.eateriesOnRoute && ctx.eateriesOnRoute.length > 0) {
+        userPrompt += `\n## Aanbevolen Eetgelegenheden onderweg (${ctx.eateriesOnRoute.length}):\n`;
+        ctx.eateriesOnRoute.forEach((eat: any, idx: number) => {
+          userPrompt += `${idx + 1}. ${eat.name} - ${eat.type}\n`;
+          userPrompt += `   Adres: ${eat.address}\n`;
+          userPrompt += `   Rating: ${eat.rating}/5 | Prijsklasse: ${'€'.repeat(eat.price_level || 2)}\n`;
+          userPrompt += `   Omweg: ${eat.detour_minutes} minuten\n`;
+          if (eat.kid_friendly) userPrompt += `   ⭐ Kindvriendelijk\n`;
+          if (eat.note) userPrompt += `   ${eat.note}\n`;
+        });
+      }
+
+      if (ctx.eateriesAtArrival && ctx.eateriesAtArrival.length > 0) {
+        userPrompt += `\n## Eetgelegenheden bij aankomst (${ctx.eateriesAtArrival.length}):\n`;
+        ctx.eateriesAtArrival.forEach((eat: any, idx: number) => {
+          userPrompt += `${idx + 1}. ${eat.name} - ${eat.type}\n`;
+          userPrompt += `   Adres: ${eat.address}\n`;
+          userPrompt += `   Rating: ${eat.rating}/5 | Prijsklasse: ${'€'.repeat(eat.price_level || 2)}\n`;
+          userPrompt += `   Afstand: ${Math.round(eat.distance_m || 0)}m van centrum\n`;
+          if (eat.kid_friendly) userPrompt += `   ⭐ Kindvriendelijk\n`;
+          if (eat.note) userPrompt += `   ${eat.note}\n`;
+        });
+      }
+
+      userPrompt += `\n## Opdracht:\n`;
+      userPrompt += `Schrijf een boeiende routebeschrijving in ${writingStyle} stijl voor ${options.vacationType || 'algemene'} reizigers. `;
+      userPrompt += `Vermeld de bezienswaardigheden en eetgelegenheden op een natuurlijke manier in de tekst. `;
+      userPrompt += `Maak het persoonlijk en aantrekkelijk.`;
+    } else if (routePayload) {
       userPrompt = `
 Genereer een routebeschrijving voor de volgende route:
 
@@ -583,17 +636,19 @@ Afstand: ${routePayload.distance_km} km
 Reistijd non-stop: ${routePayload.duration_nonstop}
 
 ${routePayload.stops && routePayload.stops.length > 0 ? `Aanbevolen stops onderweg:
-${routePayload.stops.map((stop: RouteStop, i: number) => 
+${routePayload.stops.map((stop: RouteStop, i: number) =>
   `${i + 1}. ${stop.name} (${stop.rating}⭐) - ${stop.reason}`
 ).join('\n')}` : 'Geen stops aanbevolen voor deze route.'}
 
 ${routePayload.steps && routePayload.steps.length > 0 ? `Route overzicht:
-${routePayload.steps.slice(0, 5).map((step: CompressedStep) => 
+${routePayload.steps.slice(0, 5).map((step: CompressedStep) =>
   `- ${step.highway}: ${step.instruction}`
 ).join('\n')}` : ''}
 
 Schrijf een inspirerende routebeschrijving in Nederlandse taal die reizigers helpt deze route te ervaren.
 `;
+    } else if (additionalContext && typeof additionalContext === 'string') {
+      userPrompt += `\n\nExtra context: ${additionalContext}`;
     }
 
     const messages = [
@@ -603,7 +658,7 @@ Schrijf een inspirerende routebeschrijving in Nederlandse taal die reizigers hel
       },
       {
         role: 'user',
-        content: `${userPrompt}${additionalContext ? `\n\nExtra context: ${additionalContext}` : ''}`
+        content: userPrompt
       }
     ];
 
