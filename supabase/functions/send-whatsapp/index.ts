@@ -95,7 +95,7 @@ Deno.serve(async (req: Request) => {
 
     if (useTemplate && templateSid) {
       formData.append('ContentSid', templateSid);
-      if (templateVariables) {
+      if (templateVariables && Object.keys(templateVariables).length > 0) {
         formData.append('ContentVariables', JSON.stringify(templateVariables));
       }
     } else {
