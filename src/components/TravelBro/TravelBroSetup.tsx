@@ -544,10 +544,7 @@ export function TravelBroSetup() {
           to: invitePhone,
           brandId: user?.brand_id,
           useTemplate: true,
-          templateSid: 'HX01a2453a98f1070954288e9c01d7bfa3',
-          templateVariables: {
-            '1': clientNameText
-          }
+          templateSid: 'HX01a2453a98f1070954288e9c01d7bfa3'
         }),
       });
 

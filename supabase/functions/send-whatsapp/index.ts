@@ -95,10 +95,12 @@ Deno.serve(async (req: Request) => {
 
     if (useTemplate && templateSid) {
       formData.append('ContentSid', templateSid);
-      if (templateVariables && Object.keys(templateVariables).length > 0) {
-        formData.append('ContentVariables', JSON.stringify(templateVariables));
+      if (templateVariables && typeof templateVariables === 'object' && Object.keys(templateVariables).length > 0) {
+        const varsString = JSON.stringify(templateVariables);
+        console.log('Template variables being sent:', varsString);
+        formData.append('ContentVariables', varsString);
       }
-    } else {
+    } else if (message) {
       formData.append('Body', message);
     }
 
