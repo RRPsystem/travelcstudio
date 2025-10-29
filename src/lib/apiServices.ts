@@ -864,21 +864,27 @@ export class EdgeFunctionAIService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          origin: fromLocation,
-          destination: toLocation,
-          avoidHighways: isScenicRoute
+          from: fromLocation,
+          to: toLocation,
+          routeType: isScenicRoute ? 'toeristische-route' : 'snelle-route',
+          includeWaypoints: false
         }),
       });
 
       if (!routesResponse.ok) {
-        throw new Error('Failed to fetch route data');
+        const errorText = await routesResponse.text();
+        throw new Error(`Failed to fetch route data: ${errorText}`);
       }
 
       const routeData = await routesResponse.json();
 
-      const distanceKm = Math.round(routeData.distance / 1000);
-      const durationHours = Math.floor(routeData.duration / 3600);
-      const durationMinutes = Math.round((routeData.duration % 3600) / 60);
+      if (!routeData.success || !routeData.route) {
+        throw new Error(routeData.error || 'No route data received');
+      }
+
+      const distanceKm = Math.round(routeData.route.overview.distanceMeters / 1000);
+      const durationHours = Math.floor(routeData.route.overview.durationSeconds / 3600);
+      const durationMinutes = Math.round((routeData.route.overview.durationSeconds % 3600) / 60);
 
       const distance = `${distanceKm} km`;
       const duration = durationHours > 0
