@@ -65,32 +65,157 @@ Deno.serve(async (req: Request) => {
     if (req.method === "GET" && pathParts.includes("trips-api")) {
       console.log("[trips-api] Fetching trips for brand:", brand_id);
 
-      let query = supabase
-        .from("trips")
+      const page_id = url.searchParams.get("page_id");
+      const published_only = url.searchParams.get("published_only") === "true";
+
+      if (page_id) {
+        console.log("[trips-api] Fetching trip for page_id:", page_id);
+
+        const { data: assignment, error: assignmentError } = await supabase
+          .from("trip_brand_assignments")
+          .select(`
+            id,
+            trip_id,
+            status,
+            is_published,
+            page_id,
+            trips!inner (
+              id,
+              brand_id,
+              title,
+              slug,
+              description,
+              content,
+              featured_image,
+              price,
+              duration_days,
+              status,
+              published_at,
+              created_at
+            )
+          `)
+          .eq("brand_id", brand_id)
+          .eq("page_id", page_id)
+          .in("status", ["accepted", "mandatory"])
+          .maybeSingle();
+
+        if (assignmentError) {
+          console.error("[trips-api] Assignment error:", assignmentError);
+        }
+
+        if (assignment && assignment.trips) {
+          const trip = Array.isArray(assignment.trips) ? assignment.trips[0] : assignment.trips;
+
+          return new Response(
+            JSON.stringify({
+              trip: {
+                ...trip,
+                assignment_id: assignment.id,
+                assignment_status: assignment.status,
+                is_published: assignment.is_published,
+                source: 'assignment',
+              }
+            }),
+            { status: 200, headers: corsHeaders }
+          );
+        }
+
+        const { data: brandTrip, error: brandTripError } = await supabase
+          .from("trips")
+          .select("*")
+          .eq("brand_id", brand_id)
+          .eq("page_id", page_id)
+          .maybeSingle();
+
+        if (brandTripError) {
+          console.error("[trips-api] Brand trip error:", brandTripError);
+        }
+
+        if (brandTrip) {
+          return new Response(
+            JSON.stringify({
+              trip: {
+                ...brandTrip,
+                source: 'brand',
+                is_published: brandTrip.status === 'published',
+              }
+            }),
+            { status: 200, headers: corsHeaders }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ trip: null }),
+          { status: 200, headers: corsHeaders }
+        );
+      }
+
+      const { data: assignments, error: assignmentsError } = await supabase
+        .from("trip_brand_assignments")
         .select(`
           id,
-          brand_id,
-          title,
-          slug,
-          description,
-          content,
-          featured_image,
+          trip_id,
           status,
-          author_type,
-          author_id,
+          is_published,
           page_id,
-          created_at,
-          updated_at
+          trips!inner (
+            id,
+            brand_id,
+            title,
+            slug,
+            description,
+            content,
+            featured_image,
+            price,
+            duration_days,
+            status,
+            published_at,
+            created_at
+          )
         `)
+        .eq("brand_id", brand_id)
+        .in("status", ["accepted", "mandatory"]);
+
+      if (assignmentsError) throw assignmentsError;
+
+      const assignedTripIds = new Set((assignments || []).map(a => a.trip_id));
+
+      const assignedTrips = (assignments || []).map(a => {
+        const trip = Array.isArray(a.trips) ? a.trips[0] : a.trips;
+        return {
+          ...trip,
+          assignment_id: a.id,
+          assignment_status: a.status,
+          is_published: a.is_published,
+          page_id: a.page_id,
+          source: 'assignment',
+        };
+      });
+
+      const { data: brandTrips, error: brandTripsError } = await supabase
+        .from("trips")
+        .select("*")
         .eq("brand_id", brand_id)
         .order("created_at", { ascending: false });
 
-      const { data: trips, error: tripsError } = await query;
+      if (brandTripsError) throw brandTripsError;
 
-      if (tripsError) throw tripsError;
+      const filteredBrandTrips = (brandTrips || [])
+        .filter(t => !assignedTripIds.has(t.id))
+        .map(t => ({
+          ...t,
+          source: 'brand',
+          is_published: t.status === 'published',
+        }));
+
+      const allTrips = [...assignedTrips, ...filteredBrandTrips];
+
+      const filteredTrips = published_only
+        ? allTrips.filter(t => t.is_published || t.status === 'published')
+        : allTrips;
 
       return new Response(
-        JSON.stringify({ trips: trips || [] }),
+        JSON.stringify({ trips: filteredTrips }),
         { status: 200, headers: corsHeaders }
       );
     }
