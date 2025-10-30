@@ -47,6 +47,7 @@ export async function generateBuilderJWT(
     returnUrl?: string;
   } = {}
 ): Promise<GenerateJWTResponse> {
+  console.log('[generateBuilderJWT] Called with scopes:', scopes);
   const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-builder-jwt`;
 
   let authToken = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -69,6 +70,8 @@ export async function generateBuilderJWT(
   const requestBody: any = {
     scopes: scopes,
   };
+
+  console.log('[generateBuilderJWT] Request body scopes:', requestBody.scopes);
 
   if (options.forceBrandId) {
     requestBody.brand_id = brandId;
@@ -194,13 +197,17 @@ export async function openBuilder(
     'content:write'
   ];
 
+  console.log('[openBuilder] Using scopes:', scopes);
+
   const jwtOptions: any = {};
   if (options.pageId) jwtOptions.pageId = options.pageId;
   if (options.templateId) jwtOptions.templateId = options.templateId;
   if (options.menuId) jwtOptions.menuId = options.menuId;
   if (options.returnUrl) jwtOptions.returnUrl = options.returnUrl;
 
+  console.log('[openBuilder] Calling generateBuilderJWT with scopes:', scopes);
   const jwtResponse = await generateBuilderJWT(brandId, userId, scopes, jwtOptions);
+  console.log('[openBuilder] JWT Response received');
 
   const deeplinkOptions: any = {
     jwtResponse: jwtResponse
