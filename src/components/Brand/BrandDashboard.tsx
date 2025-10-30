@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/supabase';
-import { openVideoGenerator } from '../../lib/jwtHelper';
+import { openVideoGenerator, openTravelImport } from '../../lib/jwtHelper';
 import { AIContentGenerator } from './AIContentGenerator';
 import { BrandSettings } from './BrandSettings';
 import { HelpBot } from '../shared/HelpBot';
@@ -216,6 +216,22 @@ export function BrandDashboard() {
     }
   };
 
+  const handleTravelImportClick = async () => {
+    if (!user || !user.brand_id) {
+      console.error('No user or brand_id available');
+      return;
+    }
+
+    try {
+      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand`;
+      const deeplink = await openTravelImport(user.brand_id, user.id, { returnUrl });
+      window.open(deeplink, '_blank');
+    } catch (error) {
+      console.error('Error opening travel import:', error);
+      alert('Er is een fout opgetreden bij het openen van de travel import. Probeer het opnieuw.');
+    }
+  };
+
   const quickActions = [
     {
       title: 'Nieuwe Pagina',
@@ -396,6 +412,8 @@ export function BrandDashboard() {
                           onClick={() => {
                             if (item.id === 'ai-video') {
                               handleVideoGeneratorClick();
+                            } else if (item.id === 'ai-import') {
+                              handleTravelImportClick();
                             } else {
                               setActiveSection(item.id);
                             }
