@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/supabase';
+import { openVideoGenerator } from '../../lib/jwtHelper';
 import { AIContentGenerator } from './AIContentGenerator';
 import { BrandSettings } from './BrandSettings';
 import { HelpBot } from '../shared/HelpBot';
@@ -15,7 +16,7 @@ import { FooterBuilder } from './FooterBuilder';
 import { SocialMediaConnector } from './SocialMediaConnector';
 import { SocialMediaManager } from './SocialMediaManager';
 import { TravelBroSetup } from '../TravelBro/TravelBroSetup';
-import { Users, Settings, Plus, Bot, Sparkles, Import as FileImport, ChevronDown, ChevronRight, LayoutGrid as Layout, FileText, Globe, Newspaper, MapPin, Plane, Share2, Map, ArrowRight, Menu, ClipboardCheck } from 'lucide-react';
+import { Users, Settings, Plus, Bot, Sparkles, Import as FileImport, ChevronDown, ChevronRight, LayoutGrid as Layout, FileText, Globe, Newspaper, MapPin, Plane, Share2, Map, ArrowRight, Menu, ClipboardCheck, Video } from 'lucide-react';
 import RoadmapBoard from './RoadmapBoard';
 import TestDashboard from '../Testing/TestDashboard';
 
@@ -186,6 +187,7 @@ export function BrandDashboard() {
     { id: 'ai-content', label: 'AI Content Generator', icon: Sparkles },
     { id: 'ai-travelbro', label: 'AI TravelBRO', icon: Bot },
     { id: 'ai-import', label: 'AI TravelImport', icon: FileImport },
+    { id: 'ai-video', label: 'AI Travel Video', icon: Video },
   ];
 
   const contentItems = [
@@ -196,6 +198,22 @@ export function BrandDashboard() {
 
   const handleTravelStudioClick = () => {
     window.open('https://travelstudio.travelstudio-accept.bookunited.com/login', '_blank');
+  };
+
+  const handleVideoGeneratorClick = async () => {
+    if (!user || !user.brand_id) {
+      console.error('No user or brand_id available');
+      return;
+    }
+
+    try {
+      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand`;
+      const deeplink = await openVideoGenerator(user.brand_id, user.id, { returnUrl });
+      window.open(deeplink, '_blank');
+    } catch (error) {
+      console.error('Error opening video generator:', error);
+      alert('Er is een fout opgetreden bij het openen van de video generator. Probeer het opnieuw.');
+    }
   };
 
   const quickActions = [
@@ -356,7 +374,7 @@ export function BrandDashboard() {
               <button
                 onClick={() => setShowAISubmenu(!showAISubmenu)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                  ['ai-content', 'ai-travelbro', 'ai-import'].includes(activeSection)
+                  ['ai-content', 'ai-travelbro', 'ai-import', 'ai-video'].includes(activeSection)
                     ? 'bg-gray-700 text-white'
                     : 'text-gray-300 hover:text-white hover:bg-gray-700'
                 }`}
@@ -375,7 +393,13 @@ export function BrandDashboard() {
                     return (
                       <li key={item.id}>
                         <button
-                          onClick={() => setActiveSection(item.id)}
+                          onClick={() => {
+                            if (item.id === 'ai-video') {
+                              handleVideoGeneratorClick();
+                            } else {
+                              setActiveSection(item.id);
+                            }
+                          }}
                           className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors text-sm ${
                             activeSection === item.id
                               ? 'bg-gray-700 text-white'
@@ -462,6 +486,7 @@ export function BrandDashboard() {
                   {activeSection === 'ai-content' && 'AI Content Generator'}
                   {activeSection === 'ai-travelbro' && 'AI TravelBRO'}
                   {activeSection === 'ai-import' && 'AI TravelImport'}
+                  {activeSection === 'ai-video' && 'AI Travel Video'}
                   {activeSection === 'social-media' && 'Social Media Manager'}
                   {activeSection === 'testing' && 'Test Dashboard'}
                   {activeSection === 'roadmap' && 'Roadmap'}
@@ -478,6 +503,7 @@ export function BrandDashboard() {
                   {activeSection === 'ai-content' && 'Generate travel content with AI'}
                   {activeSection === 'ai-travelbro' && 'Your AI travel assistant'}
                   {activeSection === 'ai-import' && 'Import travel data with AI'}
+                  {activeSection === 'ai-video' && 'Create engaging travel videos with AI'}
                   {activeSection === 'social-media' && 'Maak en beheer social media posts'}
                   {activeSection === 'settings' && 'Beheer je brand en domein instellingen'}
                   {activeSection === 'testing' && 'Test features and provide feedback'}

@@ -343,6 +343,44 @@ export async function openBuilderSimple(options: {
 }
 
 /**
+ * Helper function to open the Video Generator
+ */
+export async function openVideoGenerator(
+  brandId: string,
+  userId: string,
+  options: {
+    returnUrl?: string;
+  } = {}
+): Promise<string> {
+  const scopes = [
+    'pages:read',
+    'pages:write',
+    'content:read',
+    'content:write'
+  ];
+
+  const jwtOptions: any = {};
+  if (options.returnUrl) jwtOptions.returnUrl = options.returnUrl;
+
+  const jwtResponse = await generateBuilderJWT(brandId, userId, scopes, jwtOptions);
+
+  const builderBaseUrl = 'https://www.ai-websitestudio.nl';
+  const apiBaseUrl = jwtResponse.api_url || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+  const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+  const params = new URLSearchParams({
+    api: apiBaseUrl,
+    brand_id: jwtResponse.brand_id,
+    token: jwtResponse.token,
+    apikey: apiKey
+  });
+
+  if (options.returnUrl) params.append('return_url', options.returnUrl);
+
+  return `${builderBaseUrl}/?${params.toString()}#/mode/video-generator`;
+}
+
+/**
  * Extract JWT token and brand_id from deeplink URL
  * Call this when Builder receives a deeplink from Bolt.new
  */

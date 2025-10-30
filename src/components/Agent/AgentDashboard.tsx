@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/supabase';
+import { openVideoGenerator } from '../../lib/jwtHelper';
 import { AIContentGenerator } from '../Brand/AIContentGenerator';
 import { SocialMediaManager } from '../Brand/SocialMediaManager';
 import { TravelBroSetup } from '../TravelBro/TravelBroSetup';
 import AgentProfileEdit from './AgentProfileEdit';
 import { HelpBot } from '../shared/HelpBot';
-import { Bot, User, ChevronDown, ChevronRight, Share2, Plane, Sparkles, Import as FileImport, Map, ArrowRight, Bell, ClipboardCheck } from 'lucide-react';
+import { Bot, User, ChevronDown, ChevronRight, Share2, Plane, Sparkles, Import as FileImport, Map, ArrowRight, Bell, ClipboardCheck, Video } from 'lucide-react';
 import RoadmapBoard from '../Brand/RoadmapBoard';
 import TestDashboard from '../Testing/TestDashboard';
 
@@ -79,10 +80,27 @@ export function AgentDashboard() {
     { id: 'ai-content', label: 'Travel Content Generator', icon: Sparkles },
     { id: 'ai-import', label: 'Reis Import', icon: FileImport },
     { id: 'ai-travelbro', label: 'AI TravelBRO', icon: Bot },
+    { id: 'ai-video', label: 'AI Travel Video', icon: Video },
   ];
 
   const handleTravelStudioClick = () => {
     window.open('https://travelstudio.travelstudio-accept.bookunited.com/login', '_blank');
+  };
+
+  const handleVideoGeneratorClick = async () => {
+    if (!user || !user.brand_id) {
+      console.error('No user or brand_id available');
+      return;
+    }
+
+    try {
+      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/agent`;
+      const deeplink = await openVideoGenerator(user.brand_id, user.id, { returnUrl });
+      window.open(deeplink, '_blank');
+    } catch (error) {
+      console.error('Error opening video generator:', error);
+      alert('Er is een fout opgetreden bij het openen van de video generator. Probeer het opnieuw.');
+    }
   };
 
   const quickActions = [
@@ -156,7 +174,7 @@ export function AgentDashboard() {
               <button
                 onClick={() => setShowAISubmenu(!showAISubmenu)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                  ['ai-content', 'ai-travelbro', 'ai-import'].includes(activeSection)
+                  ['ai-content', 'ai-travelbro', 'ai-import', 'ai-video'].includes(activeSection)
                     ? 'bg-gray-700 text-white'
                     : 'text-gray-300 hover:text-white hover:bg-gray-700'
                 }`}
@@ -175,7 +193,13 @@ export function AgentDashboard() {
                     return (
                       <li key={item.id}>
                         <button
-                          onClick={() => setActiveSection(item.id)}
+                          onClick={() => {
+                            if (item.id === 'ai-video') {
+                              handleVideoGeneratorClick();
+                            } else {
+                              setActiveSection(item.id);
+                            }
+                          }}
                           className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors text-sm ${
                             activeSection === item.id
                               ? 'bg-gray-700 text-white'
@@ -244,6 +268,7 @@ export function AgentDashboard() {
                 {activeSection === 'ai-content' && 'Travel Content Generator'}
                 {activeSection === 'ai-import' && 'Reis Import'}
                 {activeSection === 'ai-travelbro' && 'AI TravelBRO'}
+                {activeSection === 'ai-video' && 'AI Travel Video'}
                 {activeSection === 'roadmap' && 'Roadmap'}
               </h1>
               <p className="text-gray-600 mt-1">
@@ -254,6 +279,7 @@ export function AgentDashboard() {
                 {activeSection === 'ai-content' && 'Generate travel content with AI'}
                 {activeSection === 'ai-import' && 'Import travel data with AI'}
                 {activeSection === 'ai-travelbro' && 'Your AI travel assistant'}
+                {activeSection === 'ai-video' && 'Create engaging travel videos with AI'}
                 {activeSection === 'roadmap' && 'Vote on features and track development progress'}
               </p>
             </div>
