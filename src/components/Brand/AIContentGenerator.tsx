@@ -636,7 +636,23 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
                           </div>
                         ) : (
                           <div className="space-y-3">
-                            <div className="whitespace-pre-wrap">{message.content}</div>
+                            <div
+                              className="prose prose-sm max-w-none text-gray-700 leading-relaxed"
+                              dangerouslySetInnerHTML={{
+                                __html: message.content
+                                  .replace(/###\s(.+)/g, '<h3 class="text-lg font-bold text-gray-900 mt-4 mb-2">$1</h3>')
+                                  .replace(/##\s(.+)/g, '<h2 class="text-xl font-bold text-gray-900 mt-6 mb-3">$1</h2>')
+                                  .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
+                                  .replace(/^\* (.+)$/gm, '<li class="ml-4">$1</li>')
+                                  .replace(/^- (.+)$/gm, '<li class="ml-4">$1</li>')
+                                  .replace(/(<li.*<\/li>[\n]*)+/g, '<ul class="list-disc list-inside space-y-1 my-3">$&</ul>')
+                                  .replace(/\n\n/g, '</p><p class="mb-3">')
+                                  .replace(/\n/g, '<br>')
+                                  .replace(/^(.)/g, '<p class="mb-3">$1')
+                                  .replace(/(.+)$/g, '$1</p>')
+                                  .replace(/<p[^>]*><\/p>/g, '')
+                              }}
+                            />
                             {message.type === 'assistant' && (
                               <button
                                 onClick={() => {
