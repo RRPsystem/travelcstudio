@@ -238,7 +238,16 @@ export async function openTemplateBuilder(
   }
 ): Promise<string> {
   const systemBrandId = '00000000-0000-0000-0000-000000000999';
-  const scopes = ['pages:write', 'content:write', 'layouts:write', 'menus:write'];
+  const scopes = [
+    'pages:read',
+    'pages:write',
+    'content:read',
+    'content:write',
+    'layouts:read',
+    'layouts:write',
+    'menus:read',
+    'menus:write'
+  ];
 
   const jwtOptions: any = {
     forceBrandId: false,
