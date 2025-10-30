@@ -400,25 +400,25 @@ export function TemplateManager() {
             <p className="text-gray-600">Maak je eerste template om te beginnen</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {templates.map((template) => (
               <div key={template.id} className="bg-white border rounded-lg overflow-hidden hover:shadow-md transition-shadow">
                 {template.preview_image_url ? (
                   <img
                     src={template.preview_image_url}
                     alt={template.title}
-                    className="w-full h-48 object-cover"
+                    className="w-full h-80 object-cover"
                     onError={(e) => {
                       const img = e.target as HTMLImageElement;
                       img.style.display = 'none';
                       const parent = img.parentElement;
                       if (parent) {
-                        parent.innerHTML = '<div class="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center"><svg class="h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></div>';
+                        parent.innerHTML = '<div class="w-full h-80 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center"><svg class="h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></div>';
                       }
                     }}
                   />
                 ) : (
-                  <div className="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                  <div className="w-full h-80 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
                     <Layout className="h-16 w-16 text-gray-400" />
                   </div>
                 )}
