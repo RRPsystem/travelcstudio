@@ -145,8 +145,11 @@ export function PreviewPage() {
       .replace(/\sdraggable="true"/g, '')
       .replace(/\scontenteditable="true"/g, '')
       .replace(/\sdata-action="[^"]*"/g, '')
+      .replace(/\sdata-component-id="[^"]*"/g, '')
+      .replace(/\sdata-wb-[^=]*="[^"]*"/g, '')
       .replace(/<button[^>]*class="[^"]*toolbar-btn[^"]*"[^>]*>[\s\S]*?<\/button>/g, '')
-      .replace(/<button[^>]*data-tag-del[^>]*>[\s\S]*?<\/button>/g, '');
+      .replace(/<button[^>]*data-tag-del[^>]*>[\s\S]*?<\/button>/g, '')
+      .replace(/\sstyle="[^"]*position:\s*absolute[^"]*"/g, '');
 
     return (
       <iframe
@@ -183,6 +186,8 @@ export function PreviewPage() {
                   background: #ffffff;
                   min-height: 100vh;
                   overflow-x: hidden;
+                  display: flex;
+                  flex-direction: column;
                 }
 
                 /* Container and layout */
@@ -207,6 +212,19 @@ export function PreviewPage() {
 
                 .wb-component {
                   position: relative;
+                  display: block;
+                  clear: both;
+                }
+
+                /* Ensure components stack vertically */
+                body > * {
+                  position: relative !important;
+                  display: block;
+                  width: 100%;
+                }
+
+                body > .wb-hero-page {
+                  position: relative !important;
                 }
 
                 /* Hero Page Styles */
