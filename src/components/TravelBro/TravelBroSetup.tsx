@@ -308,6 +308,7 @@ export function TravelBroSetup() {
   };
 
   const handleCreateTravelBro = async () => {
+    console.log('DEBUG: newTripName=', newTripName, 'pdfFile=', pdfFile, 'sourceUrls=', sourceUrls);
     if (!newTripName.trim() || (!pdfFile && sourceUrls.filter(u => u.trim()).length === 0)) {
       alert('Vul minimaal een naam en upload een PDF of voeg URLs toe');
       return;
@@ -448,6 +449,7 @@ export function TravelBroSetup() {
   };
 
   const handleUpdateTravelBro = async () => {
+    console.log('DEBUG UPDATE: newTripName=', newTripName, 'editingTrip=', editingTrip);
     if (!newTripName.trim()) {
       alert('Vul minimaal een naam in');
       return;
