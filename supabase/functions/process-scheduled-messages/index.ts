@@ -57,13 +57,10 @@ Deno.serve(async (req: Request) => {
 
     for (const msg of messages) {
       try {
-        const scheduledDateTime = new Date(`${msg.scheduled_date}T${msg.scheduled_time}`);
+        const scheduledDateTime = new Date(`${msg.scheduled_date}T${msg.scheduled_time}Z`);
 
-        const timezoneOffsetMinutes = getTimezoneOffset(msg.timezone);
-        const localScheduledTime = new Date(scheduledDateTime.getTime() + (timezoneOffsetMinutes * 60000));
-
-        if (localScheduledTime > now) {
-          console.log(`Message ${msg.id} not yet due (scheduled for ${localScheduledTime.toISOString()})`);
+        if (scheduledDateTime > now) {
+          console.log(`Message ${msg.id} not yet due (scheduled for ${scheduledDateTime.toISOString()})`);
           continue;
         }
 
@@ -233,20 +230,3 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
-
-function getTimezoneOffset(timezone: string): number {
-  const offsets: Record<string, number> = {
-    'Europe/Amsterdam': 60,
-    'Europe/Brussels': 60,
-    'Europe/Paris': 60,
-    'Europe/Berlin': 60,
-    'Europe/London': 0,
-    'America/New_York': -300,
-    'America/Los_Angeles': -480,
-    'Asia/Bangkok': 420,
-    'Asia/Tokyo': 540,
-    'Australia/Sydney': 660,
-  };
-
-  return offsets[timezone] || 60;
-}
