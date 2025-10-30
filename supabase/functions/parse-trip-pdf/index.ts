@@ -71,34 +71,7 @@ async function createAssistant(openaiApiKey: string) {
     },
     body: JSON.stringify({
       name: 'Travel Document Parser',
-      instructions: `Je bent een expert reisdocument parser. Extraheer en structureer ALLE reis informatie uit het PDF document.
-
-VERPLICHTE VELDEN (STRICT):
-- trip_name: Naam van de reis
-- reservation_id: Hoofdreserveringsnummer
-- departure_date: Vertrekdatum (ISO 8601: YYYY-MM-DD)
-- arrival_date: Aankomstdatum (ISO 8601: YYYY-MM-DD)
-- destination: { city, country, region }
-- segments: Array van reissegmenten (flights, hotels, transfers)
-- booking_refs: { flight, hotel, transfer, other }
-- emergency_contacts: Array met { name, phone, type }
-
-Elk segment MOET bevatten:
-- kind: "flight" | "hotel" | "transfer" | "activity"
-- segment_ref: Unieke referentie (boeknummer)
-- start_datetime: ISO 8601 datetime
-- end_datetime: ISO 8601 datetime (optioneel, gebruik null indien niet bekend)
-- location: { name, address, city, country }
-- details: Object met specifieke info (bijv. flight_number, room_type, etc)
-
-BELANGRIJK:
-- Extraheer ALLE reserveringsnummers (PNR, boekingscodes, referenties)
-- Alle datums MOETEN ISO 8601 format zijn (YYYY-MM-DD of YYYY-MM-DDTHH:MM:SS)
-- Alle adressen compleet en gestructureerd
-- ALLE noodnummers en contactgegevens
-- Als info ontbreekt: gebruik null (niet weglaten)
-
-Return ONLY valid JSON matching the schema.`,
+      instructions: `Je bent een expert reisdocument parser. Extraheer en structureer ALLE reis informatie uit het PDF document.\n\nVERPLICHTE VELDEN (STRICT):\n- trip_name: Naam van de reis\n- reservation_id: Hoofdreserveringsnummer\n- departure_date: Vertrekdatum (ISO 8601: YYYY-MM-DD)\n- arrival_date: Aankomstdatum (ISO 8601: YYYY-MM-DD)\n- destination: { city, country, region }\n- segments: Array van reissegmenten (flights, hotels, transfers)\n- booking_refs: { flight, hotel, transfer, other }\n- emergency_contacts: Array met { name, phone, type }\n\nElk segment MOET bevatten:\n- kind: "flight" | "hotel" | "transfer" | "activity"\n- segment_ref: Unieke referentie (boeknummer)\n- start_datetime: ISO 8601 datetime\n- end_datetime: ISO 8601 datetime (optioneel, gebruik null indien niet bekend)\n- location: { name, address, city, country }\n- details: Object met specifieke info (bijv. flight_number, room_type, etc)\n\nBELANGRIJK:\n- Extraheer ALLE reserveringsnummers (PNR, boekingscodes, referenties)\n- Alle datums MOETEN ISO 8601 format zijn (YYYY-MM-DD of YYYY-MM-DDTHH:MM:SS)\n- Alle adressen compleet en gestructureerd\n- ALLE noodnummers en contactgegevens\n- Als info ontbreekt: gebruik null (niet weglaten)\n\nReturn ONLY valid JSON matching the schema.`,
       model: 'gpt-4o',
       tools: [{ type: 'file_search' }],
       response_format: {
