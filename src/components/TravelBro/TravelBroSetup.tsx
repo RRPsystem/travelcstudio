@@ -441,8 +441,68 @@ export function TravelBroSetup() {
 
       if (error) throw error;
 
+      const createdTrip = data;
+
+      if (intakeTemplate) {
+        console.log('📋 TravelBRO heeft intake formulier - klant moet eerst formulier invullen');
+        alert('✅ TravelBRO aangemaakt! Deel de client link met je klant zodat ze het intake formulier kunnen invullen.');
+      } else {
+        const phoneNumber = prompt('📱 Voer het telefoonnummer van de klant in (formaat: +31612345678):');
+
+        if (phoneNumber && phoneNumber.trim()) {
+          try {
+            console.log('📤 Scheduling welkomstbericht...');
+
+            const { error: participantError } = await db.supabase
+              .from('trip_participants')
+              .insert({
+                trip_id: createdTrip.id,
+                brand_id: user?.brand_id,
+                phone_number: phoneNumber.trim(),
+                participant_name: 'Klant',
+                is_primary_contact: true,
+              });
+
+            if (participantError) {
+              console.error('❌ Error adding participant:', participantError);
+              throw participantError;
+            }
+
+            const now = new Date();
+            const scheduleDate = now.toISOString().split('T')[0];
+            const scheduleTime = now.toTimeString().split(' ')[0];
+
+            const { error: scheduleError } = await db.supabase
+              .from('scheduled_whatsapp_messages')
+              .insert({
+                trip_id: createdTrip.id,
+                brand_id: user?.brand_id,
+                recipient_phone: phoneNumber.trim(),
+                template_name: 'travelbro',
+                message_content: '',
+                scheduled_date: scheduleDate,
+                scheduled_time: scheduleTime,
+                timezone: 'Europe/Amsterdam',
+                message_type: 'welcome',
+              });
+
+            if (scheduleError) {
+              console.error('❌ Error scheduling message:', scheduleError);
+              throw scheduleError;
+            }
+
+            console.log('✅ Welkomstbericht gepland!');
+            alert('✅ TravelBRO aangemaakt en welkomstbericht gepland!');
+          } catch (msgError) {
+            console.error('❌ Error met WhatsApp:', msgError);
+            alert('⚠️ TravelBRO aangemaakt, maar WhatsApp bericht kon niet worden gepland. Check de logs.');
+          }
+        } else {
+          alert('✅ TravelBRO aangemaakt! (Geen WhatsApp bericht verzonden)');
+        }
+      }
+
       console.log('✅ TravelBRO created successfully!');
-      alert('✅ TravelBRO aangemaakt!');
       setNewTripName('');
       setPdfFile(null);
       setSourceUrls(['']);
