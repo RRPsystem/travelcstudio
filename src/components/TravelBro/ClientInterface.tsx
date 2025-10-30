@@ -27,13 +27,7 @@ export function ClientInterface({ shareToken }: { shareToken: string }) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    loadTrip();
-    const storedSession = localStorage.getItem(`travelbro_session_${shareToken}`);
-    if (storedSession) {
-      setSessionToken(storedSession);
-      setShowIntake(false);
-      loadConversations(storedSession);
-    }
+    loadTripFromSession();
   }, [shareToken]);
 
   useEffect(() => {
@@ -44,22 +38,34 @@ export function ClientInterface({ shareToken }: { shareToken: string }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const loadTrip = async () => {
+  const loadTripFromSession = async () => {
     try {
-      const { data, error } = await supabase
-        .from('travel_trips')
-        .select('*')
-        .eq('share_token', shareToken)
-        .eq('is_active', true)
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('travel_whatsapp_sessions')
+        .select('*, travel_trips(*)')
+        .eq('session_token', shareToken)
         .maybeSingle();
 
-      if (error) throw error;
-      if (!data) {
-        alert('Deze reis is niet beschikbaar');
+      if (sessionError) throw sessionError;
+
+      if (!sessionData || !sessionData.travel_trips) {
+        alert('Deze sessie is niet beschikbaar');
         return;
       }
 
-      setTrip(data);
+      setTrip(sessionData.travel_trips);
+      setSessionToken(shareToken);
+
+      const { data: intakeData } = await supabase
+        .from('travel_intakes')
+        .select('*')
+        .eq('session_token', shareToken)
+        .maybeSingle();
+
+      if (intakeData?.completed_at) {
+        setShowIntake(false);
+        loadConversations(shareToken);
+      }
     } catch (error) {
       console.error('Error loading trip:', error);
     } finally {
@@ -90,16 +96,8 @@ export function ClientInterface({ shareToken }: { shareToken: string }) {
   };
 
   const handleIntakeComplete = (token: string) => {
-    setSessionToken(token);
     setShowIntake(false);
-    localStorage.setItem(`travelbro_session_${shareToken}`, token);
-
-    const welcomeMsg: Message = {
-      role: 'assistant',
-      content: `Hoi! Ik ben TravelBRO, jouw persoonlijke reisassistent voor ${trip?.name}. Stel me gerust al je vragen over de reis!`,
-      timestamp: new Date(),
-    };
-    setMessages([welcomeMsg]);
+    loadConversations(token);
   };
 
   const sendMessage = async () => {
@@ -337,19 +335,14 @@ function IntakeForm({ trip, onComplete }: { trip: Trip; onComplete: (token: stri
     setSubmitting(true);
 
     try {
-      const sessionToken = Array.from(crypto.getRandomValues(new Uint8Array(24)))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-
       const { data, error } = await supabase
         .from('travel_intakes')
-        .insert({
-          trip_id: trip.id,
-          session_token: sessionToken,
+        .update({
           travelers_count: travelersCount,
           intake_data: { travelers },
           completed_at: new Date().toISOString(),
         })
+        .eq('session_token', shareToken)
         .select()
         .single();
 
@@ -359,7 +352,7 @@ function IntakeForm({ trip, onComplete }: { trip: Trip; onComplete: (token: stri
       }
 
       if (!data) {
-        console.error('No data returned from insert');
+        console.error('No data returned from update');
         throw new Error('Geen data ontvangen van database');
       }
 
