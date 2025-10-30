@@ -78,7 +78,7 @@ async function createAssistant(openaiApiKey: string) {
         type: "json_schema",
         json_schema: {
           name: "travel_document_schema",
-          strict: true,
+          strict: false,
           schema: {
             type: "object",
             properties: {
@@ -93,7 +93,7 @@ async function createAssistant(openaiApiKey: string) {
                   country: { type: "string" },
                   region: { type: ["string", "null"] }
                 },
-                required: ["city", "country", "region"],
+                required: ["city", "country"],
                 additionalProperties: false
               },
               segments: {
@@ -113,12 +113,12 @@ async function createAssistant(openaiApiKey: string) {
                         city: { type: ["string", "null"] },
                         country: { type: ["string", "null"] }
                       },
-                      required: ["name", "address", "city", "country"],
+                      required: ["name", "address"],
                       additionalProperties: false
                     },
                     details: { type: "object", additionalProperties: true }
                   },
-                  required: ["kind", "segment_ref", "start_datetime", "end_datetime", "location", "details"],
+                  required: ["kind", "segment_ref", "start_datetime", "location"],
                   additionalProperties: false
                 }
               },
@@ -130,7 +130,7 @@ async function createAssistant(openaiApiKey: string) {
                   transfer: { type: ["string", "null"] },
                   other: { type: "array", items: { type: "string" } }
                 },
-                required: ["flight", "hotel", "transfer", "other"],
+                required: [],
                 additionalProperties: false
               },
               emergency_contacts: {
@@ -149,7 +149,7 @@ async function createAssistant(openaiApiKey: string) {
               important_notes: { type: "array", items: { type: "string" } },
               included_services: { type: "array", items: { type: "string" } }
             },
-            required: ["trip_name", "reservation_id", "departure_date", "arrival_date", "destination", "segments", "booking_refs", "emergency_contacts", "important_notes", "included_services"],
+            required: ["trip_name", "reservation_id", "departure_date", "arrival_date", "destination", "segments"],
             additionalProperties: false
           }
         }
