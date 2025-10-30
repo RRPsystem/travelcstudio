@@ -285,7 +285,7 @@ Deno.serve(async (req: Request) => {
     const { data: apiSettings, error: apiError } = await supabase
       .from("api_settings")
       .select("api_key")
-      .eq("provider", "openai")
+      .eq("provider", "OpenAI")
       .eq("service_name", "OpenAI API")
       .maybeSingle();
 
@@ -371,7 +371,7 @@ Deno.serve(async (req: Request) => {
         )
           .from("api_settings")
           .select("api_key")
-          .eq("provider", "openai")
+          .eq("provider", "OpenAI")
           .eq("service_name", "OpenAI API")
           .maybeSingle();
 
