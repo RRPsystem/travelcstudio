@@ -130,6 +130,7 @@ async function createAssistant(openaiApiKey: string) {
                   transfer: { type: ["string", "null"] },
                   other: { type: "array", items: { type: "string" } }
                 },
+                required: ["flight", "hotel", "transfer", "other"],
                 additionalProperties: false
               },
               emergency_contacts: {
