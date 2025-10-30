@@ -148,7 +148,9 @@ Deno.serve(async (req: Request) => {
         if (templateSid) {
           sendPayload.useTemplate = true;
           sendPayload.templateSid = templateSid;
-          sendPayload.templateVariables = templateVariables;
+          if (templateVariables && Object.keys(templateVariables).length > 0) {
+            sendPayload.templateVariables = templateVariables;
+          }
         } else {
           sendPayload.message = msg.message_content;
         }

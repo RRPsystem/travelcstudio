@@ -99,6 +99,8 @@ Deno.serve(async (req: Request) => {
         const varsString = JSON.stringify(templateVariables);
         console.log('Template variables being sent:', varsString);
         formData.append('ContentVariables', varsString);
+      } else {
+        console.log('No template variables - sending template without variables');
       }
     } else if (message) {
       formData.append('Body', message);
