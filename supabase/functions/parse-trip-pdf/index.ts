@@ -57,26 +57,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const pdfBuffer = await pdfResponse.arrayBuffer();
-
-    const jsPDFLib = await import("npm:pdfjs-dist@3.11.174/legacy/build/pdf.mjs");
-
-    const loadingTask = jsPDFLib.getDocument({
-      data: new Uint8Array(pdfBuffer),
-      useSystemFonts: true,
-    });
-
-    const pdf = await loadingTask.promise;
-
-    let fullText = "";
-
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map((item: any) => item.str)
-        .join(" ");
-      fullText += pageText + "\n\n";
-    }
+    const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)));
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -89,112 +70,128 @@ Deno.serve(async (req: Request) => {
         messages: [
           {
             role: "system",
-            content: `Je bent een expert reisdocument parser. Extraheer en structureer ALLE reis informatie uit de PDF tekst. Return JSON met:
+            content: `Je bent een expert reisdocument parser. Extraheer en structureer ALLE reis informatie uit het PDF document.
 
-BELANGRIJKE STRUCTUUR:
-{
-  "destination": {
-    "city": "exacte stad/regio naam",
-    "country": "land",
-    "region": "regio/gebied"
-  },
-  "dates": {
-    "start_date": "YYYY-MM-DD",
-    "end_date": "YYYY-MM-DD",
-    "duration": "aantal dagen/nachten"
-  },
-  "accommodations": [
-    {
-      "name": "hotel naam",
-      "type": "hotel/resort/villa/etc",
-      "address": "volledig adres",
-      "location": "gebied/buurt",
-      "description": "gedetailleerde omschrijving",
-      "amenities": ["zwembad", "restaurant", "wifi", etc],
-      "room_type": "kamer type",
-      "check_in": "datum",
-      "check_out": "datum"
-    }
-  ],
-  "itinerary": [
-    {
-      "day_number": 1,
-      "date": "YYYY-MM-DD",
-      "title": "Dag titel",
-      "description": "uitgebreide beschrijving van de dag",
-      "activities": [
-        {
-          "time": "tijd indien vermeld",
-          "name": "activiteit naam",
-          "description": "details",
-          "location": "locatie"
-        }
-      ],
-      "meals": {
-        "breakfast": true/false,
-        "lunch": true/false,
-        "dinner": true/false,
-        "details": "extra meal info"
-      },
-      "accommodation": "waar overnacht je"
-    }
-  ],
-  "activities": [
-    {
-      "name": "activiteit naam",
-      "description": "uitgebreide beschrijving",
-      "location": "waar",
-      "duration": "hoe lang",
-      "included": true/false,
-      "price": "prijs indien vermeld"
-    }
-  ],
-  "included_services": [
-    "gedetailleerde lijst van wat inbegrepen is"
-  ],
-  "not_included": [
-    "wat niet inbegrepen is"
-  ],
-  "price_info": {
-    "total": "bedrag",
-    "currency": "EUR/USD/etc",
-    "per_person": "bedrag pp",
-    "notes": "extra prijs info",
-    "included_in_price": ["wat zit in de prijs"]
-  },
-  "transportation": {
-    "arrival": "hoe kom je er",
-    "departure": "hoe ga je terug",
-    "local": "lokaal vervoer info",
-    "transfers": ["transfer details"]
-  },
-  "important_notes": [
-    "alle belangrijke info, veiligheid, documenten, wat mee te nemen, etc"
-  ],
-  "contact_info": {
-    "emergency": "noodcontact",
-    "local_contact": "lokale contact",
-    "tour_operator": "reisorganisatie info"
-  },
-  "target_audience": "gezinnen/tieners/jongeren/etc",
-  "highlights": [
-    "unieke highlights van de reis"
-  ]
-}
+VERPLICHTE VELDEN (STRICT):
+- trip_name: Naam van de reis
+- reservation_id: Hoofdreserveringsnummer
+- departure_date: Vertrekdatum (ISO 8601: YYYY-MM-DD)
+- arrival_date: Aankomstdatum (ISO 8601: YYYY-MM-DD)
+- destination: { city, country, region }
+- segments: Array van reissegmenten (flights, hotels, transfers)
+- booking_refs: { flight, hotel, transfer, other }
+- emergency_contacts: Array met { name, phone, type }
+
+Elk segment MOET bevatten:
+- kind: "flight" | "hotel" | "transfer" | "activity"
+- segment_ref: Unieke referentie (boeknummer)
+- start_datetime: ISO 8601 datetime
+- end_datetime: ISO 8601 datetime (optioneel, gebruik null indien niet bekend)
+- location: { name, address, city, country }
+- details: Object met specifieke info (bijv. flight_number, room_type, etc)
 
 BELANGRIJK:
-- Extraheer ALLE details, zelfs kleine dingen
-- Wees zo specifiek mogelijk met adressen en locaties
-- Splits lange beschrijvingen op in relevante secties
-- Bewaar alle praktische informatie (tijden, adressen, contacten)
-- Als iets niet in de tekst staat, gebruik null of lege array`
+- Extraheer ALLE reserveringsnummers (PNR, boekingscodes, referenties)
+- Alle datums MOETEN ISO 8601 format zijn (YYYY-MM-DD of YYYY-MM-DDTHH:MM:SS)
+- Alle adressen compleet en gestructureerd
+- ALLE noodnummers en contactgegevens
+- Als info ontbreekt: gebruik null (niet weglaten)`
           },
           {
             role: "user",
-            content: `Analyseer deze reisdocument tekst en extraheer ALLE reis informatie in gestructureerd JSON formaat. Wees zeer grondig en gedetailleerd.\n\nDocument tekst:\n\n${fullText}`
+            content: [
+              {
+                type: "text",
+                text: "Analyseer dit reisdocument PDF en extraheer ALLE informatie volgens het schema. Wees zeer grondig met reserveringsnummers, datums en contactgegevens."
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:application/pdf;base64,${pdfBase64}`
+                }
+              }
+            ]
           }
         ],
-        response_format: { type: "json_object" },
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "travel_document_schema",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                trip_name: { type: "string" },
+                reservation_id: { type: "string" },
+                departure_date: { type: "string" },
+                arrival_date: { type: "string" },
+                destination: {
+                  type: "object",
+                  properties: {
+                    city: { type: "string" },
+                    country: { type: "string" },
+                    region: { type: ["string", "null"] }
+                  },
+                  required: ["city", "country"],
+                  additionalProperties: false
+                },
+                segments: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      kind: { type: "string", enum: ["flight", "hotel", "transfer", "activity"] },
+                      segment_ref: { type: "string" },
+                      start_datetime: { type: "string" },
+                      end_datetime: { type: "string" },
+                      location: {
+                        type: "object",
+                        properties: {
+                          name: { type: "string" },
+                          address: { type: "string" },
+                          city: { type: ["string", "null"] },
+                          country: { type: ["string", "null"] }
+                        },
+                        required: ["name", "address"],
+                        additionalProperties: false
+                      },
+                      details: { type: "object", additionalProperties: true }
+                    },
+                    required: ["kind", "segment_ref", "start_datetime", "location"],
+                    additionalProperties: false
+                  }
+                },
+                booking_refs: {
+                  type: "object",
+                  properties: {
+                    flight: { type: ["string", "null"] },
+                    hotel: { type: ["string", "null"] },
+                    transfer: { type: ["string", "null"] },
+                    other: { type: "array", items: { type: "string" } }
+                  },
+                  additionalProperties: false
+                },
+                emergency_contacts: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      name: { type: "string" },
+                      phone: { type: "string" },
+                      type: { type: "string" }
+                    },
+                    required: ["name", "phone", "type"],
+                    additionalProperties: false
+                  }
+                },
+                important_notes: { type: "array", items: { type: "string" } },
+                included_services: { type: "array", items: { type: "string" } }
+              },
+              required: ["trip_name", "reservation_id", "departure_date", "arrival_date", "destination", "segments", "booking_refs", "emergency_contacts"],
+              additionalProperties: false
+            }
+          }
+        },
         max_tokens: 8000,
       }),
     });
