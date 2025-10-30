@@ -1009,7 +1009,7 @@ export function TravelBroSetup() {
                 )}
                 <button
                   onClick={() => {
-                    console.log('🔵 Button clicked! editingTrip=', editingTrip);
+                    console.log('🔵 Button clicked! editingTrip=', editingTrip, 'creating=', creating, 'updating=', updating);
                     if (editingTrip) {
                       handleUpdateTravelBro();
                     } else {
@@ -1017,6 +1017,7 @@ export function TravelBroSetup() {
                     }
                   }}
                   disabled={creating || updating}
+                  onMouseEnter={() => console.log('🟢 Button hover - disabled?', creating || updating)}
                   className="flex-1 bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                 >
                   {(creating || updating) ? (
