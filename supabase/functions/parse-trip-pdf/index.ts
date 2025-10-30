@@ -28,16 +28,28 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openaiApiKey) {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
+
+    const { data: apiSettings, error: apiError } = await supabase
+      .from("api_settings")
+      .select("api_key")
+      .eq("provider", "OpenAI")
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (apiError || !apiSettings?.api_key) {
       return new Response(
-        JSON.stringify({ error: "OpenAI API key not configured" }),
+        JSON.stringify({ error: "OpenAI API key not configured in database" }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
+
+    const openaiApiKey = apiSettings.api_key;
 
     const pdfResponse = await fetch(pdfUrl);
     if (!pdfResponse.ok) {
