@@ -98,19 +98,14 @@ Deno.serve(async (req: Request) => {
 
     if (useTemplate && templateSid) {
       console.log('Using template:', templateSid);
-      console.log('Template variables received:', templateVariables);
-      console.log('Template variables type:', typeof templateVariables);
-      console.log('Template variables is object?', typeof templateVariables === 'object');
-      console.log('Template variables keys:', templateVariables ? Object.keys(templateVariables) : 'undefined');
-
       formData.append('ContentSid', templateSid);
 
       if (templateVariables && typeof templateVariables === 'object' && Object.keys(templateVariables).length > 0) {
         const varsString = JSON.stringify(templateVariables);
-        console.log('✅ Template HAS variables - adding ContentVariables:', varsString);
+        console.log('✅ Adding ContentVariables:', varsString);
         formData.append('ContentVariables', varsString);
       } else {
-        console.log('✅ Template has NO variables - NOT adding ContentVariables parameter');
+        console.log('✅ No ContentVariables - using template without variables');
       }
     } else if (message) {
       formData.append('Body', message);
