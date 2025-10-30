@@ -1008,7 +1008,14 @@ export function TravelBroSetup() {
                   </button>
                 )}
                 <button
-                  onClick={editingTrip ? handleUpdateTravelBro : handleCreateTravelBro}
+                  onClick={() => {
+                    console.log('🔵 Button clicked! editingTrip=', editingTrip);
+                    if (editingTrip) {
+                      handleUpdateTravelBro();
+                    } else {
+                      handleCreateTravelBro();
+                    }
+                  }}
                   disabled={creating || updating}
                   className="flex-1 bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                 >
