@@ -335,15 +335,16 @@ export function PageManagement() {
                       >
                         <Edit size={18} />
                       </button>
-                      {page.status === 'published' && (
-                        <button
-                          onClick={() => window.open(`/preview?brand_id=${user?.brand_id}&slug=${page.slug}`, '_blank')}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                          title="Preview"
-                        >
-                          <Eye size={18} />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => {
+                          const previewUrl = `${window.location.origin}/?preview=true&page_id=${page.id}`;
+                          window.open(previewUrl, '_blank');
+                        }}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Preview"
+                      >
+                        <Eye size={18} />
+                      </button>
                       <button
                         onClick={() => togglePublishStatus(page.id, page.status)}
                         className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors ${

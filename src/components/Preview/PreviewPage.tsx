@@ -152,49 +152,73 @@ export function PreviewPage() {
       <iframe
         srcDoc={`
           <!DOCTYPE html>
-          <html>
+          <html lang="nl">
             <head>
               <meta charset="UTF-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>${pageData.title || 'Preview'}</title>
               <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+              <link rel="preconnect" href="https://fonts.googleapis.com">
+              <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+              <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
               <style>
-                * {
+                *, *::before, *::after {
                   box-sizing: border-box;
+                  margin: 0;
+                  padding: 0;
                 }
+
+                html {
+                  scroll-behavior: smooth;
+                  -webkit-font-smoothing: antialiased;
+                  -moz-osx-font-smoothing: grayscale;
+                }
+
                 body {
                   margin: 0;
                   padding: 0;
-                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
                   line-height: 1.6;
                   color: #1f2937;
                   background: #ffffff;
+                  min-height: 100vh;
+                  overflow-x: hidden;
                 }
-                body > * {
+
+                /* Container and layout */
+                .wb-container,
+                body > .wb-component:not(.wb-hero-page):not(.wb-media-row):not([class*="full-width"]) {
                   max-width: 1200px;
                   margin-left: auto;
                   margin-right: auto;
+                  padding-left: 1rem;
+                  padding-right: 1rem;
                 }
+
+                /* Hero sections should be full width */
                 body > .wb-hero-page,
-                body > .wb-component.wb-hero-page {
+                body > .wb-component.wb-hero-page,
+                .wb-hero-page.edge-to-edge {
                   max-width: 100%;
                   width: 100%;
                   margin-left: 0;
                   margin-right: 0;
                 }
+
                 .wb-component {
                   position: relative;
                 }
+
+                /* Hero Page Styles */
                 .wb-hero-page {
                   position: relative;
                   display: flex;
                   align-items: center;
                   justify-content: center;
                   overflow: hidden;
+                  min-height: 400px;
                 }
-                .wb-hero-page.edge-to-edge {
-                  width: 100vw;
-                  margin-left: calc(-50vw + 50%);
-                }
+
                 .hp-bg {
                   position: absolute;
                   top: 0;
@@ -203,11 +227,13 @@ export function PreviewPage() {
                   height: 100%;
                   z-index: 1;
                 }
+
                 .hp-bg img {
                   width: 100%;
                   height: 100%;
                   object-fit: cover;
                 }
+
                 .hp-overlay {
                   position: absolute;
                   top: 0;
@@ -217,51 +243,148 @@ export function PreviewPage() {
                   background: rgba(0, 0, 0, var(--overlay-opacity, 0.4));
                   z-index: 2;
                 }
+
+                .hp-content,
                 .hp-word {
-                  position: absolute;
+                  position: relative;
                   z-index: 3;
                   font-weight: 900;
                   text-transform: uppercase;
                   pointer-events: none;
                   user-select: none;
                   letter-spacing: -0.02em;
+                  color: white;
+                  text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
                 }
+
+                /* Media Row Styles */
                 .wb-media-row {
-                  padding: 40px 20px;
+                  padding: 40px 0;
                 }
+
                 .mr-track {
                   display: grid;
                   grid-auto-flow: column;
+                  gap: 1rem;
                   overflow-x: auto;
                   scroll-behavior: smooth;
                   -webkit-overflow-scrolling: touch;
                   scrollbar-width: thin;
+                  scrollbar-color: rgba(0,0,0,0.2) transparent;
+                  padding: 0 1rem;
                 }
+
+                .mr-track::-webkit-scrollbar {
+                  height: 8px;
+                }
+
+                .mr-track::-webkit-scrollbar-track {
+                  background: transparent;
+                }
+
+                .mr-track::-webkit-scrollbar-thumb {
+                  background-color: rgba(0,0,0,0.2);
+                  border-radius: 4px;
+                }
+
                 .mr-track.shadow-on .mr-item {
-                  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+                  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
                 }
+
                 .mr-item {
                   position: relative;
                   overflow: hidden;
-                  border-radius: var(--mr-item-radius, 8px);
-                  height: var(--mr-item-height, 200px);
+                  border-radius: var(--mr-item-radius, 12px);
+                  height: var(--mr-item-height, 250px);
                   scroll-snap-align: start;
+                  transition: transform 0.2s ease;
                 }
+
+                .mr-item:hover {
+                  transform: scale(1.02);
+                }
+
                 .mr-item img {
                   width: 100%;
                   height: 100%;
                   object-fit: cover;
                 }
+
+                /* Typography */
+                h1, h2, h3, h4, h5, h6 {
+                  font-weight: 700;
+                  line-height: 1.2;
+                  margin-bottom: 1rem;
+                  color: #111827;
+                }
+
+                h1 { font-size: 2.5rem; }
+                h2 { font-size: 2rem; }
+                h3 { font-size: 1.75rem; }
+                h4 { font-size: 1.5rem; }
+                h5 { font-size: 1.25rem; }
+                h6 { font-size: 1rem; }
+
+                p {
+                  margin-bottom: 1rem;
+                  color: #4b5563;
+                }
+
+                /* Images */
                 img {
                   max-width: 100%;
                   height: auto;
+                  display: block;
                 }
+
+                /* Links */
                 a {
                   color: #2563eb;
                   text-decoration: none;
+                  transition: color 0.2s ease;
                 }
+
                 a:hover {
+                  color: #1d4ed8;
                   text-decoration: underline;
+                }
+
+                /* Buttons */
+                button, .btn {
+                  padding: 0.75rem 1.5rem;
+                  font-size: 1rem;
+                  font-weight: 600;
+                  border-radius: 0.5rem;
+                  border: none;
+                  cursor: pointer;
+                  transition: all 0.2s ease;
+                  display: inline-block;
+                }
+
+                button:hover, .btn:hover {
+                  transform: translateY(-2px);
+                  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                }
+
+                /* Sections spacing */
+                section, .section {
+                  padding: 3rem 0;
+                }
+
+                /* Responsive */
+                @media (max-width: 768px) {
+                  h1 { font-size: 2rem; }
+                  h2 { font-size: 1.75rem; }
+                  h3 { font-size: 1.5rem; }
+
+                  .wb-container {
+                    padding-left: 1rem;
+                    padding-right: 1rem;
+                  }
+
+                  .mr-item {
+                    height: 200px;
+                  }
                 }
               </style>
             </head>
