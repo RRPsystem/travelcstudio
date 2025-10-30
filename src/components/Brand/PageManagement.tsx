@@ -66,22 +66,32 @@ export function PageManagement() {
 
   const openInBuilder = async (pageId: string) => {
     if (!user || !user.brand_id) {
-      console.error('Missing user or brand_id:', { user });
+      console.error('[PageManagement] Missing user or brand_id:', { user });
       alert('Gebruiker of brand ID ontbreekt');
       return;
     }
 
     try {
-      console.log('Opening builder for page:', pageId);
+      console.log('[PageManagement] Opening builder for page:', {
+        pageId,
+        userId: user.id,
+        brandId: user.brand_id
+      });
+
       const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/website/pages`;
+      console.log('[PageManagement] Return URL:', returnUrl);
+
       const deeplink = await openBuilder(user.brand_id, user.id, { pageId, returnUrl });
+      console.log('[PageManagement] Generated deeplink:', deeplink);
 
       const newWindow = window.open(deeplink, '_blank');
+      console.log('[PageManagement] Window opened:', !!newWindow);
+
       if (!newWindow) {
         alert('Popup geblokkeerd! Sta popups toe voor deze website.');
       }
     } catch (error) {
-      console.error('Error generating deeplink:', error);
+      console.error('[PageManagement] Error generating deeplink:', error);
       alert('Kon de website builder niet openen: ' + error);
     }
   };
