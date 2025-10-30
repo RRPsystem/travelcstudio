@@ -412,16 +412,18 @@ Deno.serve(async (req: Request) => {
       const { brand_id } = claims;
       const isTemplateMode = url.searchParams.get('is_template') === 'true';
 
+      const pageIdFromQuery = url.searchParams.get('page_id');
       const pageIdFromPath = pathParts[pathParts.length - 1];
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pageIdFromPath);
+      const pageId = pageIdFromQuery || pageIdFromPath;
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pageId);
 
-      if (isUUID && pageIdFromPath) {
-        console.log("[DEBUG] Fetching single page:", pageIdFromPath);
+      if (isUUID && pageId) {
+        console.log("[DEBUG] Fetching single page:", pageId);
 
         const { data: page, error } = await supabase
           .from("pages")
           .select("*")
-          .eq("id", pageIdFromPath)
+          .eq("id", pageId)
           .maybeSingle();
 
         if (error) throw error;
@@ -438,6 +440,7 @@ Deno.serve(async (req: Request) => {
           title: page.title,
           slug: page.slug,
           html: page.content_json || {},
+          content_json: page.content_json || {},
           brand_id: page.brand_id,
           content_type: page.content_type,
           is_template: page.is_template,
