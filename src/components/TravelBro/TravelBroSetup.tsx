@@ -309,13 +309,21 @@ export function TravelBroSetup() {
 
   const handleCreateTravelBro = async () => {
     console.log('DEBUG: newTripName=', newTripName, 'pdfFile=', pdfFile, 'sourceUrls=', sourceUrls);
-    if (!newTripName.trim() || (!pdfFile && sourceUrls.filter(u => u.trim()).length === 0)) {
+
+    const hasName = !!newTripName.trim();
+    const hasPdf = !!pdfFile;
+    const hasUrls = sourceUrls.filter(u => u.trim()).length > 0;
+    console.log('Validation:', { hasName, hasPdf, hasUrls });
+
+    if (!hasName || (!hasPdf && !hasUrls)) {
       alert('Vul minimaal een naam en upload een PDF of voeg URLs toe');
       return;
     }
 
+    console.log('✅ Validation passed, starting creation...');
     setCreating(true);
     try {
+      console.log('📤 Uploading PDF...');
       let pdfUrl = null;
       let parsedData = null;
 
