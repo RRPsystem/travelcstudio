@@ -50,8 +50,19 @@ function buildHTML(page: any, supabaseUrl: string, css: string): string {
   const contentJson = page.content_json || {};
 
   if (page.body_html && page.body_html.trim().toLowerCase().startsWith('<!doctype')) {
-    console.log("[PREVIEW] Using complete body_html");
-    return page.body_html;
+    console.log("[PREVIEW] Using complete body_html - fixing relative CSS URLs");
+    let html = page.body_html;
+
+    html = html.replace(
+      /href="\/styles\/main\.css"/g,
+      `href="${supabaseUrl}/storage/v1/object/public/assets/styles/main.css"`
+    );
+    html = html.replace(
+      /href="\/styles\/components\.css"/g,
+      `href="${supabaseUrl}/storage/v1/object/public/assets/styles/components.css"`
+    );
+
+    return html;
   }
 
   let bodyHTML = '';
