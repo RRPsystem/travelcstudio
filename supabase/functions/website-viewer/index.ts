@@ -145,7 +145,7 @@ Deno.serve(async (req: Request) => {
 
 function renderPage(page: any): string {
   let html = "";
-  
+
   if (page.body_html) {
     html = page.body_html;
   } else if (page.content_json?.htmlSnapshot) {
@@ -158,6 +158,9 @@ function renderPage(page: any): string {
     return renderErrorPage("Geen content", "Deze pagina heeft nog geen content.");
   }
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const cssBaseUrl = `${supabaseUrl}/storage/v1/object/public/assets/styles`;
+
   if (!html.includes("<html") && !html.includes("<!DOCTYPE")) {
     html = `<!DOCTYPE html>
 <html lang="nl">
@@ -165,14 +168,30 @@ function renderPage(page: any): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${page.title || "Pagina"}</title>
-  <style>
-    body { margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
-  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="${cssBaseUrl}/main.css">
+  <link rel="stylesheet" href="${cssBaseUrl}/components.css">
 </head>
 <body>
 ${html}
 </body>
 </html>`;
+  } else {
+    if (!html.includes('main.css') && !html.includes('components.css')) {
+      html = html.replace(
+        '</head>',
+        `  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="${cssBaseUrl}/main.css">
+  <link rel="stylesheet" href="${cssBaseUrl}/components.css">
+</head>`
+      );
+    }
   }
 
   return html;
@@ -319,6 +338,9 @@ function renderWebsitePage(page: any, website: any): string {
     return renderErrorPage("Geen content", "Deze pagina heeft nog geen content.");
   }
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const cssBaseUrl = `${supabaseUrl}/storage/v1/object/public/assets/styles`;
+
   if (!html.includes("<html") && !html.includes("<!DOCTYPE")) {
     html = `<!DOCTYPE html>
 <html lang="nl">
@@ -327,14 +349,30 @@ function renderWebsitePage(page: any, website: any): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${page.meta_title || page.name || "Pagina"}</title>
   ${page.meta_description ? `<meta name="description" content="${page.meta_description}">` : ''}
-  <style>
-    body { margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
-  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="${cssBaseUrl}/main.css">
+  <link rel="stylesheet" href="${cssBaseUrl}/components.css">
 </head>
 <body>
 ${html}
 </body>
 </html>`;
+  } else {
+    if (!html.includes('main.css') && !html.includes('components.css')) {
+      html = html.replace(
+        '</head>',
+        `  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="${cssBaseUrl}/main.css">
+  <link rel="stylesheet" href="${cssBaseUrl}/components.css">
+</head>`
+      );
+    }
   }
 
   return html;
