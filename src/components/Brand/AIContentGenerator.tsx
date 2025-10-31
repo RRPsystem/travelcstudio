@@ -140,6 +140,15 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
     { id: 'nieuwsbrief', label: 'Nieuwsbrief', icon: '✉️', description: 'Persoonlijk met CTA' }
   ];
 
+  const imageStyles = [
+    { id: 'realistic', label: 'Realistisch', icon: '📸', description: 'Fotorealistische afbeelding' },
+    { id: 'drone', label: 'Drone View', icon: '🚁', description: 'Luchtfoto perspectief' },
+    { id: 'cartoon', label: 'Cartoon', icon: '🎨', description: 'Geanimeerde cartoon stijl' },
+    { id: 'vintage', label: 'Vintage', icon: '📷', description: 'Retro vintage look' },
+    { id: 'artistic', label: 'Artistiek', icon: '🖼️', description: 'Schilderij achtig' },
+    { id: 'modern', label: 'Modern', icon: '✨', description: 'Strak en minimalistisch' }
+  ];
+
   const handleContentTypeSelect = (type: string) => {
     setSelectedContentType(type);
     setShowSlidingPanel(true);
@@ -168,8 +177,9 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
       chatTitle = `Hotel zoeker - ${currentInput}...`;
       userMessage = currentInput;
     } else if (selectedContentType === 'image') {
-      chatTitle = `Afbeelding maker - ${currentInput}...`;
-      userMessage = `Genereer afbeelding: ${currentInput}`;
+      const styleLabel = imageStyles.find(s => s.id === selectedImageStyle)?.label || '';
+      chatTitle = `Afbeelding maker (${styleLabel}) - ${currentInput.substring(0, 30)}...`;
+      userMessage = `Genereer afbeelding: ${currentInput} (${styleLabel})`;
     }
 
     const newChat: ChatSession = {
@@ -203,8 +213,10 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
         let routeData = undefined;
 
         if (selectedContentType === 'image') {
-          const imageUrl = await aiTravelService.generateImage(currentInput);
-          response = imageUrl ? `![Generated Image](${imageUrl})\n\nAfbeelding gegenereerd voor: "${currentInput}"` : 'Kon geen afbeelding genereren.';
+          const stylePrompt = imageStyles.find(s => s.id === selectedImageStyle)?.label || '';
+          const fullPrompt = `${currentInput}, ${stylePrompt} style`;
+          const imageUrl = await aiTravelService.generateImage(fullPrompt);
+          response = imageUrl ? `![Generated Image](${imageUrl})\n\nAfbeelding gegenereerd voor: "${currentInput}"\nStijl: ${stylePrompt}` : 'Kon geen afbeelding genereren.';
         } else if (selectedContentType === 'route') {
           const { data: { session } } = await supabase.auth.getSession();
           if (!session) throw new Error('Not authenticated');
@@ -332,6 +344,7 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
     setSelectedRouteType('');
     setSelectedDays('');
     setSelectedMoreSetting('');
+    setSelectedImageStyle('');
     setCurrentInput('');
     setRouteFrom('');
     setRouteTo('');
@@ -365,8 +378,10 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
         
         let response = '';
         if (contentType.includes('afbeelding')) {
-          // Generate image
-          const imageUrl = await aiTravelService.generateImage(userInput);
+          // Generate image with style
+          const activeChat = chatSessions.find(c => c.id === activeChatId);
+          const fullPrompt = userInput;
+          const imageUrl = await aiTravelService.generateImage(fullPrompt);
           response = imageUrl ? `![Generated Image](${imageUrl})\n\nAfbeelding gegenereerd voor: "${userInput}"` : 'Kon geen afbeelding genereren.';
         } else {
           // Generate text content
@@ -948,11 +963,35 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
               </div>
             )}
 
+            {/* Image Style Selection (only show for image content type) */}
+            {selectedContentType === 'image' && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Kies Fotostijl:</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  {imageStyles.map((style) => (
+                    <button
+                      key={style.id}
+                      onClick={() => setSelectedImageStyle(style.id)}
+                      className={`p-4 border-2 rounded-xl transition-all ${
+                        selectedImageStyle === style.id
+                          ? 'border-pink-500 bg-pink-50 shadow-md'
+                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                      }`}
+                    >
+                      <div className="text-2xl mb-2">{style.icon}</div>
+                      <div className="text-sm font-medium text-gray-900">{style.label}</div>
+                      <div className="text-xs text-gray-500 mt-1">{style.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Universal Input Fields at Bottom */}
             {selectedContentType && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900">Details:</h3>
-                
+
                 {/* Destination Input */}
                 {selectedContentType === 'destination' && (
                   <div>
@@ -1057,7 +1096,12 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
           <div className="p-6 border-t border-gray-200">
             <button
               onClick={handleCreateChat}
-              disabled={!selectedContentType || (!currentInput && selectedContentType !== 'route') || (selectedContentType === 'route' && (!routeFrom || !routeTo))}
+              disabled={
+                !selectedContentType ||
+                (!currentInput && selectedContentType !== 'route') ||
+                (selectedContentType === 'route' && (!routeFrom || !routeTo)) ||
+                (selectedContentType === 'image' && !selectedImageStyle)
+              }
               className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 disabled:from-gray-300 disabled:to-gray-400 text-white py-3 px-6 rounded-lg font-medium transition-all disabled:cursor-not-allowed"
             >
               {getButtonText()}
