@@ -9,11 +9,10 @@ const corsHeaders = {
 
 function getFallbackCSS(): string {
   return `
-/* AI TravelStudio - Fallback Styles */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 body { margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1f2937; background: #ffffff; min-height: 100vh; overflow-x: hidden; display: flex; flex-direction: column; }
-.wb-container, body > .wb-component:not(.wb-hero-page):not(.wb-media-row):not([class*=\"full-width\"]) { max-width: 1200px; margin-left: auto; margin-right: auto; padding-left: 1rem; padding-right: 1rem; }
+.wb-container, body > .wb-component:not(.wb-hero-page):not(.wb-media-row):not([class*="full-width"]) { max-width: 1200px; margin-left: auto; margin-right: auto; padding-left: 1rem; padding-right: 1rem; }
 body > .wb-hero-page, body > .wb-component.wb-hero-page, .wb-hero-page.edge-to-edge { max-width: 100%; width: 100%; margin-left: 0; margin-right: 0; }
 .wb-component { position: relative; display: block; clear: both; }
 body > *:not(.wb-hero-page) { position: relative; display: block; width: 100%; }
@@ -32,7 +31,7 @@ section, .section { padding: 3rem 0; }
 .hp-bg img { width: 100%; height: 100%; object-fit: cover; }
 .hp-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, var(--overlay-opacity, 0.4)); z-index: 2; }
 .hp-content, .hp-word { position: absolute; z-index: 3; font-weight: 900; text-transform: uppercase; pointer-events: none; user-select: none; letter-spacing: -0.02em; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
-.wb-hero-page form, .wb-hero-page .hp-form, .wb-hero-page [class*=\"form\"], .wb-hero-page [class*=\"search\"] { position: absolute; z-index: 10; pointer-events: auto; }
+.wb-hero-page form, .wb-hero-page .hp-form, .wb-hero-page [class*="form"], .wb-hero-page [class*="search"] { position: absolute; z-index: 10; pointer-events: auto; }
 .wb-hero-page input, .wb-hero-page button, .wb-hero-page select { pointer-events: auto; }
 .wb-media-row { padding: 40px 0; }
 .mr-track { display: grid; grid-auto-flow: column; gap: 1rem; overflow-x: auto; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.2) transparent; padding: 0 1rem; }
@@ -57,18 +56,18 @@ function buildHTML(page: any, supabaseUrl: string, css: string): string {
   }
 
   return `<!DOCTYPE html>
-<html lang=\"nl\">
+<html lang="nl">
 <head>
-  <meta charset=\"UTF-8\">
-  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${page.title || 'Preview'}</title>
 
   <style>
 ${css}
   </style>
 
-  <link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css\">
-  <link rel=\"stylesheet\" href=\"https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap\">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap">
 </head>
 <body>
   ${bodyHTML}
@@ -77,15 +76,19 @@ ${css}
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === \"OPTIONS\") {
+  if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get(\"SUPABASE_URL\")!;
-    const supabaseKey = Deno.env.get(\"SUPABASE_SERVICE_ROLE_KEY\")!;
+    const url = new URL(req.url);
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    const supabase = createClient(supabaseUrl, supabaseKey, {
+    const apikey = url.searchParams.get("apikey");
+    const effectiveKey = apikey || supabaseServiceKey;
+
+    const supabase = createClient(supabaseUrl, effectiveKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
@@ -93,43 +96,42 @@ Deno.serve(async (req: Request) => {
       }
     });
 
-    const url = new URL(req.url);
-    const pageId = url.searchParams.get(\"id\");
-    const pageSlug = url.searchParams.get(\"slug\");
+    const pageId = url.searchParams.get("id");
+    const pageSlug = url.searchParams.get("slug");
 
     if (!pageId && !pageSlug) {
       return new Response(
-        JSON.stringify({ error: \"Missing id or slug parameter\" }),
+        JSON.stringify({ error: "Missing id or slug parameter" }),
         { status: 400, headers: corsHeaders }
       );
     }
 
-    let query = supabase.from(\"pages\").select(\"*\");
+    let query = supabase.from("pages").select("*");
 
     if (pageId) {
-      query = query.eq(\"id\", pageId);
+      query = query.eq("id", pageId);
     } else if (pageSlug) {
-      query = query.eq(\"slug\", pageSlug);
+      query = query.eq("slug", pageSlug);
     }
 
     const { data: page, error } = await query.maybeSingle();
 
     if (error) {
-      console.error(\"Database error:\", error);
+      console.error("Database error:", error);
       return new Response(
-        JSON.stringify({ error: \"Failed to fetch page\" }),
+        JSON.stringify({ error: "Failed to fetch page", details: error.message }),
         { status: 500, headers: corsHeaders }
       );
     }
 
     if (!page) {
       return new Response(
-        JSON.stringify({ error: \"Page not found\" }),
+        JSON.stringify({ error: "Page not found" }),
         { status: 404, headers: corsHeaders }
       );
     }
 
-    console.log(\"[PREVIEW] Loading CSS from Storage...\");
+    console.log("[PREVIEW] Loading CSS from Storage...");
     let css = '';
     try {
       const mainCSSUrl = `${supabaseUrl}/storage/v1/object/public/assets/styles/main.css`;
@@ -143,14 +145,14 @@ Deno.serve(async (req: Request) => {
       if (mainRes.ok && compRes.ok) {
         const mainCSS = await mainRes.text();
         const compCSS = await compRes.text();
-        css = mainCSS + '\\n\\n' + compCSS;
-        console.log(\"[PREVIEW] CSS loaded successfully:\", { mainSize: mainCSS.length, compSize: compCSS.length });
+        css = mainCSS + '\n\n' + compCSS;
+        console.log("[PREVIEW] CSS loaded successfully:", { mainSize: mainCSS.length, compSize: compCSS.length });
       } else {
-        console.log(\"[PREVIEW] CSS not in storage, using fallback CSS\");
+        console.log("[PREVIEW] CSS not in storage, using fallback CSS");
         css = getFallbackCSS();
       }
     } catch (e) {
-      console.log(\"[PREVIEW] CSS loading error, using fallback:\", e);
+      console.log("[PREVIEW] CSS loading error, using fallback:", e);
       css = getFallbackCSS();
     }
 
@@ -160,14 +162,14 @@ Deno.serve(async (req: Request) => {
       status: 200,
       headers: {
         ...corsHeaders,
-        \"Content-Type\": \"text/html; charset=utf-8\",
-        \"Cache-Control\": \"public, max-age=300\"
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "public, max-age=300"
       }
     });
   } catch (error: any) {
-    console.error(\"[PREVIEW] Error:\", error);
+    console.error("[PREVIEW] Error:", error);
     return new Response(
-      JSON.stringify({ error: error.message || \"Internal server error\" }),
+      JSON.stringify({ error: error.message || "Internal server error" }),
       { status: 500, headers: corsHeaders }
     );
   }
