@@ -480,7 +480,7 @@ export const db = {
 
     if (!supabase) {
       console.log('⚠️ No supabase client');
-      return import.meta.env.VITE_OPENAI_API_KEY || null;
+      return null;
     }
 
     try {
@@ -501,7 +501,7 @@ export const db = {
 
       if (error) {
         console.error('❌ Could not fetch OpenAI key from database:', error);
-        return import.meta.env.VITE_OPENAI_API_KEY || null;
+        return null;
       }
 
       if (data?.is_active && data?.api_key) {
@@ -510,10 +510,10 @@ export const db = {
       }
 
       console.log('⚠️ No active OpenAI key in database');
-      return import.meta.env.VITE_OPENAI_API_KEY || null;
+      return null;
     } catch (err) {
       console.error('❌ Error fetching OpenAI key:', err);
-      return import.meta.env.VITE_OPENAI_API_KEY || null;
+      return null;
     }
   }
 };

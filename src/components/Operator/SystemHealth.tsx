@@ -229,17 +229,23 @@ export function SystemHealth() {
       });
     }
 
-    // Test Google Search API
+    // Test Google Search API - check database
     try {
-      const googleKey = import.meta.env.VITE_GOOGLE_SEARCH_API_KEY;
-      const isValidKey = googleKey && !googleKey.includes('your-google') && googleKey.length > 20;
-      
+      const settings = await supabase
+        .from('api_settings')
+        .select('api_key')
+        .eq('provider', 'Google')
+        .eq('service_name', 'Google Search API')
+        .maybeSingle();
+
+      const isValidKey = settings.data?.api_key && settings.data.api_key.length > 20;
+
       services.push({
         name: 'Google Search API',
         status: isValidKey ? 'operational' : 'outage',
         uptime: isValidKey ? '99.5%' : '0%',
         responseTime: isValidKey ? '~800ms' : 'N/A',
-        lastIncident: isValidKey ? 'No recent incidents' : 'API key not configured',
+        lastIncident: isValidKey ? 'No recent incidents' : 'API key not configured in database',
         lastCheck: now
       });
     } catch (error) {
@@ -253,10 +259,15 @@ export function SystemHealth() {
       });
     }
 
-    // Test Google Maps API
+    // Test Google Maps API - check database
     try {
-      const mapsKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-      const isValidKey = mapsKey && !mapsKey.includes('your-google') && mapsKey.length > 20;
+      const settings = await supabase
+        .from('api_settings')
+        .select('maps_api_key')
+        .eq('provider', 'Google')
+        .maybeSingle();
+
+      const isValidKey = settings.data?.maps_api_key && settings.data.maps_api_key.length > 20;
       
       services.push({
         name: 'Google Maps API',
@@ -568,8 +579,8 @@ export function SystemHealth() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Google APIs:</span>
-                  <span className={`${import.meta.env.VITE_GOOGLE_SEARCH_API_KEY?.length > 20 ? 'text-green-600' : 'text-yellow-600'}`}>
-                    {import.meta.env.VITE_GOOGLE_SEARCH_API_KEY?.length > 20 ? 'Configured' : 'Optional'}
+                  <span className="text-blue-600">
+                    Check API Settings
                   </span>
                 </div>
                 <div className="flex justify-between">

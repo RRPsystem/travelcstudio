@@ -199,20 +199,21 @@ export function SlidingMediaSelector({
 
     loadAPIKeys();
 
-    console.log('🔑 API Keys Status (Environment):');
-    console.log('  Unsplash (env):', import.meta.env.VITE_UNSPLASH_ACCESS_KEY ? '✅ Configured' : '❌ Missing');
-    console.log('  YouTube (env):', import.meta.env.VITE_YOUTUBE_API_KEY ? '✅ Configured' : '❌ Missing');
+    console.log('🔑 API Keys Status:');
+    console.log('  Unsplash:', unsplashKey ? '✅ Loaded from database' : '❌ Not configured');
+    console.log('  YouTube:', youtubeKey ? '✅ Loaded from database' : '❌ Not configured');
   }, []);
 
   const searchUnsplash = async (query: string) => {
-    const apiKey = unsplashKey || import.meta.env.VITE_UNSPLASH_ACCESS_KEY;
+    // SECURITY: Only use API key from database
+    const apiKey = unsplashKey;
 
     if (!apiKey || apiKey === 'YOUR_UNSPLASH_ACCESS_KEY' || apiKey.trim() === '') {
-      console.log('⚠️ No Unsplash API key found (checked database and env), using fallback images');
+      console.log('⚠️ No Unsplash API key configured in database, using fallback images');
       return null;
     }
 
-    console.log('🔑 Using Unsplash key from:', unsplashKey ? 'database' : 'environment');
+    console.log('🔑 Using Unsplash key from database');
 
     console.log('🔍 Searching Unsplash for:', query);
 
@@ -242,14 +243,15 @@ export function SlidingMediaSelector({
   };
 
   const searchYouTube = async (query: string) => {
-    const apiKey = youtubeKey || import.meta.env.VITE_YOUTUBE_API_KEY;
+    // SECURITY: Only use API key from database
+    const apiKey = youtubeKey;
 
     if (!apiKey || apiKey === 'YOUR_YOUTUBE_API_KEY' || apiKey.trim() === '') {
-      console.log('⚠️ No YouTube API key found (checked database and env)');
+      console.log('⚠️ No YouTube API key configured in database');
       return null;
     }
 
-    console.log('🔑 Using YouTube key from:', youtubeKey ? 'database' : 'environment');
+    console.log('🔑 Using YouTube key from database');
     console.log('🔍 Searching YouTube for:', query);
 
     try {
@@ -409,14 +411,14 @@ export function SlidingMediaSelector({
 
             {activeTab === 'unsplash' && (
               <div className="space-y-4">
-                {!unsplashKey && !import.meta.env.VITE_UNSPLASH_ACCESS_KEY && (
+                {!unsplashKey && (
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
-                    ⚠️ Unsplash API key niet geconfigureerd (niet in database of .env). Toont fallback afbeeldingen.
+                    ⚠️ Unsplash API key niet geconfigureerd in database. Toont fallback afbeeldingen. Configureer via Operator Dashboard → API Settings.
                   </div>
                 )}
-                {(unsplashKey || import.meta.env.VITE_UNSPLASH_ACCESS_KEY) && (
+                {unsplashKey && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
-                    ✅ Unsplash API key geladen vanuit {unsplashKey ? 'database' : 'environment'}
+                    ✅ Unsplash API key geladen vanuit database
                   </div>
                 )}
                 <div className="relative">
@@ -488,9 +490,14 @@ export function SlidingMediaSelector({
 
             {activeTab === 'youtube' && (
               <div className="space-y-4">
-                {!import.meta.env.VITE_YOUTUBE_API_KEY && (
+                {!youtubeKey && (
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
-                    ⚠️ YouTube API key niet geconfigureerd. Zoeken werkt niet.
+                    ⚠️ YouTube API key niet geconfigureerd in database. Zoeken werkt niet. Configureer via Operator Dashboard → API Settings.
+                  </div>
+                )}
+                {youtubeKey && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
+                    ✅ YouTube API key geladen vanuit database
                   </div>
                 )}
                 <div className="relative">

@@ -50,16 +50,8 @@ export class OpenAIService {
 
     this.apiKeyPromise = (async () => {
       try {
-        // First try environment variable
-        const envKey = import.meta.env.VITE_OPENAI_API_KEY || '';
-        const isPlaceholder = envKey === 'your-openai-api-key' || envKey.startsWith('your-openai');
-
-        if (envKey && envKey.startsWith('sk-') && !isPlaceholder) {
-          this.apiKey = envKey;
-          return this.apiKey;
-        }
-
-        // If no valid env key, try database
+        // SECURITY: Never use VITE_ prefix for API keys!
+        // All API keys must come from database (api_settings table)
         const { db } = await import('./supabase');
         const settingsArray = await db.getAPISettings();
 
@@ -434,19 +426,44 @@ export class GoogleSearchService {
   private apiKey: string;
   private searchEngineId: string;
   private baseUrl = 'https://www.googleapis.com/customsearch/v1';
+  private apiKeyPromise: Promise<string> | null = null;
 
   constructor() {
-    this.apiKey = import.meta.env.VITE_GOOGLE_SEARCH_API_KEY || '';
-    this.searchEngineId = import.meta.env.VITE_GOOGLE_SEARCH_ENGINE_ID || '';
-    const isPlaceholderKey = this.apiKey === 'your-google-search-api-key' || this.apiKey.startsWith('your-google');
-    const isPlaceholderEngineId = this.searchEngineId === 'your-search-engine-id' || this.searchEngineId.startsWith('your-search');
+    // SECURITY: Keys loaded from database, not environment
+    this.apiKey = '';
+    this.searchEngineId = '';
+  }
+
+  private async ensureAPIKey(): Promise<void> {
+    if (this.apiKey) return;
+
+    if (!this.apiKeyPromise) {
+      this.apiKeyPromise = (async () => {
+        try {
+          const { db } = await import('./supabase');
+          const settingsArray = await db.getAPISettings();
+          const googleSettings = settingsArray?.find((s: any) => s.provider === 'Google');
+
+          if (googleSettings?.api_key) {
+            this.apiKey = googleSettings.api_key;
+            this.searchEngineId = googleSettings.search_engine_id || '';
+            console.log('✅ Loaded Google API key from database');
+          }
+          return this.apiKey;
+        } catch (error) {
+          console.error('Error loading Google API key:', error);
+          return '';
+        }
+      })();
+    }
+
+    await this.apiKeyPromise;
   }
 
   async searchTravel(query: string, location?: string): Promise<GoogleSearchResult[]> {
-    const isPlaceholderKey = this.apiKey === 'your-google-search-api-key' || this.apiKey.startsWith('your-google');
-    const isPlaceholderEngineId = this.searchEngineId === 'your-search-engine-id' || this.searchEngineId.startsWith('your-search');
-    
-    if (!this.apiKey || !this.searchEngineId || isPlaceholderKey || isPlaceholderEngineId) {
+    await this.ensureAPIKey();
+
+    if (!this.apiKey || !this.searchEngineId) {
       console.log('⚠️ Google Search API not configured, skipping search');
       return [];
     }
@@ -501,16 +518,42 @@ export class GoogleSearchService {
 export class GoogleMapsService {
   private apiKey: string;
   private baseUrl = 'https://maps.googleapis.com/maps/api';
+  private apiKeyPromise: Promise<string> | null = null;
 
   constructor() {
-    this.apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
-    const isPlaceholder = this.apiKey === 'your-google-maps-api-key' || this.apiKey.startsWith('your-google');
+    // SECURITY: Keys loaded from database, not environment
+    this.apiKey = '';
+  }
+
+  private async ensureAPIKey(): Promise<void> {
+    if (this.apiKey) return;
+
+    if (!this.apiKeyPromise) {
+      this.apiKeyPromise = (async () => {
+        try {
+          const { db } = await import('./supabase');
+          const settingsArray = await db.getAPISettings();
+          const googleSettings = settingsArray?.find((s: any) => s.provider === 'Google');
+
+          if (googleSettings?.maps_api_key) {
+            this.apiKey = googleSettings.maps_api_key;
+            console.log('✅ Loaded Google Maps API key from database');
+          }
+          return this.apiKey;
+        } catch (error) {
+          console.error('Error loading Google Maps API key:', error);
+          return '';
+        }
+      })();
+    }
+
+    await this.apiKeyPromise;
   }
 
   async searchPlaces(query: string, location?: string): Promise<GoogleMapsPlace[]> {
-    const isPlaceholder = this.apiKey === 'your-google-maps-api-key' || this.apiKey.startsWith('your-google');
-    
-    if (!this.apiKey || isPlaceholder) {
+    await this.ensureAPIKey();
+
+    if (!this.apiKey) {
       console.log('⚠️ Google Maps API not configured, skipping places search');
       return [];
     }
