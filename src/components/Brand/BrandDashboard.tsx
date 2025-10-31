@@ -486,7 +486,7 @@ export function BrandDashboard() {
       </div>
 
       <div className="flex-1 flex flex-col">
-        {!['nieuwsbeheer', 'destinations', 'trips', 'settings'].includes(activeSection) && (
+        {!['nieuwsbeheer', 'destinations', 'trips', 'settings', 'testing', 'roadmap'].includes(activeSection) && (
           <header className="bg-white border-b border-gray-200 px-6 py-4">
             <div className="flex items-center justify-between">
               <div>
@@ -498,16 +498,11 @@ export function BrandDashboard() {
                   {activeSection === 'menu' && 'Menu Beheer'}
                   {activeSection === 'footer' && 'Footer Beheer'}
                   {activeSection === 'content' && 'Nieuwsberichten'}
-                  {activeSection === 'nieuwsbeheer' && 'Nieuwsbeheer'}
-                  {activeSection === 'destinations' && 'Bestemmingen'}
-                  {activeSection === 'trips' && 'Reizen'}
                   {activeSection === 'ai-content' && 'AI Content Generator'}
                   {activeSection === 'ai-travelbro' && 'AI TravelBRO'}
                   {activeSection === 'ai-import' && 'AI TravelImport'}
                   {activeSection === 'ai-video' && 'AI Travel Video'}
                   {activeSection === 'social-media' && 'Social Media Manager'}
-                  {activeSection === 'testing' && 'Test Dashboard'}
-                  {activeSection === 'roadmap' && 'Roadmap'}
                 </h1>
                 <p className="text-gray-600 mt-1">
                   {activeSection === 'dashboard' && 'Welkom terug bij je brand dashboard'}
@@ -515,17 +510,11 @@ export function BrandDashboard() {
                   {activeSection === 'pages' && 'Beheer alle pagina\'s van je website'}
                   {activeSection === 'menu' && 'Beheer menu\'s voor je website'}
                   {activeSection === 'footer' && 'Beheer footers voor je website'}
-                  {activeSection === 'nieuwsbeheer' && 'Beheer nieuwsberichten voor je website'}
-                  {activeSection === 'destinations' && 'Beheer bestemmingen voor je website'}
-                  {activeSection === 'trips' && 'Beheer reizen voor je website'}
                   {activeSection === 'ai-content' && 'Generate travel content with AI'}
                   {activeSection === 'ai-travelbro' && 'Your AI travel assistant'}
                   {activeSection === 'ai-import' && 'Import travel data with AI'}
                   {activeSection === 'ai-video' && 'Create engaging travel videos with AI'}
                   {activeSection === 'social-media' && 'Maak en beheer social media posts'}
-                  {activeSection === 'settings' && 'Beheer je brand en domein instellingen'}
-                  {activeSection === 'testing' && 'Test features en geef feedback'}
-                  {activeSection === 'roadmap' && 'Vote on features and track development progress'}
                 </p>
               </div>
 
