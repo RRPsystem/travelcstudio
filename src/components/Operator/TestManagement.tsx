@@ -87,18 +87,29 @@ export default function TestManagement() {
 
       const { data: feedbackData } = await supabase
         .from('test_feedback')
-        .select(`
-          *,
-          user:users(email)
-        `)
+        .select('*')
         .eq('round_id', activeRoundData.id);
 
-      const feedbackMap = new Map<string, TestFeedback[]>();
-      feedbackData?.forEach(fb => {
-        const existing = feedbackMap.get(fb.feature_id) || [];
-        feedbackMap.set(fb.feature_id, [...existing, fb]);
-      });
-      setFeedbackByFeature(feedbackMap);
+      if (feedbackData && feedbackData.length > 0) {
+        const userIds = [...new Set(feedbackData.map(fb => fb.user_id))];
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('id, email')
+          .in('id', userIds);
+
+        const userMap = new Map(usersData?.map(u => [u.id, u]) || []);
+
+        const feedbackMap = new Map<string, TestFeedback[]>();
+        feedbackData.forEach(fb => {
+          const user = userMap.get(fb.user_id);
+          const feedbackWithUser = { ...fb, user: user ? { email: user.email } : null };
+          const existing = feedbackMap.get(fb.feature_id) || [];
+          feedbackMap.set(fb.feature_id, [...existing, feedbackWithUser]);
+        });
+        setFeedbackByFeature(feedbackMap);
+      } else {
+        setFeedbackByFeature(new Map());
+      }
 
       const { data: statusData } = await supabase
         .from('test_feature_status')
