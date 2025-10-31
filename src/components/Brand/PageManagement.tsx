@@ -338,8 +338,7 @@ export function PageManagement() {
                       <button
                         onClick={() => {
                           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-                          const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-                          const previewUrl = `${supabaseUrl}/functions/v1/pages-preview?id=${page.id}&apikey=${anonKey}`;
+                          const previewUrl = `${supabaseUrl}/functions/v1/website-viewer/${page.slug}?brand_id=${user?.brand_id}`;
                           window.open(previewUrl, '_blank');
                         }}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
