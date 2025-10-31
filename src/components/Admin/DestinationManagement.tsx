@@ -269,6 +269,58 @@ export function DestinationManagement() {
     }
   };
 
+  const handleViewDestination = async (destination: Destination) => {
+    try {
+      if (!user?.id) {
+        alert('User not authenticated');
+        return;
+      }
+
+      if (!destination.slug) {
+        alert('Destination has no slug. Cannot view.');
+        return;
+      }
+
+      const jwtResponse = await generateBuilderJWT(SYSTEM_BRAND_ID, user.id, ['content:read'], {
+        forceBrandId: true,
+        destinationSlug: destination.slug,
+        authorType: 'admin',
+        authorId: user.id,
+        mode: 'destination',
+      });
+
+      const builderBaseUrl = 'https://www.ai-websitestudio.nl';
+      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/admin/destinations`;
+
+      const deeplink = generateBuilderDeeplink({
+        baseUrl: builderBaseUrl,
+        jwtResponse,
+        returnUrl,
+        mode: 'preview',
+        authorType: 'admin',
+        authorId: user.id,
+        contentType: 'destinations',
+        destinationSlug: destination.slug
+      });
+
+      console.log('🔗 Opening destination preview deeplink:', deeplink);
+
+      const newWindow = window.open(deeplink, '_blank');
+      if (!newWindow) {
+        try {
+          await navigator.clipboard.writeText(deeplink);
+          alert('Pop-up geblokkeerd! URL is gekopieerd naar clipboard. Plak in nieuwe tab.');
+        } catch (clipboardError) {
+          console.error('Clipboard error:', clipboardError);
+          alert(`Pop-up geblokkeerd! Open deze URL handmatig: ${deeplink}`);
+        }
+      }
+    } catch (err) {
+      console.error('Error generating preview deeplink:', err);
+      alert('Failed to generate preview link');
+    }
+  };
+
   const handleDeleteDestination = async (destinationId: string) => {
     if (!confirm('Are you sure you want to delete this destination?')) return;
 
@@ -389,6 +441,13 @@ export function DestinationManagement() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end space-x-3">
+                      <button
+                        onClick={() => handleViewDestination(destination)}
+                        className="text-green-600 hover:text-green-900"
+                        title="Bekijken"
+                      >
+                        <Eye size={16} />
+                      </button>
                       <button
                         onClick={() => handleEditDestination(destination)}
                         className="text-blue-600 hover:text-blue-900"
