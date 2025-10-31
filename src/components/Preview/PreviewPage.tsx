@@ -8,7 +8,11 @@ interface PageData {
   status: string;
 }
 
-export function PreviewPage() {
+interface PreviewPageProps {
+  pageId?: string;
+}
+
+export function PreviewPage({ pageId: propPageId }: PreviewPageProps = {}) {
   const [pageData, setPageData] = useState<PageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -19,7 +23,7 @@ export function PreviewPage() {
         const params = new URLSearchParams(window.location.search);
         const brandId = params.get('brand_id');
         const slug = params.get('slug');
-        const pageId = params.get('page_id');
+        const pageId = propPageId || params.get('page_id');
 
         if (!brandId && !pageId) {
           setError('Geen brand_id of page_id opgegeven');
@@ -73,7 +77,7 @@ export function PreviewPage() {
     };
 
     loadPage();
-  }, []);
+  }, [propPageId]);
 
   if (loading) {
     return (
@@ -163,6 +167,8 @@ export function PreviewPage() {
               <link rel="preconnect" href="https://fonts.googleapis.com">
               <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
               <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+              <link rel="stylesheet" href="${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/assets/styles/main.css">
+              <link rel="stylesheet" href="${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/assets/styles/components.css">
               <style>
                 *, *::before, *::after {
                   box-sizing: border-box;

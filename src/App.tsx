@@ -28,6 +28,11 @@ function AppContent() {
     return <AgentProfile slug={agentProfileMatch[1]} />;
   }
 
+  const pagePreviewMatch = path.match(/^\/preview\/([a-f0-9-]+)$/);
+  if (pagePreviewMatch) {
+    return <PreviewPage pageId={pagePreviewMatch[1]} />;
+  }
+
   const newsPreviewMatch = path.match(/^\/preview\/news\/(.+)$/);
   if (newsPreviewMatch) {
     return <NewsPreview />;
