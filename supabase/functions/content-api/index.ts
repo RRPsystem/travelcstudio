@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { jwtVerify } from "npm:jose@5";
+import { SaveContentSchema } from "./schemas.ts";
 
 interface JWTPayload {
   brand_id: string;
@@ -417,7 +418,17 @@ Deno.serve(async (req: Request) => {
 
     if (action === "save") {
       const payload = await verifyBearerToken(req, "content:write");
-      const body = await req.json();
+      const rawBody = await req.json();
+
+      const validation = SaveContentSchema.safeParse(rawBody);
+      if (!validation.success) {
+        return new Response(
+          JSON.stringify({ error: "Invalid request data", details: validation.error.errors }),
+          { status: 400, headers: corsHeaders(req) }
+        );
+      }
+
+      const body = validation.data;
 
       console.log("[CONTENT-API] Saving content:", JSON.stringify(body, null, 2));
       console.log("[CONTENT-API] JWT payload:", { mode: payload.mode, is_template: payload.is_template });

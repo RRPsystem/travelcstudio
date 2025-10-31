@@ -3,6 +3,7 @@ import { edgeAIService } from '../../lib/apiServices';
 import { supabase } from '../../lib/supabase';
 import { APIStatusChecker } from './APIStatusChecker';
 import { GooglePlacesAutocomplete } from '../shared/GooglePlacesAutocomplete';
+import DOMPurify from 'dompurify';
 import {
   X,
   MapPin,
@@ -639,7 +640,7 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
                             <div
                               className="prose prose-sm max-w-none text-gray-700 leading-relaxed"
                               dangerouslySetInnerHTML={{
-                                __html: message.content
+                                __html: DOMPurify.sanitize(message.content
                                   .replace(/###\s(.+)/g, '<h3 class="text-lg font-bold text-gray-900 mt-4 mb-2">$1</h3>')
                                   .replace(/##\s(.+)/g, '<h2 class="text-xl font-bold text-gray-900 mt-6 mb-3">$1</h2>')
                                   .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
@@ -650,7 +651,7 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
                                   .replace(/\n/g, '<br>')
                                   .replace(/^(.)/g, '<p class="mb-3">$1')
                                   .replace(/(.+)$/g, '$1</p>')
-                                  .replace(/<p[^>]*><\/p>/g, '')
+                                  .replace(/<p[^>]*><\/p>/g, ''))
                               }}
                             />
                             {message.type === 'assistant' && (

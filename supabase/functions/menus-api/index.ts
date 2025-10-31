@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
+import { SaveMenuSchema } from "./schemas.ts";
 
 // JWT Helper (inline)
 interface JWTPayload {
@@ -179,7 +180,17 @@ Deno.serve(async (req: Request) => {
     // POST /api/menus/save
     if (req.method === "POST" && pathParts.includes("save")) {
       const claims = await verifyBearerToken(req);
-      const body = await req.json();
+      const rawBody = await req.json();
+
+      const validation = SaveMenuSchema.safeParse(rawBody);
+      if (!validation.success) {
+        return new Response(
+          JSON.stringify({ error: "Invalid request data", details: validation.error.errors }),
+          { status: 400, headers: withCORS(req, { headers: { "Content-Type": "application/json" } }) }
+        );
+      }
+
+      const body = validation.data;
       const { brand_id, menu_id, name, items } = body;
 
       if (claims.brand_id !== brand_id) {

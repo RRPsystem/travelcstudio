@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PageComponent } from '../../types';
 import { Trash2, Settings, ArrowRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import DOMPurify from 'dompurify';
 
 interface ComponentRendererProps {
   component: PageComponent;
@@ -32,9 +33,9 @@ export function ComponentRenderer({ component, isPreview = false, onRemove }: Co
       case 'text':
         return (
           <div className="p-8 max-w-4xl mx-auto bg-white">
-            <div 
+            <div
               className={`text-gray-900 leading-relaxed text-${component.props.alignment || 'left'}`}
-              dangerouslySetInnerHTML={{ __html: component.props.content }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(component.props.content) }}
             />
           </div>
         );

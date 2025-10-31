@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { jwtVerify } from "npm:jose@5";
+import { SavePageSchema, PublishPageSchema } from "./schemas.ts";
 
 interface JWTPayload {
   brand_id: string;
@@ -126,7 +127,17 @@ Deno.serve(async (req: Request) => {
 
     if (req.method === "POST" && (pathParts.includes("save") || pathParts.includes("saveDraft"))) {
       console.log("[DEBUG] Processing saveDraft/save");
-      const body = await req.json();
+      const rawBody = await req.json();
+
+      const validation = SavePageSchema.safeParse(rawBody);
+      if (!validation.success) {
+        return new Response(
+          JSON.stringify({ error: "Invalid request data", details: validation.error.errors }),
+          { status: 400, headers: corsHeaders() }
+        );
+      }
+
+      const body = validation.data;
       console.log("[DEBUG] Body:", {
         title: body.title,
         slug: body.slug,
@@ -359,7 +370,17 @@ Deno.serve(async (req: Request) => {
     }
 
     if (req.method === "POST" && pathParts.includes("publish")) {
-      const body = await req.json();
+      const rawBody = await req.json();
+
+      const validation = PublishPageSchema.safeParse(rawBody);
+      if (!validation.success) {
+        return new Response(
+          JSON.stringify({ error: "Invalid request data", details: validation.error.errors }),
+          { status: 400, headers: corsHeaders() }
+        );
+      }
+
+      const body = validation.data;
       const claims = await verifyBearerToken(req, supabase, "content:write", ["pages:write"]);
       const pageId = pathParts[pathParts.length - 2];
       const { body_html } = body;
