@@ -143,7 +143,7 @@ export function PreviewPage({ pageId: propPageId }: PreviewPageProps = {}) {
       );
     }
 
-    const cleanHtml = htmlContent
+    let cleanHtml = htmlContent
       .replace(/\sclass="component-toolbar"[^>]*>[\s\S]*?<\/div>/g, '')
       .replace(/\sclass="wb-type-badge"[^>]*>[\s\S]*?<\/div>/g, '')
       .replace(/\sdraggable="true"/g, '')
@@ -153,6 +153,15 @@ export function PreviewPage({ pageId: propPageId }: PreviewPageProps = {}) {
       .replace(/\sdata-wb-[^=]*="[^"]*"/g, '')
       .replace(/<button[^>]*class="[^"]*toolbar-btn[^"]*"[^>]*>[\s\S]*?<\/button>/g, '')
       .replace(/<button[^>]*data-tag-del[^>]*>[\s\S]*?<\/button>/g, '');
+
+    if (!cleanHtml.includes('<html') && !cleanHtml.includes('<!DOCTYPE')) {
+      cleanHtml = cleanHtml;
+    } else {
+      const bodyMatch = cleanHtml.match(/<body[^>]*>([\s\S]*)<\/body>/);
+      if (bodyMatch) {
+        cleanHtml = bodyMatch[1];
+      }
+    }
 
     return (
       <iframe
@@ -174,6 +183,29 @@ export function PreviewPage({ pageId: propPageId }: PreviewPageProps = {}) {
                   box-sizing: border-box;
                   margin: 0;
                   padding: 0;
+                }
+
+                /* Override: Ensure proper stacking of top-level elements */
+                body > * {
+                  position: relative !important;
+                  display: block !important;
+                  width: 100% !important;
+                }
+
+                /* Hero sections can use their own positioning */
+                body > .wb-hero-page,
+                body > .wb-component.wb-hero-page {
+                  position: relative !important;
+                  display: flex !important;
+                }
+
+                /* Headers and navs should be on top */
+                body > header,
+                body > nav,
+                body > .wb-header,
+                body > .wb-nav {
+                  position: relative !important;
+                  z-index: 1000 !important;
                 }
 
                 html {
