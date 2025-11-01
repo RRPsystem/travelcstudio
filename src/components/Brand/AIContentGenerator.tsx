@@ -771,23 +771,64 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
                           </div>
                         ) : (
                           <div className="space-y-3">
-                            <div
-                              className="prose prose-sm max-w-none text-gray-700 leading-relaxed"
-                              dangerouslySetInnerHTML={{
-                                __html: DOMPurify.sanitize(message.content
-                                  .replace(/###\s(.+)/g, '<h3 class="text-lg font-bold text-gray-900 mt-4 mb-2">$1</h3>')
-                                  .replace(/##\s(.+)/g, '<h2 class="text-xl font-bold text-gray-900 mt-6 mb-3">$1</h2>')
-                                  .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
-                                  .replace(/^\* (.+)$/gm, '<li class="ml-4">$1</li>')
-                                  .replace(/^- (.+)$/gm, '<li class="ml-4">$1</li>')
-                                  .replace(/(<li.*<\/li>[\n]*)+/g, '<ul class="list-disc list-inside space-y-1 my-3">$&</ul>')
-                                  .replace(/\n\n/g, '</p><p class="mb-3">')
-                                  .replace(/\n/g, '<br>')
-                                  .replace(/^(.)/g, '<p class="mb-3">$1')
-                                  .replace(/(.+)$/g, '$1</p>')
-                                  .replace(/<p[^>]*><\/p>/g, ''))
-                              }}
-                            />
+                            {(() => {
+                              const markdownMatch = message.content.match(/!\[.*?\]\((https?:\/\/[^\)]+)\)/);
+                              const urlMatch = message.content.match(/(https?:\/\/[^\s]+\.(?:png|jpg|jpeg|gif|webp)[^\s]*)/i);
+
+                              if (markdownMatch || urlMatch) {
+                                const imageUrl = markdownMatch ? markdownMatch[1] : urlMatch![1];
+                                const textContent = message.content
+                                  .replace(/!\[.*?\]\(https?:\/\/[^\)]+\)/, '')
+                                  .replace(/https?:\/\/[^\s]+\.(?:png|jpg|jpeg|gif|webp)[^\s]*/i, '')
+                                  .trim();
+
+                                return (
+                                  <div className="space-y-4">
+                                    <div className="bg-gray-50 rounded-xl p-4 border-2 border-gray-200">
+                                      <img
+                                        src={imageUrl}
+                                        alt="Generated Image"
+                                        className="w-full rounded-lg shadow-lg"
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          console.error('Image load failed:', imageUrl);
+                                          target.style.display = 'none';
+                                          const parent = target.parentElement;
+                                          if (parent) {
+                                            parent.innerHTML = `<div class="text-red-600 p-4 text-center">Kon afbeelding niet laden</div>`;
+                                          }
+                                        }}
+                                      />
+                                    </div>
+                                    {textContent && (
+                                      <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                        {textContent}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <div
+                                  className="prose prose-sm max-w-none text-gray-700 leading-relaxed"
+                                  dangerouslySetInnerHTML={{
+                                    __html: DOMPurify.sanitize(message.content
+                                      .replace(/###\s(.+)/g, '<h3 class="text-lg font-bold text-gray-900 mt-4 mb-2">$1</h3>')
+                                      .replace(/##\s(.+)/g, '<h2 class="text-xl font-bold text-gray-900 mt-6 mb-3">$1</h2>')
+                                      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
+                                      .replace(/^\* (.+)$/gm, '<li class="ml-4">$1</li>')
+                                      .replace(/^- (.+)$/gm, '<li class="ml-4">$1</li>')
+                                      .replace(/(<li.*<\/li>[\n]*)+/g, '<ul class="list-disc list-inside space-y-1 my-3">$&</ul>')
+                                      .replace(/\n\n/g, '</p><p class="mb-3">')
+                                      .replace(/\n/g, '<br>')
+                                      .replace(/^(.)/g, '<p class="mb-3">$1')
+                                      .replace(/(.+)$/g, '$1</p>')
+                                      .replace(/<p[^>]*><\/p>/g, ''))
+                                  }}
+                                />
+                              );
+                            })()}
                             {message.type === 'assistant' && (
                               <button
                                 onClick={() => {
