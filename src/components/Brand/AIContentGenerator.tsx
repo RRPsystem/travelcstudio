@@ -859,29 +859,31 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
               </button>
             </div>
 
-            {/* Writing Style */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Kies Schrijfstijl:</h3>
-              <div className="grid grid-cols-2 gap-3">
-                {writingStyles.map((style) => (
-                  <button
-                    key={style.id}
-                    onClick={() => setSelectedWritingStyle(style.id)}
-                    className={`p-3 border-2 rounded-xl transition-all ${
-                      selectedWritingStyle === style.id
-                        ? 'border-orange-500 bg-orange-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="text-lg mb-1">{style.icon}</div>
-                    <div className="text-sm font-medium text-gray-900">{style.label}</div>
-                  </button>
-                ))}
+            {/* Writing Style (hide for image content type) */}
+            {selectedContentType !== 'image' && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Kies Schrijfstijl:</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {writingStyles.map((style) => (
+                    <button
+                      key={style.id}
+                      onClick={() => setSelectedWritingStyle(style.id)}
+                      className={`p-3 border-2 rounded-xl transition-all ${
+                        selectedWritingStyle === style.id
+                          ? 'border-orange-500 bg-orange-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="text-lg mb-1">{style.icon}</div>
+                      <div className="text-sm font-medium text-gray-900">{style.label}</div>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* More Settings (hide for route content type) */}
-            {selectedContentType !== 'route' && (
+            {/* More Settings (hide for route and image content types) */}
+            {selectedContentType !== 'route' && selectedContentType !== 'image' && (
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Meer Instellingen:</h3>
                 <div className="grid grid-cols-3 gap-2">
