@@ -84,11 +84,32 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showAPIStatus, setShowAPIStatus] = useState(false);
+  const [generatedImages, setGeneratedImages] = useState<string[]>([]);
 
   // Load chat history on mount
   useEffect(() => {
     loadChatHistory();
   }, []);
+
+  // Extract images from chat history
+  useEffect(() => {
+    const images: string[] = [];
+    chatSessions.forEach(session => {
+      session.messages.forEach(message => {
+        if (message.type === 'assistant') {
+          const markdownMatch = message.content.match(/!\[.*?\]\((https?:\/\/[^\)]+)\)/);
+          const urlMatch = message.content.match(/(https?:\/\/[^\s]+\.(?:png|jpg|jpeg|gif|webp)[^\s]*)/i);
+          if (markdownMatch || urlMatch) {
+            const imageUrl = markdownMatch ? markdownMatch[1] : urlMatch![1];
+            if (!images.includes(imageUrl)) {
+              images.push(imageUrl);
+            }
+          }
+        }
+      });
+    });
+    setGeneratedImages(images.slice(0, 4));
+  }, [chatSessions]);
 
   const loadChatHistory = async () => {
     try {
@@ -126,15 +147,28 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
   const saveChat = async (chat: ChatSession) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.error('No user found when saving chat');
+        return;
+      }
 
-      const { data: userData } = await supabase
+      const { data: userData, error: userError } = await supabase
         .from('users')
         .select('brand_id')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (!userData?.brand_id) return;
+      if (userError) {
+        console.error('Error fetching user brand_id:', userError);
+        return;
+      }
+
+      if (!userData?.brand_id) {
+        console.error('No brand_id found for user');
+        return;
+      }
+
+      console.log('Saving chat:', chat.id, 'for brand:', userData.brand_id);
 
       const { error } = await supabase
         .from('content_generator_chats')
@@ -153,7 +187,12 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
           }
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error upserting chat:', error);
+        throw error;
+      }
+
+      console.log('Chat saved successfully:', chat.id);
     } catch (error) {
       console.error('Error saving chat:', error);
     }
@@ -567,6 +606,32 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
           </button>
         </div>
 
+        {/* Image Gallery - only show for Afbeelding Maker */}
+        {selectedContentType === 'image' || (activeChatId && chatSessions.find(c => c.id === activeChatId)?.contentType === 'Afbeelding Maker') || generatedImages.length > 0 ? (
+          <div className="px-4 pb-4">
+            <div className="text-xs font-semibold text-gray-500 uppercase mb-2">Laatste Afbeeldingen</div>
+            <div className="grid grid-cols-2 gap-2">
+              {generatedImages.map((imageUrl, index) => (
+                <div key={index} className="aspect-square rounded-lg overflow-hidden bg-gray-100 border border-gray-200 hover:border-blue-400 transition-colors cursor-pointer group">
+                  <img
+                    src={imageUrl}
+                    alt={`Generated ${index + 1}`}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                    onClick={() => window.open(imageUrl, '_blank')}
+                  />
+                </div>
+              ))}
+              {generatedImages.length === 0 && (
+                <div className="col-span-2 aspect-square rounded-lg bg-gray-50 border border-dashed border-gray-300 flex items-center justify-center">
+                  <div className="text-center">
+                    <ImageIcon size={24} className="text-gray-400 mx-auto mb-2" />
+                    <p className="text-xs text-gray-500">Nog geen afbeeldingen</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
 
         <div className="flex-1 overflow-y-auto">
           <div className="p-4">
