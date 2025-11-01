@@ -1273,7 +1273,7 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
                 )}
 
                 {/* Image Input */}
-                {selectedContentType === 'image' && selectedImageStyle && (
+                {selectedContentType === 'image' && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Afbeelding beschrijving:</label>
                     <div className="relative">
@@ -1290,7 +1290,7 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
                 )}
 
                 {/* Image Gallery - only show for Afbeelding Maker */}
-                {selectedContentType === 'image' && selectedImageStyle && generatedImages.length > 0 && (
+                {selectedContentType === 'image' && generatedImages.length > 0 && (
                   <div className="mt-4">
                     <div className="text-xs font-semibold text-gray-500 uppercase mb-3">Laatste Afbeeldingen</div>
                     <div className="grid grid-cols-2 gap-3">
