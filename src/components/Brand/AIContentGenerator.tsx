@@ -606,33 +606,6 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
           </button>
         </div>
 
-        {/* Image Gallery - only show for Afbeelding Maker */}
-        {selectedContentType === 'image' || (activeChatId && chatSessions.find(c => c.id === activeChatId)?.contentType === 'Afbeelding Maker') || generatedImages.length > 0 ? (
-          <div className="px-4 pb-4">
-            <div className="text-xs font-semibold text-gray-500 uppercase mb-2">Laatste Afbeeldingen</div>
-            <div className="grid grid-cols-2 gap-2">
-              {generatedImages.map((imageUrl, index) => (
-                <div key={index} className="aspect-square rounded-lg overflow-hidden bg-gray-100 border border-gray-200 hover:border-blue-400 transition-colors cursor-pointer group">
-                  <img
-                    src={imageUrl}
-                    alt={`Generated ${index + 1}`}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                    onClick={() => window.open(imageUrl, '_blank')}
-                  />
-                </div>
-              ))}
-              {generatedImages.length === 0 && (
-                <div className="col-span-2 aspect-square rounded-lg bg-gray-50 border border-dashed border-gray-300 flex items-center justify-center">
-                  <div className="text-center">
-                    <ImageIcon size={24} className="text-gray-400 mx-auto mb-2" />
-                    <p className="text-xs text-gray-500">Nog geen afbeeldingen</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        ) : null}
-
         <div className="flex-1 overflow-y-auto">
           <div className="p-4">
             <div className="space-y-2">
@@ -1318,6 +1291,30 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
               </div>
             )}
           </div>
+
+          {/* Image Gallery - only show for Afbeelding Maker */}
+          {selectedContentType === 'image' && generatedImages.length > 0 && (
+            <div className="px-6 pb-4">
+              <div className="text-xs font-semibold text-gray-500 uppercase mb-3">Laatste Afbeeldingen</div>
+              <div className="grid grid-cols-4 gap-3">
+                {generatedImages.slice(0, 4).map((imageUrl, index) => (
+                  <div
+                    key={index}
+                    className="aspect-square rounded-lg overflow-hidden bg-gray-100 border-2 border-gray-200 hover:border-orange-400 transition-all cursor-pointer group shadow-sm hover:shadow-md"
+                    onClick={() => {
+                      setCurrentInput(`Maak een soortgelijke afbeelding als deze`);
+                    }}
+                  >
+                    <img
+                      src={imageUrl}
+                      alt={`Generated ${index + 1}`}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Panel Footer */}
           <div className="p-6 border-t border-gray-200">
