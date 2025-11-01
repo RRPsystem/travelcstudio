@@ -1296,11 +1296,11 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
           {selectedContentType === 'image' && generatedImages.length > 0 && (
             <div className="px-6 pb-4">
               <div className="text-xs font-semibold text-gray-500 uppercase mb-3">Laatste Afbeeldingen</div>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {generatedImages.slice(0, 4).map((imageUrl, index) => (
                   <div
                     key={index}
-                    className="aspect-square rounded-lg overflow-hidden bg-gray-100 border-2 border-gray-200 hover:border-orange-400 transition-all cursor-pointer group shadow-sm hover:shadow-md"
+                    className="aspect-video rounded-lg overflow-hidden bg-gray-100 border-2 border-gray-200 hover:border-orange-400 transition-all cursor-pointer group shadow-sm hover:shadow-md"
                     onClick={() => {
                       setCurrentInput(`Maak een soortgelijke afbeelding als deze`);
                     }}
