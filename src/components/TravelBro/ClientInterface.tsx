@@ -88,7 +88,9 @@ export function ClientInterface({ shareToken }: { shareToken: string }) {
           });
 
         if (sessionInsertError) {
-          console.error('Error creating session:', sessionInsertError);
+          console.error('Error creating session:', sessionInsertError.message, sessionInsertError);
+          alert('Kon sessie niet aanmaken: ' + sessionInsertError.message);
+          return;
         }
 
         const { error: intakeInsertError } = await supabase
@@ -102,7 +104,9 @@ export function ClientInterface({ shareToken }: { shareToken: string }) {
           });
 
         if (intakeInsertError) {
-          console.error('Error creating intake:', intakeInsertError);
+          console.error('Error creating intake:', intakeInsertError.message, intakeInsertError);
+          alert('Kon intake niet aanmaken: ' + intakeInsertError.message);
+          return;
         }
 
         setTrip(tripData);
