@@ -78,21 +78,6 @@ export function ClientInterface({ shareToken }: { shareToken: string }) {
 
         const newSessionToken = crypto.randomUUID().replace(/-/g, '');
 
-        const { error: sessionInsertError } = await supabase
-          .from('travel_whatsapp_sessions')
-          .insert({
-            session_token: newSessionToken,
-            trip_id: tripData.id,
-            brand_id: tripData.brand_id,
-            phone_number: 'web_' + Date.now()
-          });
-
-        if (sessionInsertError) {
-          console.error('Error creating session:', sessionInsertError.message, sessionInsertError);
-          alert('Kon sessie niet aanmaken: ' + sessionInsertError.message);
-          return;
-        }
-
         const { error: intakeInsertError } = await supabase
           .from('travel_intakes')
           .insert({
@@ -104,8 +89,34 @@ export function ClientInterface({ shareToken }: { shareToken: string }) {
           });
 
         if (intakeInsertError) {
-          console.error('Error creating intake:', intakeInsertError.message, intakeInsertError);
-          alert('Kon intake niet aanmaken: ' + intakeInsertError.message);
+          console.error('Error creating intake:', {
+            message: intakeInsertError.message,
+            code: intakeInsertError.code,
+            details: intakeInsertError.details,
+            hint: intakeInsertError.hint,
+            full: intakeInsertError
+          });
+          alert('Kon intake niet aanmaken: ' + intakeInsertError.message + ' (Code: ' + intakeInsertError.code + ')');
+          return;
+        }
+
+        const { error: sessionInsertError } = await supabase
+          .from('travel_whatsapp_sessions')
+          .insert({
+            session_token: newSessionToken,
+            trip_id: tripData.id,
+            phone_number: 'web_' + Date.now()
+          });
+
+        if (sessionInsertError) {
+          console.error('Error creating session:', {
+            message: sessionInsertError.message,
+            code: sessionInsertError.code,
+            details: sessionInsertError.details,
+            hint: sessionInsertError.hint,
+            full: sessionInsertError
+          });
+          alert('Kon sessie niet aanmaken: ' + sessionInsertError.message + ' (Code: ' + sessionInsertError.code + ')');
           return;
         }
 
@@ -393,7 +404,14 @@ function IntakeForm({ trip, sessionToken, onComplete }: { trip: Trip; sessionTok
         .single();
 
       if (error) {
-        console.error('Database error:', error);
+        console.error('Database error:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          full: error
+        });
+        alert('Database fout bij opslaan: ' + error.message + ' (Code: ' + error.code + ')');
         throw error;
       }
 
