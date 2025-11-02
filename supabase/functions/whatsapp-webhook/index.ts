@@ -98,6 +98,10 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    console.log('=== WHATSAPP WEBHOOK CALLED ===');
+    console.log('Request method:', req.method);
+    console.log('Request URL:', req.url);
+
     const formData = await req.formData();
     const from = formData.get('From')?.toString().replace('whatsapp:', '') || '';
     const body = formData.get('Body')?.toString() || '';
@@ -137,19 +141,24 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (!sessionData) {
-      console.log('No active session found for:', from);
+      console.error('❌ NO ACTIVE SESSION FOUND FOR:', from);
+      console.log('Available sessions check - querying phone_number:', from);
       return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
         headers: { ...corsHeaders, 'Content-Type': 'text/xml' },
       });
     }
 
+    console.log('✅ Session found:', sessionData.id);
+
     const trip = sessionData.travel_trips;
     if (!trip) {
-      console.error('No trip found for session');
+      console.error('❌ NO TRIP FOUND for session:', sessionData.id);
       return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
         headers: { ...corsHeaders, 'Content-Type': 'text/xml' },
       });
     }
+
+    console.log('✅ Trip found:', trip.id, trip.name);
 
     const brandId = trip.brand_id;
 
@@ -387,6 +396,7 @@ Bijvoorbeeld: 'Route van Amsterdam Centraal naar Rijksmuseum met de fiets'"`;
         }
       ]);
 
+    console.log('Sending WhatsApp message...');
     await sendWhatsAppMessage(
       from,
       aiMessage,
@@ -395,7 +405,7 @@ Bijvoorbeeld: 'Route van Amsterdam Centraal naar Rijksmuseum met de fiets'"`;
       twilioWhatsAppNumber
     );
 
-    console.log('Response sent successfully');
+    console.log('✅ Response sent successfully to:', from);
 
     return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
       headers: { ...corsHeaders, 'Content-Type': 'text/xml' },
