@@ -34,14 +34,24 @@ export function APISettings() {
     twilio_auth_token: '',
     twilio_whatsapp_number: ''
   });
+  const [googleSettings, setGoogleSettings] = useState({
+    google_places_api_key: '',
+    google_search_api_key: '',
+    google_search_engine_id: ''
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [savingTwilio, setSavingTwilio] = useState(false);
+  const [savingGoogle, setSavingGoogle] = useState(false);
   const [testingTwilio, setTestingTwilio] = useState(false);
   const [twilioTestResult, setTwilioTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
   const [showKey, setShowKey] = useState<Record<string, boolean>>({});
   const [showTwilioToken, setShowTwilioToken] = useState(false);
+  const [showGoogleKeys, setShowGoogleKeys] = useState({
+    places: false,
+    search: false
+  });
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -52,6 +62,7 @@ export function APISettings() {
   useEffect(() => {
     if (selectedBrandId) {
       loadTwilioSettings();
+      loadGoogleSettings();
     }
   }, [selectedBrandId]);
 
@@ -259,6 +270,97 @@ export function APISettings() {
       alert(`Fout bij opslaan: ${err.message}`);
     } finally {
       setSavingTwilio(false);
+    }
+  };
+
+  const loadGoogleSettings = async () => {
+    if (!selectedBrandId) return;
+
+    try {
+      let query = supabase
+        .from('api_settings')
+        .select('google_places_api_key, google_search_api_key, google_search_engine_id');
+
+      if (selectedBrandId === 'all') {
+        query = query
+          .eq('provider', 'system')
+          .eq('service_name', 'Twilio WhatsApp');
+      } else {
+        query = query.eq('brand_id', selectedBrandId);
+      }
+
+      const { data } = await query.maybeSingle();
+
+      if (data) {
+        setGoogleSettings({
+          google_places_api_key: data.google_places_api_key || '',
+          google_search_api_key: data.google_search_api_key || '',
+          google_search_engine_id: data.google_search_engine_id || ''
+        });
+      } else {
+        setGoogleSettings({
+          google_places_api_key: '',
+          google_search_api_key: '',
+          google_search_engine_id: ''
+        });
+      }
+    } catch (err: any) {
+      console.error('Error loading Google settings:', err);
+    }
+  };
+
+  const saveGoogleSettings = async () => {
+    if (!selectedBrandId) {
+      alert('Selecteer eerst een brand');
+      return;
+    }
+
+    setSavingGoogle(true);
+    try {
+      let query = supabase
+        .from('api_settings')
+        .select('id');
+
+      if (selectedBrandId === 'all') {
+        query = query
+          .eq('provider', 'system')
+          .eq('service_name', 'Twilio WhatsApp');
+      } else {
+        query = query
+          .eq('provider', 'Twilio')
+          .eq('brand_id', selectedBrandId);
+      }
+
+      const { data: existing } = await query.maybeSingle();
+
+      if (existing) {
+        const { error: updateError } = await supabase
+          .from('api_settings')
+          .update(googleSettings)
+          .eq('id', existing.id);
+
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from('api_settings')
+          .insert({
+            brand_id: selectedBrandId === 'all' ? null : selectedBrandId,
+            provider: selectedBrandId === 'all' ? 'system' : 'Twilio',
+            service_name: selectedBrandId === 'all' ? 'Twilio WhatsApp' : 'WhatsApp',
+            ...googleSettings
+          });
+
+        if (insertError) throw insertError;
+      }
+
+      const scope = selectedBrandId === 'all' ? 'voor ALLE brands' : 'voor deze brand';
+      alert(`Google API instellingen opgeslagen ${scope}!`);
+      loadGoogleSettings();
+    } catch (err: any) {
+      console.error('Error saving Google settings:', err);
+      alert(`Fout bij opslaan: ${err.message}`);
+    } finally {
+      setSavingGoogle(false);
     }
   };
 
@@ -776,6 +878,142 @@ export function APISettings() {
               <div className="pt-2 border-t border-blue-300">
                 <strong>💡 Tip:</strong> Twilio Sandbox is GRATIS voor testen. WhatsApp Business kost ~€15/maand.
                 Zie <strong>TWILIO_WHATSAPP_SETUP.md</strong> voor volledige uitleg met screenshots.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 pt-8 border-t border-gray-200">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Google APIs Instellingen</h2>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <h3 className="font-semibold text-blue-900 mb-2">🔑 Google API Keys</h3>
+            <p className="text-sm text-blue-800">
+              Configureer Google Places API (voor locatie suggesties) en Google Custom Search API (voor reisinfo zoeken) per brand of system-wide.
+            </p>
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Brand
+            </label>
+            <select
+              value={selectedBrandId}
+              onChange={(e) => setSelectedBrandId(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Selecteer brand...</option>
+              <option value="all">System-wide (alle brands)</option>
+              {brands.map(brand => (
+                <option key={brand.id} value={brand.id}>{brand.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {selectedBrandId && (
+            <>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Google Places API Key
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showGoogleKeys.places ? 'text' : 'password'}
+                      value={googleSettings.google_places_api_key}
+                      onChange={(e) => setGoogleSettings(prev => ({ ...prev, google_places_api_key: e.target.value }))}
+                      placeholder="AIzaSy..."
+                      className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowGoogleKeys(prev => ({ ...prev, places: !prev.places }))}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showGoogleKeys.places ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Google Search API Key
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showGoogleKeys.search ? 'text' : 'password'}
+                      value={googleSettings.google_search_api_key}
+                      onChange={(e) => setGoogleSettings(prev => ({ ...prev, google_search_api_key: e.target.value }))}
+                      placeholder="AIzaSy..."
+                      className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowGoogleKeys(prev => ({ ...prev, search: !prev.search }))}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showGoogleKeys.search ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Custom Search Engine ID
+                  </label>
+                  <input
+                    type="text"
+                    value={googleSettings.google_search_engine_id}
+                    onChange={(e) => setGoogleSettings(prev => ({ ...prev, google_search_engine_id: e.target.value }))}
+                    placeholder="abc123..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <button
+                  onClick={saveGoogleSettings}
+                  disabled={savingGoogle}
+                  className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {savingGoogle ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Opslaan...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Opslaan
+                    </>
+                  )}
+                </button>
+              </div>
+            </>
+          )}
+
+          <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 className="font-semibold text-blue-900 mb-2">📍 Waar vind je deze gegevens?</h4>
+            <div className="text-sm text-blue-800 space-y-2">
+              <div>
+                <strong>Google Places API:</strong>
+                <ul className="list-disc list-inside ml-2 mt-1">
+                  <li>Ga naar <a href="https://console.cloud.google.com" target="_blank" rel="noopener" className="underline hover:text-blue-900">Google Cloud Console</a></li>
+                  <li>Maak een project aan of selecteer bestaand project</li>
+                  <li>Activeer "Places API (New)"</li>
+                  <li>Ga naar Credentials → Create API Key</li>
+                </ul>
+              </div>
+              <div>
+                <strong>Google Custom Search:</strong>
+                <ul className="list-disc list-inside ml-2 mt-1">
+                  <li>Activeer "Custom Search API" in Cloud Console</li>
+                  <li>Maak Search Engine aan op <a href="https://programmablesearchengine.google.com" target="_blank" rel="noopener" className="underline hover:text-blue-900">Programmable Search Engine</a></li>
+                  <li>Kopieer de Search Engine ID</li>
+                </ul>
               </div>
             </div>
           </div>
