@@ -31,8 +31,9 @@ Deno.serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    const googleApiKey = Deno.env.get("GOOGLE_SEARCH_API_KEY");
-    const googleCseId = Deno.env.get("GOOGLE_SEARCH_ENGINE_ID");
+    const googleApiKey = Deno.env.get("VITE_GOOGLE_SEARCH_API_KEY");
+    const googleCseId = Deno.env.get("VITE_GOOGLE_SEARCH_ENGINE_ID");
+    const googleMapsApiKey = googleApiKey;
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -113,7 +114,6 @@ Deno.serve(async (req: Request) => {
     ];
     const isLocationQuery = locationKeywords.some(keyword => message.toLowerCase().includes(keyword));
 
-    const googleMapsApiKey = Deno.env.get("GOOGLE_MAPS_API_KEY");
     if (isLocationQuery && googleMapsApiKey) {
       try {
         // Determine what type of place the user is looking for

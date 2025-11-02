@@ -535,26 +535,15 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const googleMapsApiKey = Deno.env.get('VITE_GOOGLE_SEARCH_API_KEY');
 
-    const { data: apiSettings, error: dbError } = await supabase
-      .from('api_settings')
-      .select('api_key')
-      .eq('service_name', 'Google Maps API')
-      .eq('is_active', true)
-      .maybeSingle();
-
-    if (dbError || !apiSettings?.api_key) {
-      console.error('Google Maps API key not found in database:', dbError);
+    if (!googleMapsApiKey) {
+      console.error('Google Maps API key not configured');
       return new Response(
         JSON.stringify({ success: false, error: 'Google Maps API not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    const googleMapsApiKey = apiSettings.api_key;
 
     let avoid = [];
 
