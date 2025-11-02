@@ -91,6 +91,20 @@ export function ClientInterface({ shareToken }: { shareToken: string }) {
           console.error('Error creating session:', sessionInsertError);
         }
 
+        const { error: intakeInsertError } = await supabase
+          .from('travel_intakes')
+          .insert({
+            session_token: newSessionToken,
+            trip_id: tripData.id,
+            brand_id: tripData.brand_id,
+            travelers_count: 0,
+            intake_data: {}
+          });
+
+        if (intakeInsertError) {
+          console.error('Error creating intake:', intakeInsertError);
+        }
+
         setTrip(tripData);
         setSessionToken(newSessionToken);
       }
