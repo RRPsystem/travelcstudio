@@ -215,7 +215,7 @@ export function ClientInterface({ shareToken }: { shareToken: string }) {
   }
 
   if (showIntake) {
-    return <IntakeForm trip={trip} onComplete={handleIntakeComplete} />;
+    return <IntakeForm trip={trip} sessionToken={sessionToken || shareToken} onComplete={handleIntakeComplete} />;
   }
 
   return (
@@ -325,7 +325,7 @@ export function ClientInterface({ shareToken }: { shareToken: string }) {
   );
 }
 
-function IntakeForm({ trip, onComplete }: { trip: Trip; onComplete: (token: string) => void }) {
+function IntakeForm({ trip, sessionToken, onComplete }: { trip: Trip; sessionToken: string; onComplete: (token: string) => void }) {
   const templateTravelers = trip.intake_template?.travelers || [{ name: '', age: '', relation: 'adult' }];
   const [travelersCount, setTravelersCount] = useState(templateTravelers.length);
   const [travelers, setTravelers] = useState<any[]>(templateTravelers);
@@ -370,7 +370,7 @@ function IntakeForm({ trip, onComplete }: { trip: Trip; onComplete: (token: stri
           intake_data: { travelers },
           completed_at: new Date().toISOString(),
         })
-        .eq('session_token', shareToken)
+        .eq('session_token', sessionToken)
         .select()
         .single();
 
