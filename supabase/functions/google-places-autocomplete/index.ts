@@ -25,14 +25,25 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const googleApiKey = Deno.env.get('VITE_GOOGLE_SEARCH_API_KEY');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    if (!googleApiKey) {
+    const { data: settings } = await supabase
+      .from('api_settings')
+      .select('api_key')
+      .eq('provider', 'Google')
+      .eq('service_name', 'Google Maps API')
+      .maybeSingle();
+
+    if (!settings?.api_key) {
       return new Response(
         JSON.stringify({ error: 'Google Maps API not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const googleApiKey = settings.api_key;
 
     const url = new URL('https://maps.googleapis.com/maps/api/place/autocomplete/json');
     url.searchParams.set('input', input);

@@ -30,12 +30,18 @@ Deno.serve(async (req: Request) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    const googleApiKey = Deno.env.get("VITE_GOOGLE_SEARCH_API_KEY");
-    const googleCseId = Deno.env.get("VITE_GOOGLE_SEARCH_ENGINE_ID");
-    const googleMapsApiKey = googleApiKey;
-
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { data: apiSettings } = await supabase
+      .from('api_settings')
+      .select('provider, service_name, api_key')
+      .in('provider', ['OpenAI', 'Google'])
+      .eq('is_active', true);
+
+    const openaiApiKey = apiSettings?.find(s => s.provider === 'OpenAI')?.api_key;
+    const googleApiKey = apiSettings?.find(s => s.provider === 'Google' && s.service_name === 'Google Maps API')?.api_key;
+    const googleCseId = apiSettings?.find(s => s.provider === 'Google' && s.service_name === 'Google Custom Search')?.api_key;
+    const googleMapsApiKey = googleApiKey;
 
     const { data: trip, error: tripError } = await supabase
       .from("travel_trips")
