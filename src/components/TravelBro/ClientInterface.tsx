@@ -420,6 +420,45 @@ function IntakeForm({ trip, sessionToken, onComplete }: { trip: Trip; sessionTok
         throw new Error('Geen data ontvangen van database');
       }
 
+      const { data: brandInfo } = await supabase
+        .from('brands')
+        .select('travelbro_domain')
+        .eq('id', trip.brand_id)
+        .maybeSingle();
+
+      const { data: participants } = await supabase
+        .from('trip_participants')
+        .select('phone_number, participant_name')
+        .eq('trip_id', trip.id);
+
+      if (participants && participants.length > 0) {
+        console.log(`Scheduling welcome messages for ${participants.length} participants after intake completion...`);
+
+        for (const participant of participants) {
+          if (participant.phone_number) {
+            const now = new Date();
+            const scheduleDate = now.toISOString().split('T')[0];
+            const scheduleTime = now.toTimeString().split(' ')[0];
+            const shareLink = `https://${brandInfo?.travelbro_domain || 'travelbro.nl'}/${trip.share_token}`;
+
+            await supabase
+              .from('scheduled_whatsapp_messages')
+              .insert({
+                trip_id: trip.id,
+                brand_id: data.brand_id,
+                recipient_phone: participant.phone_number,
+                template_name: 'travelbro',
+                message_content: '',
+                scheduled_date: scheduleDate,
+                scheduled_time: scheduleTime,
+                timezone: 'Europe/Amsterdam',
+                message_type: 'intake_completed',
+                template_variables: { '1': shareLink },
+              });
+          }
+        }
+      }
+
       onComplete(data.session_token);
     } catch (error) {
       console.error('Error submitting intake:', error);
