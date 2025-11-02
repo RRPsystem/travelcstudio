@@ -221,7 +221,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const { data: conversationData, error: convError } = await supabase
-      .from('whatsapp_conversations')
+      .from('travel_conversations')
       .select('id, conversation_history')
       .eq('session_id', sessionData.id)
       .maybeSingle();
@@ -234,7 +234,7 @@ Deno.serve(async (req: Request) => {
       conversationHistory = conversationData.conversation_history || [];
     } else {
       const { data: newConv, error: createError } = await supabase
-        .from('whatsapp_conversations')
+        .from('travel_conversations')
         .insert({
           session_id: sessionData.id,
           trip_id: trip.id,
@@ -354,7 +354,7 @@ Bijvoorbeeld: 'Route van Amsterdam Centraal naar Rijksmuseum met de fiets'"`;
     });
 
     await supabase
-      .from('whatsapp_conversations')
+      .from('travel_conversations')
       .update({
         conversation_history: conversationHistory,
         updated_at: new Date().toISOString()
@@ -367,7 +367,7 @@ Bijvoorbeeld: 'Route van Amsterdam Centraal naar Rijksmuseum met de fiets'"`;
       .eq('id', sessionData.id);
 
     await supabase
-      .from('whatsapp_messages')
+      .from('travel_whatsapp_messages')
       .insert([
         {
           conversation_id: conversationId,
