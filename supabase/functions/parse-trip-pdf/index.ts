@@ -7,73 +7,71 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-async function uploadFileToOpenAI(pdfBuffer: ArrayBuffer, openaiApiKey: string, filename: string) {
-  const formData = new FormData();
-  const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
-  formData.append('file', blob, filename);
-  formData.append('purpose', 'assistants');
+async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<string> {
+  const uint8Array = new Uint8Array(pdfBuffer);
+  const textDecoder = new TextDecoder('utf-8');
 
-  const response = await fetch('https://api.openai.com/v1/files', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openaiApiKey}`,
-    },
-    body: formData,
-  });
+  let text = '';
+  let i = 0;
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`File upload failed: ${error}`);
-  }
-
-  return await response.json();
-}
-
-async function createThread(openaiApiKey: string, fileId: string, instructions: string) {
-  const response = await fetch('https://api.openai.com/v1/threads', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openaiApiKey}`,
-      'Content-Type': 'application/json',
-      'OpenAI-Beta': 'assistants=v2',
-    },
-    body: JSON.stringify({
-      messages: [
-        {
-          role: 'user',
-          content: instructions,
-          attachments: [
-            {
-              file_id: fileId,
-              tools: [{ type: 'file_search' }]
-            }
-          ]
+  while (i < uint8Array.length) {
+    if (uint8Array[i] === 0x42 && uint8Array[i + 1] === 0x54) {
+      i += 2;
+      let content = '';
+      while (i < uint8Array.length && !(uint8Array[i] === 0x45 && uint8Array[i + 1] === 0x54)) {
+        if (uint8Array[i] >= 0x20 && uint8Array[i] <= 0x7E) {
+          content += String.fromCharCode(uint8Array[i]);
+        } else if (uint8Array[i] === 0x0A || uint8Array[i] === 0x0D) {
+          content += '\n';
         }
-      ]
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Thread creation failed: ${error}`);
+        i++;
+      }
+      text += content + ' ';
+    }
+    i++;
   }
 
-  return await response.json();
+  return text.trim();
 }
 
-async function createAssistant(openaiApiKey: string) {
-  const response = await fetch('https://api.openai.com/v1/assistants', {
+async function parseWithGPT(pdfText: string, openaiApiKey: string) {
+  const systemPrompt = `Je bent een expert reisdocument parser. Extraheer en structureer ALLE reis informatie uit de tekst.
+
+VERPLICHTE VELDEN:
+- trip_name: Naam van de reis
+- reservation_id: Hoofdreserveringsnummer (eerste boekingnummer dat je vindt)
+- departure_date: Vertrekdatum (ISO 8601: YYYY-MM-DD)
+- arrival_date: Aankomstdatum (ISO 8601: YYYY-MM-DD)
+- destination: { city, country, region }
+- segments: Array van reissegmenten
+- booking_refs: Alle boeknummers
+- emergency_contacts: Noodnummers
+
+Elk segment MOET:
+- kind: "flight" | "hotel" | "transfer" | "activity"
+- segment_ref: Boeknummer
+- start_datetime: ISO 8601
+- end_datetime: ISO 8601 (of null)
+- location: { name, address, city, country }
+- details: Extra info
+
+BELANGRIJK:
+- Alle datums in ISO 8601 format
+- Als info ontbreekt: gebruik null
+- Return ALLEEN valid JSON`;
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${openaiApiKey}`,
       'Content-Type': 'application/json',
-      'OpenAI-Beta': 'assistants=v2',
     },
     body: JSON.stringify({
-      name: 'Travel Document Parser',
-      instructions: `Je bent een expert reisdocument parser. Extraheer en structureer ALLE reis informatie uit het PDF document.\n\nVERPLICHTE VELDEN (STRICT):\n- trip_name: Naam van de reis\n- reservation_id: Hoofdreserveringsnummer\n- departure_date: Vertrekdatum (ISO 8601: YYYY-MM-DD)\n- arrival_date: Aankomstdatum (ISO 8601: YYYY-MM-DD)\n- destination: { city, country, region }\n- segments: Array van reissegmenten (flights, hotels, transfers)\n- booking_refs: { flight, hotel, transfer, other }\n- emergency_contacts: Array met { name, phone, type }\n\nElk segment MOET bevatten:\n- kind: "flight" | "hotel" | "transfer" | "activity"\n- segment_ref: Unieke referentie (boeknummer)\n- start_datetime: ISO 8601 datetime\n- end_datetime: ISO 8601 datetime (optioneel, gebruik null indien niet bekend)\n- location: { name, address, city, country }\n- details: Object met specifieke info (bijv. flight_number, room_type, etc)\n\nBELANGRIJK:\n- Extraheer ALLE reserveringsnummers (PNR, boekingscodes, referenties)\n- Alle datums MOETEN ISO 8601 format zijn (YYYY-MM-DD of YYYY-MM-DDTHH:MM:SS)\n- Alle adressen compleet en gestructureerd\n- ALLE noodnummers en contactgegevens\n- Als info ontbreekt: gebruik null (niet weglaten)\n\nReturn ONLY valid JSON matching the schema.`,
       model: 'gpt-4o',
-      tools: [{ type: 'file_search' }],
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Analyseer dit reisdocument en extraheer ALLE informatie:\n\n${pdfText.substring(0, 50000)}` }
+      ],
       response_format: {
         type: "json_schema",
         json_schema: {
@@ -153,106 +151,19 @@ async function createAssistant(openaiApiKey: string) {
             additionalProperties: false
           }
         }
-      }
+      },
+      temperature: 0.1,
     }),
   });
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`Assistant creation failed: ${error}`);
+    throw new Error(`GPT parsing failed: ${error}`);
   }
 
-  return await response.json();
-}
-
-async function runAssistant(openaiApiKey: string, assistantId: string, threadId: string) {
-  const response = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openaiApiKey}`,
-      'Content-Type': 'application/json',
-      'OpenAI-Beta': 'assistants=v2',
-    },
-    body: JSON.stringify({
-      assistant_id: assistantId,
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Run creation failed: ${error}`);
-  }
-
-  return await response.json();
-}
-
-async function waitForCompletion(openaiApiKey: string, threadId: string, runId: string, maxAttempts = 30) {
-  for (let i = 0; i < maxAttempts; i++) {
-    const response = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, {
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'OpenAI-Beta': 'assistants=v2',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to check run status');
-    }
-
-    const run = await response.json();
-
-    if (run.status === 'completed') {
-      return run;
-    } else if (run.status === 'failed' || run.status === 'cancelled' || run.status === 'expired') {
-      throw new Error(`Run ${run.status}: ${run.last_error?.message || 'Unknown error'}`);
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 2000));
-  }
-
-  throw new Error('Timeout waiting for completion');
-}
-
-async function getMessages(openaiApiKey: string, threadId: string) {
-  const response = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
-    headers: {
-      'Authorization': `Bearer ${openaiApiKey}`,
-      'OpenAI-Beta': 'assistants=v2',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to get messages');
-  }
-
-  return await response.json();
-}
-
-async function deleteFile(openaiApiKey: string, fileId: string) {
-  try {
-    await fetch(`https://api.openai.com/v1/files/${fileId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-      },
-    });
-  } catch (error) {
-    console.warn('Failed to delete file:', error);
-  }
-}
-
-async function deleteAssistant(openaiApiKey: string, assistantId: string) {
-  try {
-    await fetch(`https://api.openai.com/v1/assistants/${assistantId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'OpenAI-Beta': 'assistants=v2',
-      },
-    });
-  } catch (error) {
-    console.warn('Failed to delete assistant:', error);
-  }
+  const result = await response.json();
+  const content = result.choices[0].message.content;
+  return JSON.parse(content);
 }
 
 Deno.serve(async (req: Request) => {
@@ -262,9 +173,6 @@ Deno.serve(async (req: Request) => {
       headers: corsHeaders,
     });
   }
-
-  let fileId: string | null = null;
-  let assistantId: string | null = null;
 
   try {
     const { pdfUrl } = await req.json();
@@ -292,7 +200,7 @@ Deno.serve(async (req: Request) => {
 
     if (apiError || !apiSettings?.api_key) {
       return new Response(
-        JSON.stringify({ error: "OpenAI API key not configured in database" }),
+        JSON.stringify({ error: "OpenAI API key not configured" }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -309,51 +217,18 @@ Deno.serve(async (req: Request) => {
     }
 
     const pdfBuffer = await pdfResponse.arrayBuffer();
-    const filename = pdfUrl.split('/').pop() || 'document.pdf';
 
-    console.log('Uploading file to OpenAI...');
-    const fileUpload = await uploadFileToOpenAI(pdfBuffer, openaiApiKey, filename);
-    fileId = fileUpload.id;
-    console.log('File uploaded:', fileId);
+    console.log('Extracting text from PDF...');
+    const pdfText = await extractTextFromPDF(pdfBuffer);
 
-    console.log('Creating assistant...');
-    const assistant = await createAssistant(openaiApiKey);
-    assistantId = assistant.id;
-    console.log('Assistant created:', assistantId);
-
-    console.log('Creating thread with file...');
-    const thread = await createThread(
-      openaiApiKey,
-      fileId,
-      'Analyseer dit reisdocument PDF en extraheer ALLE informatie volgens het schema. Wees zeer grondig met reserveringsnummers, datums en contactgegevens. Return ONLY the JSON object, no additional text.'
-    );
-    console.log('Thread created:', thread.id);
-
-    console.log('Running assistant...');
-    const run = await runAssistant(openaiApiKey, assistantId, thread.id);
-    console.log('Run started:', run.id);
-
-    console.log('Waiting for completion...');
-    await waitForCompletion(openaiApiKey, thread.id, run.id);
-    console.log('Run completed');
-
-    console.log('Getting messages...');
-    const messages = await getMessages(openaiApiKey, thread.id);
-
-    const assistantMessage = messages.data.find((msg: any) => msg.role === 'assistant');
-    if (!assistantMessage || !assistantMessage.content || assistantMessage.content.length === 0) {
-      throw new Error('No response from assistant');
+    if (!pdfText || pdfText.length < 100) {
+      throw new Error("Could not extract enough text from PDF");
     }
 
-    const content = assistantMessage.content[0];
-    const jsonText = content.type === 'text' ? content.text.value : '';
+    console.log('Parsing with GPT (text length:', pdfText.length, ')');
+    const parsedData = await parseWithGPT(pdfText, openaiApiKey);
 
-    console.log('Parsing JSON response...');
-    const parsedData = JSON.parse(jsonText);
-
-    console.log('Cleaning up resources...');
-    if (fileId) await deleteFile(openaiApiKey, fileId);
-    if (assistantId) await deleteAssistant(openaiApiKey, assistantId);
+    console.log('Successfully parsed PDF');
 
     return new Response(
       JSON.stringify(parsedData),
@@ -364,29 +239,8 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error("Error parsing PDF:", error);
 
-    if (fileId) {
-      try {
-        const { data: apiSettings } = await createClient(
-          Deno.env.get("SUPABASE_URL")!,
-          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-        )
-          .from("api_settings")
-          .select("api_key")
-          .eq("provider", "OpenAI")
-          .eq("service_name", "OpenAI API")
-          .maybeSingle();
-
-        if (apiSettings?.api_key) {
-          await deleteFile(apiSettings.api_key, fileId);
-          if (assistantId) await deleteAssistant(apiSettings.api_key, assistantId);
-        }
-      } catch (cleanupError) {
-        console.warn('Cleanup failed:', cleanupError);
-      }
-    }
-
     return new Response(
-      JSON.stringify({ error: error.message, stack: error.stack }),
+      JSON.stringify({ error: error.message }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
