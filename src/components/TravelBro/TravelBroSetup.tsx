@@ -632,13 +632,8 @@ export function TravelBroSetup() {
   };
 
   const getShareUrl = (shareToken: string) => {
-    if (brandData?.travelbro_domain) {
-      return `https://${brandData.travelbro_domain}/${shareToken}`;
-    }
-    if (systemDefaultDomain) {
-      return `https://${systemDefaultDomain}/${shareToken}`;
-    }
-    return `${window.location.origin}/travelbro/${shareToken}`;
+    const domain = brandData?.travelbro_domain || systemDefaultDomain || 'travelbro.nl';
+    return `https://${domain}/${shareToken}`;
   };
 
   const handleSaveDomain = async () => {
