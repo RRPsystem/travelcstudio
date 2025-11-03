@@ -146,6 +146,23 @@ export function ClientInterface({ shareToken }: { shareToken: string }) {
         timestamp: new Date(conv.created_at),
       }));
 
+      if (msgs.length === 0 && trip) {
+        const welcomeMessage: Message = {
+          role: 'assistant',
+          content: `Welkom bij TravelBRO! 👋\n\nIk ben je persoonlijke reisassistent voor **${trip.name}**. Ik help je graag met:\n\n🗺️ Routes en navigatie\n🍽️ Restaurant tips\n🏥 Medische voorzieningen\n🛒 Winkels en diensten in de buurt\n⚡ Activiteiten en bezienswaardigheden\n📍 Praktische informatie over je bestemming\n\nStel me gerust je vragen! Ik gebruik actuele informatie en Google zoekresultaten om je de beste antwoorden te geven.`,
+          timestamp: new Date(),
+        };
+
+        await supabase.from('travel_conversations').insert({
+          trip_id: trip.id,
+          session_token: token,
+          message: welcomeMessage.content,
+          role: 'assistant',
+        });
+
+        msgs.push(welcomeMessage);
+      }
+
       setMessages(msgs);
     } catch (error) {
       console.error('Error loading conversations:', error);
