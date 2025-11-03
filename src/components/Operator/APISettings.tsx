@@ -891,25 +891,9 @@ export function APISettings() {
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <h3 className="font-semibold text-blue-900 mb-2">🔑 Google API Keys</h3>
             <p className="text-sm text-blue-800">
-              Configureer Google Places API (voor locatie suggesties) en Google Custom Search API (voor reisinfo zoeken) per brand of system-wide.
+              Configureer Google Places API (voor locatie suggesties) en Google Custom Search API (voor reisinfo zoeken).
+              Deze worden automatisch gekoppeld aan de Twilio settings hierboven.
             </p>
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Brand
-            </label>
-            <select
-              value={selectedBrandId}
-              onChange={(e) => setSelectedBrandId(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Selecteer brand...</option>
-              <option value="all">System-wide (alle brands)</option>
-              {brands.map(brand => (
-                <option key={brand.id} value={brand.id}>{brand.name}</option>
-              ))}
-            </select>
           </div>
 
           {selectedBrandId && (
