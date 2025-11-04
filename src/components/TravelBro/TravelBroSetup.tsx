@@ -713,7 +713,11 @@ export function TravelBroSetup() {
           brandId: user?.brand_id,
           useTemplate: true,
           templateSid: 'HX01a2453a98f1070954288e9c01d7bfa3',
-          templateVariables: { '1': shareLink },
+          templateVariables: {
+            '1': clientNameText,
+            '2': selectedTrip.destination || 'je reis',
+            'button_1_1': shareLink
+          },
           tripId: selectedTrip.id,
           sessionToken: sessionToken,
           skipIntake: skipIntake
