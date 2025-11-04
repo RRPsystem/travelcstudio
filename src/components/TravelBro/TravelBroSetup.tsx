@@ -487,7 +487,11 @@ export function TravelBroSetup() {
                 scheduled_time: scheduleTime,
                 timezone: 'Europe/Amsterdam',
                 message_type: 'welcome',
-                template_variables: { '1': shareLink },
+                template_variables: {
+                  '1': traveler.name || 'Reiziger',
+                  '2': createdTrip.name || 'jouw reis',
+                  '3': shareLink
+                },
               });
 
             if (scheduleError) {
