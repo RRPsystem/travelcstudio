@@ -120,8 +120,30 @@ Deno.serve(async (req: Request) => {
 
           if (template) {
             templateSid = template.template_sid;
-            templateVariables = msg.template_variables || {};
-            console.log(`Using template "${templateName}" for message ${msg.id}`);
+
+            const rawVars = msg.template_variables || {};
+            templateVariables = {};
+
+            for (const [key, value] of Object.entries(rawVars)) {
+              if (value != null) {
+                const stringValue = String(value);
+                const sanitized = stringValue
+                  .replace(/[\r\n\t]/g, ' ')
+                  .replace(/\s+/g, ' ')
+                  .trim()
+                  .substring(0, 500);
+
+                if (sanitized) {
+                  templateVariables[key] = sanitized;
+                }
+              }
+            }
+
+            console.log(`Using template "${templateName}" for message ${msg.id}`, {
+              templateSid,
+              variableCount: Object.keys(templateVariables).length,
+              variables: templateVariables
+            });
           } else {
             console.warn(`Template "${templateName}" not found for message ${msg.id}`);
 

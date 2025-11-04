@@ -103,15 +103,21 @@ Deno.serve(async (req: Request) => {
 
       if (templateVariables && typeof templateVariables === 'object' && Object.keys(templateVariables).length > 0) {
         console.log('🔍 DEBUG: Processing template variables...');
-        console.log('🔍 DEBUG: Template variables type:', typeof templateVariables);
-        console.log('🔍 DEBUG: Template variables keys:', Object.keys(templateVariables));
-        console.log('🔍 DEBUG: Template variables entries:', Object.entries(templateVariables));
 
-        const contentVarsString = JSON.stringify(templateVariables);
-        console.log('🔍 DEBUG: ContentVariables JSON string:', contentVarsString);
-        console.log('🔍 DEBUG: ContentVariables string length:', contentVarsString.length);
-        console.log('🔍 DEBUG: ContentVariables contains newlines?', contentVarsString.includes('\\n'));
-        console.log('🔍 DEBUG: ContentVariables contains tabs?', contentVarsString.includes('\\t'));
+        const sanitizedVars: Record<string, string> = {};
+        for (const [key, value] of Object.entries(templateVariables)) {
+          const stringValue = String(value || '');
+          const cleanValue = stringValue
+            .replace(/[\r\n\t]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+          sanitizedVars[key] = cleanValue;
+          console.log(`🔍 Variable ${key}: "${cleanValue}" (length: ${cleanValue.length})`);
+        }
+
+        const contentVarsString = JSON.stringify(sanitizedVars);
+        console.log('🔍 DEBUG: Final ContentVariables:', contentVarsString);
 
         formData.append('ContentVariables', contentVarsString);
         console.log(`✅ Added ContentVariables: ${contentVarsString}`);
@@ -139,6 +145,13 @@ Deno.serve(async (req: Request) => {
       console.error('Twilio error:', responseData);
 
       let errorMessage = responseData.message || 'Fout bij verzenden WhatsApp bericht';
+
+      if (responseData.code === 21656) {
+        console.error('❌ ContentVariables error - check your Twilio template configuration');
+        console.error('Template SID:', templateSid);
+        console.error('Variables sent:', JSON.stringify(templateVariables));
+        errorMessage = `Template variables fout. Het template accepteert deze variabelen niet. Controleer de template configuratie in Twilio Console voor "${templateSid}".`;
+      }
 
       if (responseData.code === 63016 || errorMessage.includes('template')) {
         errorMessage = '❌ WhatsApp Business vereist een approved message template voor het eerste bericht.\n\n' +
