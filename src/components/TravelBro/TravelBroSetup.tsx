@@ -471,7 +471,7 @@ export function TravelBroSetup() {
 
             const now = new Date();
             const scheduleDate = now.toISOString().split('T')[0];
-            const scheduleTime = now.toTimeString().split(' ')[0];
+            const scheduleTime = now.toISOString().split('T')[1].split('.')[0];
 
             const shareLink = getShareUrl(createdTrip.share_token);
 
