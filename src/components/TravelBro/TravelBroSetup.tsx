@@ -712,7 +712,7 @@ export function TravelBroSetup() {
           to: invitePhone,
           brandId: user?.brand_id,
           useTemplate: true,
-          templateSid: 'HX01a2453a98f1070954288e9c01d7bfa3',
+          templateSid: 'HX23e0ee5840758fb35bd1bedf502fdf42',
           templateVariables: {
             '1': clientNameText,
             '2': selectedTrip.destination || 'je reis',
