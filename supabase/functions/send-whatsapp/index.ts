@@ -101,9 +101,21 @@ Deno.serve(async (req: Request) => {
       formData.append('ContentSid', templateSid);
 
       if (templateVariables && typeof templateVariables === 'object' && Object.keys(templateVariables).length > 0) {
-        console.log('Setting ContentVariables with values:', templateVariables);
-        formData.append('ContentVariables', JSON.stringify(templateVariables));
-        console.log(`✅ Added ContentVariables: ${JSON.stringify(templateVariables)}`);
+        const variables: Record<string, string> = {};
+
+        for (const [key, value] of Object.entries(templateVariables)) {
+          if (key === '1' || key === '2' || key === '3') {
+            const templateVarName = key === '1' ? 'link' : `var${key}`;
+            variables[templateVarName] = String(value);
+            console.log(`Mapping template variable ${key} -> ${templateVarName} = ${value}`);
+          } else {
+            variables[key] = String(value);
+          }
+        }
+
+        console.log('Setting ContentVariables with values:', variables);
+        formData.append('ContentVariables', JSON.stringify(variables));
+        console.log(`✅ Added ContentVariables: ${JSON.stringify(variables)}`);
       } else {
         console.log('✅ No ContentVariables - using template without variables');
       }
