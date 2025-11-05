@@ -103,6 +103,7 @@ Deno.serve(async (req: Request) => {
 
       if (templateVariables && typeof templateVariables === 'object' && Object.keys(templateVariables).length > 0) {
         console.log('🔍 DEBUG: Processing template variables...');
+        console.log('🔍 DEBUG: Raw templateVariables received:', JSON.stringify(templateVariables));
 
         const sanitizedVars: Record<string, string> = {};
         for (const [key, value] of Object.entries(templateVariables)) {
@@ -112,15 +113,21 @@ Deno.serve(async (req: Request) => {
             .replace(/\s+/g, ' ')
             .trim();
 
+          if (cleanValue === '') {
+            console.log(`⚠️ WARNING: Variable ${key} is empty after sanitization`);
+            continue;
+          }
+
           sanitizedVars[key] = cleanValue;
           console.log(`🔍 Variable ${key}: "${cleanValue}" (length: ${cleanValue.length})`);
         }
 
         const contentVarsString = JSON.stringify(sanitizedVars);
         console.log('🔍 DEBUG: Final ContentVariables:', contentVarsString);
+        console.log('🔍 DEBUG: Number of variables:', Object.keys(sanitizedVars).length);
 
         formData.append('ContentVariables', contentVarsString);
-        console.log(`✅ Added ContentVariables: ${contentVarsString}`);
+        console.log(`✅ Added ContentVariables to form`);
       } else {
         console.log('✅ No ContentVariables - using template without variables');
       }
