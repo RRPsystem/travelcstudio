@@ -8,7 +8,7 @@
   "crons": [
     {
       "path": "/api/cron/process-scheduled-messages",
-      "schedule": "* * * * *"
+      "schedule": "*/5 * * * *"
     }
   ],
   "headers": [
