@@ -78,6 +78,8 @@ Deno.serve(async (req: Request) => {
             trip_id,
             status,
             is_published,
+            is_featured,
+            priority,
             page_id,
             trips!inner (
               id,
@@ -113,6 +115,8 @@ Deno.serve(async (req: Request) => {
                 assignment_id: assignment.id,
                 assignment_status: assignment.status,
                 is_published: assignment.is_published,
+                is_featured: assignment.is_featured || false,
+                priority: assignment.priority || 999,
                 source: 'assignment',
               }
             }),
@@ -157,6 +161,8 @@ Deno.serve(async (req: Request) => {
           trip_id,
           status,
           is_published,
+          is_featured,
+          priority,
           page_id,
           trips!inner (
             id,
@@ -187,6 +193,8 @@ Deno.serve(async (req: Request) => {
           assignment_id: a.id,
           assignment_status: a.status,
           is_published: a.is_published,
+          is_featured: a.is_featured || false,
+          priority: a.priority || 999,
           page_id: a.page_id,
           source: 'assignment',
         };
@@ -206,13 +214,24 @@ Deno.serve(async (req: Request) => {
           ...t,
           source: 'brand',
           is_published: t.status === 'published',
+          is_featured: false,
+          priority: 999,
         }));
 
       const allTrips = [...assignedTrips, ...filteredBrandTrips];
 
-      const filteredTrips = for_builder
+      let filteredTrips = for_builder
         ? allTrips.filter(t => t.is_published || t.status === 'published')
         : allTrips;
+
+      filteredTrips = filteredTrips.sort((a, b) => {
+        if (a.is_featured && !b.is_featured) return -1;
+        if (!a.is_featured && b.is_featured) return 1;
+        if (a.is_featured && b.is_featured) {
+          return (a.priority || 999) - (b.priority || 999);
+        }
+        return 0;
+      });
 
       return new Response(
         JSON.stringify({ trips: filteredTrips }),

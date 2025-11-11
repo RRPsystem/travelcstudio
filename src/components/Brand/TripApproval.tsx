@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plane, Eye, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plane, Eye, Plus, Pencil, Trash2, Star } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { generateBuilderJWT } from '../../lib/jwtHelper';
@@ -9,6 +9,8 @@ interface TripAssignment {
   trip_id: string;
   status: 'pending' | 'accepted' | 'rejected' | 'mandatory' | 'brand';
   is_published: boolean;
+  is_featured?: boolean;
+  priority?: number;
   assigned_at: string;
   page_id?: string;
   trip: {
@@ -53,6 +55,8 @@ export function TripApproval() {
           trip_id,
           status,
           is_published,
+          is_featured,
+          priority,
           assigned_at,
           page_id,
           trips!inner (
@@ -77,6 +81,8 @@ export function TripApproval() {
         trip_id: item.trip_id,
         status: item.status,
         is_published: item.is_published || false,
+        is_featured: item.is_featured || false,
+        priority: item.priority || 999,
         assigned_at: item.assigned_at,
         page_id: item.page_id,
         trip: Array.isArray(item.trips) ? item.trips[0] : item.trips
@@ -100,6 +106,8 @@ export function TripApproval() {
         page_id: item.page_id,
         status: 'brand' as const,
         is_published: item.status === 'published',
+        is_featured: false,
+        priority: 999,
         assigned_at: item.created_at,
         trip: {
           id: item.id,
@@ -151,6 +159,46 @@ export function TripApproval() {
     } catch (error) {
       console.error('Error toggling publish:', error);
       alert('Failed to update');
+    }
+  };
+
+  const handleToggleFeatured = async (assignmentId: string, currentValue: boolean, assignment: TripAssignment) => {
+    if (assignment.status === 'brand') {
+      alert('Featured functionaliteit is alleen beschikbaar voor toegewezen reizen');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('trip_brand_assignments')
+        .update({ is_featured: !currentValue })
+        .eq('id', assignmentId);
+
+      if (error) throw error;
+      await loadAssignments();
+    } catch (error) {
+      console.error('Error toggling featured:', error);
+      alert('Failed to update featured status');
+    }
+  };
+
+  const handlePriorityChange = async (assignmentId: string, newPriority: number, assignment: TripAssignment) => {
+    if (assignment.status === 'brand') {
+      alert('Priority functionaliteit is alleen beschikbaar voor toegewezen reizen');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('trip_brand_assignments')
+        .update({ priority: newPriority })
+        .eq('id', assignmentId);
+
+      if (error) throw error;
+      await loadAssignments();
+    } catch (error) {
+      console.error('Error updating priority:', error);
+      alert('Failed to update priority');
     }
   };
 
@@ -385,6 +433,8 @@ export function TripApproval() {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duur</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Datum</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Featured</th>
+                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Prioriteit</th>
                 <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Publiceren</th>
                 <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acties</th>
               </tr>
@@ -439,6 +489,37 @@ export function TripApproval() {
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                         In afwachting
                       </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    {assignment.status !== 'brand' ? (
+                      <button
+                        onClick={() => handleToggleFeatured(assignment.id, assignment.is_featured || false, assignment)}
+                        className={`transition-colors ${
+                          assignment.is_featured
+                            ? 'text-yellow-500 hover:text-yellow-600'
+                            : 'text-gray-300 hover:text-gray-400'
+                        }`}
+                        title={assignment.is_featured ? 'Featured verwijderen' : 'Als featured markeren'}
+                      >
+                        <Star className="h-5 w-5" fill={assignment.is_featured ? 'currentColor' : 'none'} />
+                      </button>
+                    ) : (
+                      <span className="text-gray-300">-</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    {assignment.status !== 'brand' ? (
+                      <input
+                        type="number"
+                        min="1"
+                        max="999"
+                        value={assignment.priority || 999}
+                        onChange={(e) => handlePriorityChange(assignment.id, parseInt(e.target.value) || 999, assignment)}
+                        className="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 text-center"
+                      />
+                    ) : (
+                      <span className="text-gray-500">-</span>
                     )}
                   </td>
                   <td className="px-6 py-4 text-center">
