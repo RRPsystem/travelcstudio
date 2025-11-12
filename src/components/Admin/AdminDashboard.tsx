@@ -8,7 +8,7 @@ import { DestinationManagement } from './DestinationManagement';
 import { TemplateManager } from './TemplateManager';
 import DeeplinkTester from './DeeplinkTester';
 import { HelpBot } from '../shared/HelpBot';
-import { Users, Building2, FileText, Settings, Plus, Search, Filter, CreditCard as Edit, Trash2, LayoutGrid as Layout, Menu, Globe, Newspaper, MapPin, Plane, Link, Key, X, Lock } from 'lucide-react'
+import { Users, Building2, FileText, Settings, Plus, Search, Filter, CreditCard as Edit, Trash2, LayoutGrid as Layout, Menu, Globe, Newspaper, MapPin, Plane, Link, Key, X, Lock, BookOpen } from 'lucide-react'
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 export function AdminDashboard() {
@@ -433,17 +433,32 @@ export function AdminDashboard() {
           </ul>
         </nav>
 
-        <div className="p-4 border-t border-slate-700">
+        <div className="p-4 border-t border-slate-700 space-y-2">
           <button
-            onClick={signOut}
-            className="w-full flex items-center space-x-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+            onClick={() => setActiveSection('settings')}
+            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+              activeSection === 'settings'
+                ? 'bg-slate-700 text-white'
+                : 'text-slate-300 hover:text-white hover:bg-slate-700'
+            }`}
           >
             <Settings size={20} />
             <span>Settings</span>
           </button>
           <button
+            onClick={() => setActiveSection('travel-journal')}
+            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+              activeSection === 'travel-journal'
+                ? 'bg-slate-700 text-white'
+                : 'text-slate-300 hover:text-white hover:bg-slate-700'
+            }`}
+          >
+            <BookOpen size={20} />
+            <span>Travel Journaal</span>
+          </button>
+          <button
             onClick={signOut}
-            className="w-full flex items-center space-x-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors mt-2"
+            className="w-full flex items-center space-x-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
           >
             <span>Logout</span>
           </button>
@@ -464,6 +479,8 @@ export function AdminDashboard() {
                 {activeSection === 'destinations' && 'Bestemmingen Beheer'}
                 {activeSection === 'deeplink-tester' && 'Deeplink Tester'}
                 {activeSection === 'template-manager' && 'Template Manager'}
+                {activeSection === 'settings' && 'Settings'}
+                {activeSection === 'travel-journal' && 'Travel Journaal'}
               </h1>
               <p className="text-gray-600 mt-1">
                 {activeSection === 'brands' && 'Manage all brands in the system'}
@@ -472,6 +489,8 @@ export function AdminDashboard() {
                 {activeSection === 'destinations' && 'Beheer bestemmingen voor alle brands'}
                 {activeSection === 'deeplink-tester' && 'Test external builder integration'}
                 {activeSection === 'template-manager' && 'Maak en beheer pagina templates voor brands'}
+                {activeSection === 'settings' && 'Systeeminstellingen en configuratie'}
+                {activeSection === 'travel-journal' && 'Houd een dagboek bij van je reizen en deel je ervaringen'}
               </p>
             </div>
             
@@ -495,7 +514,22 @@ export function AdminDashboard() {
           {activeSection === 'destinations' && <DestinationManagement />}
           {activeSection === 'deeplink-tester' && <DeeplinkTester />}
           {activeSection === 'template-manager' && <TemplateManager />}
-
+          {activeSection === 'settings' && (
+            <div className="max-w-6xl mx-auto">
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Instellingen</h2>
+                <p className="text-gray-600">Coming soon: Systeemconfiguratie en instellingen.</p>
+              </div>
+            </div>
+          )}
+          {activeSection === 'travel-journal' && (
+            <div className="max-w-6xl mx-auto">
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Travel Journaal</h2>
+                <p className="text-gray-600">Coming soon: Houd een dagboek bij van je reizen en deel je ervaringen.</p>
+              </div>
+            </div>
+          )}
 
           {activeSection === 'dashboard' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

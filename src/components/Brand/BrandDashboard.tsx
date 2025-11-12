@@ -16,7 +16,7 @@ import { FooterBuilder } from './FooterBuilder';
 import { SocialMediaConnector } from './SocialMediaConnector';
 import { SocialMediaManager } from './SocialMediaManager';
 import { TravelBroSetup } from '../TravelBro/TravelBroSetup';
-import { Users, Settings, Plus, Bot, Sparkles, Import as FileImport, ChevronDown, ChevronRight, LayoutGrid as Layout, FileText, Globe, Newspaper, MapPin, Plane, Share2, Map, ArrowRight, Menu, ClipboardCheck, Video } from 'lucide-react';
+import { Users, Settings, Plus, Bot, Sparkles, Import as FileImport, ChevronDown, ChevronRight, LayoutGrid as Layout, FileText, Globe, Newspaper, MapPin, Plane, Share2, Map, ArrowRight, Menu, ClipboardCheck, Video, BookOpen } from 'lucide-react';
 import RoadmapBoard from './RoadmapBoard';
 import TestDashboard from '../Testing/TestDashboard';
 
@@ -477,6 +477,17 @@ export function BrandDashboard() {
             )}
           </button>
           <button
+            onClick={() => setActiveSection('travel-journal')}
+            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+              activeSection === 'travel-journal'
+                ? 'bg-gray-700 text-white'
+                : 'text-gray-300 hover:text-white hover:bg-gray-700'
+            }`}
+          >
+            <BookOpen size={20} />
+            <span>Travel Journaal</span>
+          </button>
+          <button
             onClick={signOut}
             className="w-full flex items-center space-x-3 px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
           >
@@ -529,6 +540,16 @@ export function BrandDashboard() {
         )}
 
         <main className="flex-1 overflow-auto">
+          {activeSection === 'travel-journal' && (
+            <div className="p-6">
+              <div className="max-w-6xl mx-auto">
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Travel Journaal</h2>
+                  <p className="text-gray-600">Coming soon: Houd een dagboek bij van je reizen en deel je ervaringen.</p>
+                </div>
+              </div>
+            </div>
+          )}
           {activeSection === 'dashboard' && (
             <div className="p-6">
               {loading ? (

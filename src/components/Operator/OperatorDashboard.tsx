@@ -16,7 +16,8 @@ import {
   Map,
   MessageCircle,
   Bell,
-  ClipboardCheck
+  ClipboardCheck,
+  BookOpen
 } from 'lucide-react';
 import RoadmapManagement from './RoadmapManagement';
 import TestManagement from './TestManagement';
@@ -75,7 +76,18 @@ export function OperatorDashboard() {
           </ul>
         </nav>
 
-        <div className="p-4 border-t border-gray-700">
+        <div className="p-4 border-t border-gray-700 space-y-2">
+          <button
+            onClick={() => setActiveSection('travel-journal')}
+            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+              activeSection === 'travel-journal'
+                ? 'bg-gray-700 text-white'
+                : 'text-gray-300 hover:text-white hover:bg-gray-700'
+            }`}
+          >
+            <BookOpen size={20} />
+            <span>Travel Journaal</span>
+          </button>
           <button
             onClick={signOut}
             className="w-full flex items-center space-x-3 px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
@@ -100,6 +112,7 @@ export function OperatorDashboard() {
                 {activeSection === 'gpt-management' && 'GPT Management'}
                 {activeSection === 'oauth-management' && 'OAuth App Management'}
                 {activeSection === 'chatbot-management' && 'Chatbot Management'}
+                {activeSection === 'travel-journal' && 'Travel Journaal'}
               </h1>
               <p className="text-gray-600 mt-1">
                 {activeSection === 'test-management' && 'Manage testing rounds and review feedback from testers'}
@@ -110,6 +123,7 @@ export function OperatorDashboard() {
                 {activeSection === 'gpt-management' && 'Configure custom GPTs and content generation'}
                 {activeSection === 'oauth-management' && 'Manage social media OAuth apps and credentials'}
                 {activeSection === 'chatbot-management' && 'View helpbot conversations and improve responses'}
+                {activeSection === 'travel-journal' && 'Houd een dagboek bij van je reizen en deel je ervaringen'}
               </p>
             </div>
             
@@ -135,6 +149,14 @@ export function OperatorDashboard() {
           {activeSection === 'gpt-management' && <GPTManagement />}
           {activeSection === 'oauth-management' && <OAuthManagement />}
           {activeSection === 'chatbot-management' && <ChatbotManagement />}
+          {activeSection === 'travel-journal' && (
+            <div className="max-w-6xl mx-auto">
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Travel Journaal</h2>
+                <p className="text-gray-600">Coming soon: Houd een dagboek bij van je reizen en deel je ervaringen.</p>
+              </div>
+            </div>
+          )}
         </main>
       </div>
       <HelpBot />

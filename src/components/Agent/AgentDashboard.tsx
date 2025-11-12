@@ -7,7 +7,7 @@ import { SocialMediaManager } from '../Brand/SocialMediaManager';
 import { TravelBroSetup } from '../TravelBro/TravelBroSetup';
 import AgentProfileEdit from './AgentProfileEdit';
 import { HelpBot } from '../shared/HelpBot';
-import { Bot, User, ChevronDown, ChevronRight, Share2, Plane, Sparkles, Import as FileImport, Map, ArrowRight, Bell, ClipboardCheck, Video } from 'lucide-react';
+import { Bot, User, ChevronDown, ChevronRight, Share2, Plane, Sparkles, Import as FileImport, Map, ArrowRight, Bell, ClipboardCheck, Video, BookOpen } from 'lucide-react';
 import RoadmapBoard from '../Brand/RoadmapBoard';
 import TestDashboard from '../Testing/TestDashboard';
 
@@ -266,6 +266,17 @@ export function AgentDashboard() {
             )}
           </button>
           <button
+            onClick={() => setActiveSection('travel-journal')}
+            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+              activeSection === 'travel-journal'
+                ? 'bg-gray-700 text-white'
+                : 'text-gray-300 hover:text-white hover:bg-gray-700'
+            }`}
+          >
+            <BookOpen size={20} />
+            <span>Travel Journaal</span>
+          </button>
+          <button
             onClick={signOut}
             className="w-full flex items-center space-x-3 px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
           >
@@ -288,6 +299,7 @@ export function AgentDashboard() {
                 {activeSection === 'ai-travelbro' && 'AI TravelBRO'}
                 {activeSection === 'ai-video' && 'AI Travel Video'}
                 {activeSection === 'roadmap' && 'Roadmap'}
+                {activeSection === 'travel-journal' && 'Travel Journaal'}
               </h1>
               <p className="text-gray-600 mt-1">
                 {activeSection === 'dashboard' && 'Welkom terug bij je agent dashboard'}
@@ -299,6 +311,7 @@ export function AgentDashboard() {
                 {activeSection === 'ai-travelbro' && 'Your AI travel assistant'}
                 {activeSection === 'ai-video' && 'Create engaging travel videos with AI'}
                 {activeSection === 'roadmap' && 'Vote on features and track development progress'}
+                {activeSection === 'travel-journal' && 'Houd een dagboek bij van je reizen en deel je ervaringen'}
               </p>
             </div>
           </div>
@@ -408,6 +421,16 @@ export function AgentDashboard() {
           {activeSection === 'ai-content' && <AIContentGenerator />}
           {activeSection === 'ai-travelbro' && <TravelBroSetup />}
           {activeSection === 'roadmap' && <RoadmapBoard />}
+          {activeSection === 'travel-journal' && (
+            <div className="p-6">
+              <div className="max-w-6xl mx-auto">
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Travel Journaal</h2>
+                  <p className="text-gray-600">Coming soon: Houd een dagboek bij van je reizen en deel je ervaringen.</p>
+                </div>
+              </div>
+            </div>
+          )}
           {activeSection === 'ai-import' && (
             <div className="p-6">
               <div className="bg-white rounded-lg shadow-sm border p-8 text-center max-w-2xl mx-auto">
