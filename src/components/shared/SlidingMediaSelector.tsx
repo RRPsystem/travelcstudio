@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Upload, Search } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 interface SlidingMediaSelectorProps {
   isOpen: boolean;
@@ -153,35 +154,85 @@ export function SlidingMediaSelector({
   const [useRealAPI, setUseRealAPI] = useState(false);
   const [youtubeSearchTerm, setYoutubeSearchTerm] = useState('travel vlog');
   const [youtubeVideos, setYoutubeVideos] = useState<any[]>([]);
+  const [unsplashKey, setUnsplashKey] = useState<string | null>(null);
+  const [youtubeKey, setYoutubeKey] = useState<string | null>(null);
 
   useEffect(() => {
+    const loadAPIKeys = async () => {
+      try {
+        console.log('🔍 Loading API keys from database...');
+        const { data: settings, error } = await supabase
+          .from('api_settings')
+          .select('provider, api_key')
+          .in('provider', ['Unsplash', 'YouTube'])
+          .eq('is_active', true);
+
+        if (error) {
+          console.error('❌ Error loading API keys:', error);
+          return;
+        }
+
+        console.log('📊 Database settings found:', settings?.length || 0);
+
+        if (settings) {
+          const unsplash = settings.find(s => s.provider === 'Unsplash');
+          const youtube = settings.find(s => s.provider === 'YouTube');
+
+          if (unsplash?.api_key) {
+            setUnsplashKey(unsplash.api_key);
+            console.log('✅ Unsplash API key geladen vanuit database');
+          } else {
+            console.log('⚠️ Geen Unsplash API key in database');
+          }
+
+          if (youtube?.api_key) {
+            setYoutubeKey(youtube.api_key);
+            console.log('✅ YouTube API key geladen vanuit database');
+          } else {
+            console.log('⚠️ Geen YouTube API key in database');
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error loading API keys from database:', error);
+      }
+    };
+
+    loadAPIKeys();
+
     console.log('🔑 API Keys Status:');
-    console.log('  Unsplash:', import.meta.env.VITE_UNSPLASH_ACCESS_KEY ? '✅ Configured' : '❌ Missing');
-    console.log('  YouTube:', import.meta.env.VITE_YOUTUBE_API_KEY ? '✅ Configured' : '❌ Missing');
+    console.log('  Unsplash:', unsplashKey ? '✅ Loaded from database' : '❌ Not configured');
+    console.log('  YouTube:', youtubeKey ? '✅ Loaded from database' : '❌ Not configured');
   }, []);
 
   const searchUnsplash = async (query: string) => {
-    const apiKey = import.meta.env.VITE_UNSPLASH_ACCESS_KEY;
+    // SECURITY: Only use API key from database
+    const apiKey = unsplashKey;
 
     if (!apiKey || apiKey === 'YOUR_UNSPLASH_ACCESS_KEY' || apiKey.trim() === '') {
-      console.log('⚠️ No Unsplash API key found, using fallback images');
+      console.log('⚠️ No Unsplash API key configured in database, using fallback images');
       return null;
     }
+
+    console.log('🔑 Using Unsplash key from database');
 
     console.log('🔍 Searching Unsplash for:', query);
 
     try {
       setIsSearching(true);
-      const response = await fetch(
-        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=30&client_id=${apiKey}`
-      );
+      const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=30&client_id=${apiKey}`;
+      console.log('🌐 API URL:', url.replace(apiKey, 'API_KEY_HIDDEN'));
+
+      const response = await fetch(url);
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API Response:', response.status, errorText);
         throw new Error(`Unsplash API error: ${response.status}`);
       }
 
       const data = await response.json();
       console.log('✅ Unsplash results:', data.results.length, 'photos found');
+      console.log('📸 First 3 results:', data.results.slice(0, 3).map((p: any) => p.alt_description || p.description));
       return data.results.map((photo: any) => photo.urls.regular);
     } catch (error) {
       console.error('❌ Unsplash search error:', error);
@@ -192,13 +243,15 @@ export function SlidingMediaSelector({
   };
 
   const searchYouTube = async (query: string) => {
-    const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY;
+    // SECURITY: Only use API key from database
+    const apiKey = youtubeKey;
 
     if (!apiKey || apiKey === 'YOUR_YOUTUBE_API_KEY' || apiKey.trim() === '') {
-      console.log('⚠️ No YouTube API key found');
+      console.log('⚠️ No YouTube API key configured in database');
       return null;
     }
 
+    console.log('🔑 Using YouTube key from database');
     console.log('🔍 Searching YouTube for:', query);
 
     try {
@@ -238,12 +291,16 @@ export function SlidingMediaSelector({
   const handleSearch = async () => {
     const term = searchTerm.toLowerCase().trim();
 
+    console.log('🔍 Starting search with term:', term);
+
     const unsplashResults = await searchUnsplash(term);
 
     if (unsplashResults && unsplashResults.length > 0) {
+      console.log('✅ Using Unsplash results, count:', unsplashResults.length);
       setDisplayedImages(unsplashResults);
       setUseRealAPI(true);
     } else {
+      console.log('⚠️ No Unsplash results, using fallback');
       if (imageCollections[term]) {
         setDisplayedImages(imageCollections[term]);
       } else {
@@ -261,9 +318,9 @@ export function SlidingMediaSelector({
   };
 
   useEffect(() => {
-    if (activeTab === 'unsplash') {
+    if (activeTab === 'unsplash' && displayedImages.length === 0) {
       handleSearch();
-    } else if (activeTab === 'youtube') {
+    } else if (activeTab === 'youtube' && youtubeVideos.length === 0) {
       handleYouTubeSearch();
     }
   }, [activeTab]);
@@ -354,9 +411,14 @@ export function SlidingMediaSelector({
 
             {activeTab === 'unsplash' && (
               <div className="space-y-4">
-                {!import.meta.env.VITE_UNSPLASH_ACCESS_KEY && (
+                {!unsplashKey && (
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
-                    ⚠️ Unsplash API key niet geconfigureerd. Toont fallback afbeeldingen.
+                    ⚠️ Unsplash API key niet geconfigureerd in database. Toont fallback afbeeldingen. Configureer via Operator Dashboard → API Settings.
+                  </div>
+                )}
+                {unsplashKey && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
+                    ✅ Unsplash API key geladen vanuit database
                   </div>
                 )}
                 <div className="relative">
@@ -428,9 +490,14 @@ export function SlidingMediaSelector({
 
             {activeTab === 'youtube' && (
               <div className="space-y-4">
-                {!import.meta.env.VITE_YOUTUBE_API_KEY && (
+                {!youtubeKey && (
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
-                    ⚠️ YouTube API key niet geconfigureerd. Zoeken werkt niet.
+                    ⚠️ YouTube API key niet geconfigureerd in database. Zoeken werkt niet. Configureer via Operator Dashboard → API Settings.
+                  </div>
+                )}
+                {youtubeKey && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
+                    ✅ YouTube API key geladen vanuit database
                   </div>
                 )}
                 <div className="relative">

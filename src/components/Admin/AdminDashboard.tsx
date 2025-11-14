@@ -1,30 +1,43 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { db } from '../../lib/supabase';
-import { ContentManagement } from './ContentManagement';
+import { db, supabase } from '../../lib/supabase';
 import { AgentManagement } from './AgentManagement';
 import { BrandForm } from './BrandForm';
-import { PageManagementView } from '../Brand/WebsiteManagement/PageManagementView';
-import { MenuBuilderView } from '../Brand/WebsiteManagement/MenuBuilderView';
-import { FooterBuilderView } from '../Brand/WebsiteManagement/FooterBuilderView';
-import { NewPage } from '../Brand/WebsiteManagement/NewPage';
-import { Users, Building2, FileText, Settings, Plus, Search, Filter, CreditCard as Edit, Trash2, Bot, Sparkles, Download, Import as FileImport, Globe, LayoutGrid as Layout, Menu } from 'lucide-react'
+import { NewsManagement } from './NewsManagement';
+import { DestinationManagement } from './DestinationManagement';
+import { TemplateManager } from './TemplateManager';
+import DeeplinkTester from './DeeplinkTester';
+import { HelpBot } from '../shared/HelpBot';
+import { Users, Building2, FileText, Settings, Plus, Search, Filter, CreditCard as Edit, Trash2, LayoutGrid as Layout, Menu, Globe, Newspaper, MapPin, Plane, Link, Key, X, Lock, BookOpen } from 'lucide-react'
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 export function AdminDashboard() {
   const { user, signOut } = useAuth();
   const [activeSection, setActiveSection] = useState('dashboard');
-  const [showContentSubmenu, setShowContentSubmenu] = useState(false);
   const [showWebsiteSubmenu, setShowWebsiteSubmenu] = useState(false);
+  const [showContentSubmenu, setShowContentSubmenu] = useState(false);
   const [showBrandForm, setShowBrandForm] = useState(false);
   const [editingBrand, setEditingBrand] = useState<any>(null);
-  const SYSTEM_BRAND_ID = '00000000-0000-0000-0000-000000000001';
+  const [brands, setBrands] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedBrandId, setSelectedBrandId] = useState<string>('');
+  const [dashboardStats, setDashboardStats] = useState({
+    totalBrands: 0,
+    activeAgents: 0,
+    publishedPages: 0,
+    newsArticles: 0
+  });
+  const SYSTEM_BRAND_ID = '00000000-0000-0000-0000-000000000999';
+  const [resetPasswordBrand, setResetPasswordBrand] = useState<any>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState('');
 
   React.useEffect(() => {
-    if (['new-page', 'page-management', 'menu-builder', 'footer-builder'].includes(activeSection)) {
+    if (['template-manager'].includes(activeSection)) {
       setShowWebsiteSubmenu(true);
     }
-    if (['content', 'destinations'].includes(activeSection)) {
+    if (['admin-news', 'destinations', 'trips'].includes(activeSection)) {
       setShowContentSubmenu(true);
     }
   }, [activeSection]);
@@ -36,6 +49,9 @@ export function AdminDashboard() {
       const data = await db.getBrands();
       console.log('✅ Brands loaded:', data);
       setBrands(data || []);
+      if (data && data.length > 0 && !selectedBrandId) {
+        setSelectedBrandId(data[0].id);
+      }
     } catch (error) {
       console.error('❌ Error loading brands:', error);
       setBrands([]);
@@ -45,8 +61,31 @@ export function AdminDashboard() {
     }
   };
 
+  const loadDashboardStats = async () => {
+    try {
+      const [brandsData, usersData, pagesData, newsData] = await Promise.all([
+        db.getBrands(),
+        db.getUsers(),
+        db.getPages(),
+        db.getNewsItems()
+      ]);
+
+      setDashboardStats({
+        totalBrands: brandsData?.length || 0,
+        activeAgents: usersData?.filter((u: any) => u.role === 'agent')?.length || 0,
+        publishedPages: pagesData?.filter((p: any) => p.is_published)?.length || 0,
+        newsArticles: newsData?.length || 0
+      });
+    } catch (error) {
+      console.error('Error loading dashboard stats:', error);
+    }
+  };
+
   React.useEffect(() => {
-    if (activeSection === 'brands' || ['page-management', 'menu-builder', 'footer-builder'].includes(activeSection)) {
+    if (activeSection === 'dashboard') {
+      loadDashboardStats();
+    }
+    if (activeSection === 'brands') {
       loadBrands();
     }
   }, [activeSection]);
@@ -76,23 +115,78 @@ export function AdminDashboard() {
     }
   };
 
+  const handleResetBrandPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetPasswordBrand) return;
+
+    setResetLoading(true);
+    setResetError('');
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not logged in');
+      }
+
+      const { data: brandUser } = await db.getUserByBrandId(resetPasswordBrand.id);
+      if (!brandUser) {
+        throw new Error('Brand user not found');
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reset-user-password`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            user_id: brandUser.id,
+            new_password: newPassword
+          })
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to reset password');
+      }
+
+      setResetLoading(false);
+
+      alert(`✅ Wachtwoord gereset!\n\n📧 Email: ${brandUser.email}\n🔑 Nieuw wachtwoord: ${newPassword}\n\n⚠️ Noteer dit wachtwoord - het wordt maar 1x getoond!`);
+
+      setResetPasswordBrand(null);
+      setNewPassword('');
+    } catch (err: any) {
+      setResetError(err.message || 'Failed to reset password');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   const sidebarItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Settings },
     { id: 'brands', label: 'Brand Management', icon: Building2 },
     { id: 'agents', label: 'Agent Management', icon: Users },
+    { id: 'deeplink-tester', label: 'Deeplink Tester', icon: Link },
   ];
 
   const websiteItems = [
-    { id: 'new-page', label: 'Nieuwe Pagina', icon: Plus },
-    { id: 'page-management', label: 'Pagina Beheer', icon: FileText },
-    { id: 'menu-builder', label: 'Menu Builder', icon: Menu },
-    { id: 'footer-builder', label: 'Footer Builder', icon: Layout },
+    { id: 'template-manager', label: 'Template Manager', icon: Layout },
   ];
 
   const contentItems = [
-    { id: 'content', label: 'Nieuwsberichten', icon: FileText },
-    { id: 'destinations', label: 'Bestemmingen', icon: Building2 },
+    { id: 'admin-news', label: 'Nieuwsbeheer', icon: Newspaper },
+    { id: 'destinations', label: 'Bestemmingen', icon: MapPin },
+    { id: 'trips', label: 'Reizen', icon: Plane },
   ];
+
+  const handleTravelStudioClick = () => {
+    window.open('https://travelstudio.travelstudio-accept.bookunited.com/login', '_blank');
+  };
 
   if (showBrandForm) {
     return (
@@ -134,7 +228,7 @@ export function AdminDashboard() {
                 <button
                   onClick={() => setShowWebsiteSubmenu(!showWebsiteSubmenu)}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                    ['new-page', 'page-management', 'menu-builder', 'footer-builder'].includes(activeSection)
+                    ['template-manager'].includes(activeSection)
                       ? 'bg-slate-700 text-white'
                       : 'text-slate-300 hover:text-white hover:bg-slate-700'
                   }`}
@@ -168,6 +262,17 @@ export function AdminDashboard() {
                     })}
                   </ul>
                 )}
+              </li>
+
+              {/* Travel Studio Link */}
+              <li>
+                <button
+                  onClick={handleTravelStudioClick}
+                  className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors text-slate-300 hover:text-white hover:bg-slate-700"
+                >
+                  <Globe size={20} />
+                  <span>Travel Studio</span>
+                </button>
               </li>
             </ul>
           </nav>
@@ -238,7 +343,7 @@ export function AdminDashboard() {
               <button
                 onClick={() => setShowWebsiteSubmenu(!showWebsiteSubmenu)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                  ['new-page', 'page-management', 'menu-builder', 'footer-builder'].includes(activeSection)
+                  ['template-manager'].includes(activeSection)
                     ? 'bg-slate-700 text-white'
                     : 'text-slate-300 hover:text-white hover:bg-slate-700'
                 }`}
@@ -274,19 +379,19 @@ export function AdminDashboard() {
               )}
             </li>
 
-            {/* Content Management Menu */}
+            {/* Content Menu */}
             <li>
               <button
                 onClick={() => setShowContentSubmenu(!showContentSubmenu)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                  ['content', 'destinations'].includes(activeSection)
+                  ['admin-news', 'destinations', 'trips'].includes(activeSection)
                     ? 'bg-slate-700 text-white'
                     : 'text-slate-300 hover:text-white hover:bg-slate-700'
                 }`}
               >
                 <div className="flex items-center space-x-3">
                   <FileText size={20} />
-                  <span>Content Management</span>
+                  <span>Content</span>
                 </div>
                 {showContentSubmenu ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
               </button>
@@ -314,20 +419,46 @@ export function AdminDashboard() {
                 </ul>
               )}
             </li>
+
+            {/* Travel Studio Link */}
+            <li>
+              <button
+                onClick={handleTravelStudioClick}
+                className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors text-slate-300 hover:text-white hover:bg-slate-700"
+              >
+                <Globe size={20} />
+                <span>Travel Studio</span>
+              </button>
+            </li>
           </ul>
         </nav>
 
-        <div className="p-4 border-t border-slate-700">
+        <div className="p-4 border-t border-slate-700 space-y-2">
           <button
-            onClick={signOut}
-            className="w-full flex items-center space-x-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+            onClick={() => setActiveSection('settings')}
+            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+              activeSection === 'settings'
+                ? 'bg-slate-700 text-white'
+                : 'text-slate-300 hover:text-white hover:bg-slate-700'
+            }`}
           >
             <Settings size={20} />
             <span>Settings</span>
           </button>
           <button
+            onClick={() => setActiveSection('travel-journal')}
+            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+              activeSection === 'travel-journal'
+                ? 'bg-slate-700 text-white'
+                : 'text-slate-300 hover:text-white hover:bg-slate-700'
+            }`}
+          >
+            <BookOpen size={20} />
+            <span>Travel Journaal</span>
+          </button>
+          <button
             onClick={signOut}
-            className="w-full flex items-center space-x-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors mt-2"
+            className="w-full flex items-center space-x-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
           >
             <span>Logout</span>
           </button>
@@ -344,27 +475,27 @@ export function AdminDashboard() {
                 {activeSection === 'dashboard' && 'Dashboard'}
                 {activeSection === 'brands' && 'Brand Management'}
                 {activeSection === 'agents' && 'Agent Management'}
-                {activeSection === 'new-page' && 'Nieuwe Pagina'}
-                {activeSection === 'page-management' && 'Pagina Beheer'}
-                {activeSection === 'menu-builder' && 'Menu Builder'}
-                {activeSection === 'footer-builder' && 'Footer Builder'}
-                {activeSection === 'content' && 'Nieuwsberichten'}
-                {activeSection === 'destinations' && 'Bestemmingen'}
+                {activeSection === 'admin-news' && 'Admin News Management'}
+                {activeSection === 'destinations' && 'Bestemmingen Beheer'}
+                {activeSection === 'deeplink-tester' && 'Deeplink Tester'}
+                {activeSection === 'template-manager' && 'Template Manager'}
+                {activeSection === 'settings' && 'Settings'}
+                {activeSection === 'travel-journal' && 'Travel Journaal'}
               </h1>
               <p className="text-gray-600 mt-1">
                 {activeSection === 'brands' && 'Manage all brands in the system'}
                 {activeSection === 'dashboard' && 'System overview and statistics'}
-                {activeSection === 'new-page' && 'Maak een nieuwe pagina voor je website'}
-                {activeSection === 'page-management' && 'Beheer alle pagina\'s van je website'}
-                {activeSection === 'menu-builder' && 'Bouw en organiseer je website navigatie'}
-                {activeSection === 'footer-builder' && 'Ontwerp en beheer je website footer'}
-                {activeSection === 'content' && 'Beheer nieuwsberichten en brand toegang'}
-                {activeSection === 'destinations' && 'Beheer bestemmingen en reislocaties'}
+                {activeSection === 'admin-news' && 'Create and manage news items for all brands'}
+                {activeSection === 'destinations' && 'Beheer bestemmingen voor alle brands'}
+                {activeSection === 'deeplink-tester' && 'Test external builder integration'}
+                {activeSection === 'template-manager' && 'Maak en beheer pagina templates voor brands'}
+                {activeSection === 'settings' && 'Systeeminstellingen en configuratie'}
+                {activeSection === 'travel-journal' && 'Houd een dagboek bij van je reizen en deel je ervaringen'}
               </p>
             </div>
             
             {activeSection === 'brands' && (
-              <button 
+              <button
                 onClick={() => setShowBrandForm(true)}
                 className="bg-black text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-800 transition-colors"
               >
@@ -372,40 +503,41 @@ export function AdminDashboard() {
                 <span>Add Brand</span>
               </button>
             )}
+
           </div>
         </header>
 
         {/* Content */}
         <main className="flex-1 p-6">
           {activeSection === 'agents' && <AgentManagement />}
-          {activeSection === 'content' && <ContentManagement />}
-
-          {/* Website Management Content - Admin uses System Templates brand */}
-          {activeSection === 'new-page' && <NewPage brandId={SYSTEM_BRAND_ID} />}
-          {activeSection === 'page-management' && <PageManagementView brandId={SYSTEM_BRAND_ID} hideCreateButtons={true} />}
-          {activeSection === 'menu-builder' && <MenuBuilderView brandId={SYSTEM_BRAND_ID} />}
-          {activeSection === 'footer-builder' && <FooterBuilderView brandId={SYSTEM_BRAND_ID} />}
-
-          {activeSection === 'destinations' && (
-            <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Building2 className="w-8 h-8 text-blue-600" />
+          {activeSection === 'admin-news' && <NewsManagement />}
+          {activeSection === 'destinations' && <DestinationManagement />}
+          {activeSection === 'deeplink-tester' && <DeeplinkTester />}
+          {activeSection === 'template-manager' && <TemplateManager />}
+          {activeSection === 'settings' && (
+            <div className="max-w-6xl mx-auto">
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Instellingen</h2>
+                <p className="text-gray-600">Coming soon: Systeemconfiguratie en instellingen.</p>
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Bestemmingen Management</h2>
-              <p className="text-gray-600 mb-6">Beheer reisbestemmingen, locaties en attracties</p>
-              <button className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                Binnenkort Beschikbaar
-              </button>
             </div>
           )}
-          
+          {activeSection === 'travel-journal' && (
+            <div className="max-w-6xl mx-auto">
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Travel Journaal</h2>
+                <p className="text-gray-600">Coming soon: Houd een dagboek bij van je reizen en deel je ervaringen.</p>
+              </div>
+            </div>
+          )}
+
           {activeSection === 'dashboard' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="bg-white p-6 rounded-lg shadow-sm border">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Total Brands</p>
-                    <p className="text-2xl font-bold text-gray-900">12</p>
+                    <p className="text-2xl font-bold text-gray-900">{dashboardStats.totalBrands}</p>
                   </div>
                   <Building2 className="h-8 w-8 text-blue-600" />
                 </div>
@@ -414,7 +546,7 @@ export function AdminDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Active Agents</p>
-                    <p className="text-2xl font-bold text-gray-900">48</p>
+                    <p className="text-2xl font-bold text-gray-900">{dashboardStats.activeAgents}</p>
                   </div>
                   <Users className="h-8 w-8 text-green-600" />
                 </div>
@@ -422,8 +554,8 @@ export function AdminDashboard() {
               <div className="bg-white p-6 rounded-lg shadow-sm border">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">Published Websites</p>
-                    <p className="text-2xl font-bold text-gray-900">8</p>
+                    <p className="text-sm text-gray-600">Published Pages</p>
+                    <p className="text-2xl font-bold text-gray-900">{dashboardStats.publishedPages}</p>
                   </div>
                   <FileText className="h-8 w-8 text-purple-600" />
                 </div>
@@ -431,8 +563,8 @@ export function AdminDashboard() {
               <div className="bg-white p-6 rounded-lg shadow-sm border">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">Content Articles</p>
-                    <p className="text-2xl font-bold text-gray-900">156</p>
+                    <p className="text-sm text-gray-600">News Articles</p>
+                    <p className="text-2xl font-bold text-gray-900">{dashboardStats.newsArticles}</p>
                   </div>
                   <FileText className="h-8 w-8 text-orange-600" />
                 </div>
@@ -536,14 +668,21 @@ export function AdminDashboard() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               <div className="flex items-center space-x-2">
-                                <button 
+                                <button
+                                  onClick={() => setResetPasswordBrand(brand)}
+                                  className="p-1 hover:bg-gray-100 rounded"
+                                  title="Reset wachtwoord"
+                                >
+                                  <Key size={16} className="text-orange-600" />
+                                </button>
+                                <button
                                   onClick={() => handleEditBrand(brand)}
                                   className="p-1 hover:bg-gray-100 rounded"
                                   title="Bewerk brand"
                                 >
                                   <Edit size={16} className="text-blue-600" />
                                 </button>
-                                <button 
+                                <button
                                   onClick={() => handleDeleteBrand(brand)}
                                   className="p-1 hover:bg-gray-100 rounded"
                                   title="Verwijder brand"
@@ -563,6 +702,89 @@ export function AdminDashboard() {
           )}
         </main>
       </div>
+
+      {resetPasswordBrand && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-900 flex items-center space-x-2">
+                <Key size={20} className="text-orange-600" />
+                <span>Reset Wachtwoord</span>
+              </h2>
+              <button
+                onClick={() => {
+                  setResetPasswordBrand(null);
+                  setNewPassword('');
+                  setResetError('');
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleResetBrandPassword} className="p-6">
+              {resetError && (
+                <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+                  {resetError}
+                </div>
+              )}
+
+              <div className="mb-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <p className="text-sm text-gray-600 mb-1">Brand</p>
+                <p className="font-medium text-gray-900">{resetPasswordBrand.name}</p>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="flex items-center space-x-2">
+                    <Lock size={16} />
+                    <span>Nieuw Wachtwoord <span className="text-red-500">*</span></span>
+                  </div>
+                </label>
+                <input
+                  type="text"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Minimaal 6 karakters"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  required
+                  minLength={6}
+                />
+                <p className="text-xs text-gray-500 mt-2">Het nieuwe wachtwoord wordt in een alert getoond na het resetten.</p>
+              </div>
+
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+                <p className="text-sm text-orange-800">
+                  <strong>Let op:</strong> Noteer het nieuwe wachtwoord. Het wordt maar 1x getoond!
+                </p>
+              </div>
+
+              <div className="flex justify-end space-x-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResetPasswordBrand(null);
+                    setNewPassword('');
+                    setResetError('');
+                  }}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Annuleren
+                </button>
+                <button
+                  type="submit"
+                  disabled={resetLoading}
+                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50"
+                >
+                  {resetLoading ? 'Bezig...' : 'Wachtwoord Resetten'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      <HelpBot />
     </div>
   );
 }

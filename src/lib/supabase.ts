@@ -3,16 +3,9 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-console.log('🔍 Supabase Debug Info:');
-console.log('URL:', supabaseUrl || '❌ NOT SET');
-console.log('Key:', supabaseAnonKey ? `${supabaseAnonKey.substring(0, 20)}...` : '❌ NOT SET');
-console.log('URL type:', typeof supabaseUrl);
-console.log('Key type:', typeof supabaseAnonKey);
-
-// Check if we have valid Supabase credentials
 const hasValidSupabaseConfig = Boolean(
-  supabaseUrl && 
-  supabaseAnonKey && 
+  supabaseUrl &&
+  supabaseAnonKey &&
   supabaseUrl.trim() !== '' &&
   supabaseAnonKey.trim() !== '' &&
   supabaseUrl !== 'your-project-id.supabase.co' &&
@@ -21,55 +14,13 @@ const hasValidSupabaseConfig = Boolean(
   supabaseAnonKey.startsWith('eyJ')
 );
 
-console.log('✅ Has valid config:', hasValidSupabaseConfig);
-console.log('🔧 Fresh start config check:');
-console.log('  - URL exists:', !!supabaseUrl);
-console.log('  - Key exists:', !!supabaseAnonKey);
-console.log('  - URL format OK:', supabaseUrl ? supabaseUrl.includes('.supabase.co') : false);
-console.log('  - Key format OK:', supabaseAnonKey ? supabaseAnonKey.startsWith('eyJ') : false);
-console.log('  - Is placeholder URL:', supabaseUrl === 'your-project-id.supabase.co');
-console.log('  - Is placeholder key:', supabaseAnonKey === 'your-anon-key');
-
-export const supabase = hasValidSupabaseConfig 
+export const supabase = hasValidSupabaseConfig
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
 
-console.log('🚀 Supabase client created:', !!supabase);
-
-if (!supabase) {
-  console.log('❌ Supabase client NOT created. Reasons:');
-  if (!supabaseUrl) console.log('  - Missing VITE_SUPABASE_URL');
-  if (!supabaseAnonKey) console.log('  - Missing VITE_SUPABASE_ANON_KEY');
-  if (supabaseUrl && !supabaseUrl.includes('.supabase.co')) console.log('  - Invalid URL format');
-  if (supabaseAnonKey && !supabaseAnonKey.startsWith('eyJ')) console.log('  - Invalid key format');
-  console.log('');
-  console.log('💡 To fix this:');
-  console.log('  1. Login as operator@travel.com / operator123');
-  console.log('  2. Go to Operator Dashboard → GPT Management');
-  console.log('  3. Click "setup Supabase for multi-user support"');
-  console.log('  4. Follow the setup wizard');
-} else {
-  console.log('✅ Supabase client successfully created!');
-  console.log('🔗 Testing connection...');
-  
-  // Test the connection
-  supabase.from('gpt_models').select('count', { count: 'exact', head: true })
-    .then(({ count, error }) => {
-      if (error) {
-        console.log('❌ Database connection test failed:', error.message);
-        console.log('💡 Run the SQL migration in Supabase dashboard!');
-      } else {
-        console.log('✅ Database connection successful!');
-        console.log(`📊 Found ${count || 0} GPT models in database`);
-      }
-    })
-    .catch(err => {
-      console.log('❌ Connection test error:', err);
-    });
-}
-
 // Helper functions for database operations
 export const db = {
+  supabase,
   // Brands
   async getBrands() {
     console.log('📊 getBrands called, supabase available:', !!supabase);
@@ -218,7 +169,45 @@ export const db = {
     if (brandId) {
       query = query.eq('brand_id', brandId);
     }
-    
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data;
+  },
+
+  // News Items
+  async getNewsItems(brandId?: string) {
+    if (!supabase) {
+      throw new Error('Supabase not configured');
+    }
+    let query = supabase
+      .from('news_items')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (brandId) {
+      query = query.eq('brand_id', brandId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data;
+  },
+
+  // Pages
+  async getPages(brandId?: string) {
+    if (!supabase) {
+      throw new Error('Supabase not configured');
+    }
+    let query = supabase
+      .from('pages')
+      .select('*')
+      .order('created_at', { ascending: false});
+
+    if (brandId) {
+      query = query.eq('brand_id', brandId);
+    }
+
     const { data, error } = await query;
     if (error) throw error;
     return data;
@@ -248,6 +237,21 @@ export const db = {
     const { data, error } = await query;
     if (error) throw error;
     return data;
+  },
+
+  // Users
+  async getUserByBrandId(brandId: string) {
+    if (!supabase) {
+      throw new Error('Supabase not configured');
+    }
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('brand_id', brandId)
+      .eq('role', 'brand')
+      .maybeSingle();
+    if (error) throw error;
+    return { data };
   },
 
   // Agents
@@ -285,9 +289,18 @@ export const db = {
       .from('gpt_models')
       .select('*')
       .order('created_at', { ascending: false });
-    
+
     if (error) throw error;
-    return data;
+
+    return data?.map(gpt => ({
+      ...gpt,
+      isActive: gpt.is_active,
+      contentType: gpt.content_type,
+      systemPrompt: gpt.system_prompt,
+      maxTokens: gpt.max_tokens,
+      usageCount: gpt.usage_count,
+      lastUsed: gpt.last_used || 'Never'
+    }));
   },
 
   async createGPTModel(gptModel: Partial<any>) {
@@ -299,9 +312,17 @@ export const db = {
       .insert([{ ...gptModel, created_by: (await supabase.auth.getUser()).data.user?.id }])
       .select()
       .single();
-    
+
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      isActive: data.is_active,
+      contentType: data.content_type,
+      systemPrompt: data.system_prompt,
+      maxTokens: data.max_tokens,
+      usageCount: data.usage_count,
+      lastUsed: data.last_used || 'Never'
+    };
   },
 
   async updateGPTModel(id: string, updates: Partial<any>) {
@@ -314,9 +335,17 @@ export const db = {
       .eq('id', id)
       .select()
       .single();
-    
+
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      isActive: data.is_active,
+      contentType: data.content_type,
+      systemPrompt: data.system_prompt,
+      maxTokens: data.max_tokens,
+      usageCount: data.usage_count,
+      lastUsed: data.last_used || 'Never'
+    };
   },
 
   async deleteGPTModel(id: string) {
@@ -335,15 +364,26 @@ export const db = {
     if (!supabase) {
       throw new Error('Supabase not configured');
     }
-    const { error } = await supabase
+
+    // First get current usage count
+    const { data: currentModel, error: fetchError } = await supabase
+      .from('gpt_models')
+      .select('usage_count')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    // Then increment it
+    const { error: updateError } = await supabase
       .from('gpt_models')
       .update({
-        usage_count: supabase.raw('usage_count + 1'),
+        usage_count: (currentModel?.usage_count || 0) + 1,
         last_used: new Date().toISOString()
       })
       .eq('id', id);
 
-    if (error) throw error;
+    if (updateError) throw updateError;
   },
 
   // API Settings
@@ -432,6 +472,48 @@ export const db = {
 
     if (error) {
       console.warn('Could not increment API usage:', error);
+    }
+  },
+
+  async getOpenAIKey(): Promise<string | null> {
+    console.log('🔑 getOpenAIKey called');
+
+    if (!supabase) {
+      console.log('⚠️ No supabase client');
+      return null;
+    }
+
+    try {
+      console.log('🔄 Fetching OpenAI key from database...');
+      const { data, error } = await supabase
+        .from('api_settings')
+        .select('api_key, is_active')
+        .eq('provider', 'OpenAI')
+        .eq('service_name', 'OpenAI API')
+        .maybeSingle();
+
+      console.log('📥 Database response:', {
+        hasData: !!data,
+        isActive: data?.is_active,
+        hasApiKey: !!data?.api_key,
+        error: error
+      });
+
+      if (error) {
+        console.error('❌ Could not fetch OpenAI key from database:', error);
+        return null;
+      }
+
+      if (data?.is_active && data?.api_key) {
+        console.log('✅ OpenAI key found and active');
+        return data.api_key;
+      }
+
+      console.log('⚠️ No active OpenAI key in database');
+      return null;
+    } catch (err) {
+      console.error('❌ Error fetching OpenAI key:', err);
+      return null;
     }
   }
 };

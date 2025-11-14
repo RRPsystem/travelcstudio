@@ -1,71 +1,54 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { GPTManagement } from './GPTManagement';
-import { UsageMonitoring } from './UsageMonitoring';
 import { SystemHealth } from './SystemHealth';
-import { UserActivity } from './UserActivity';
-import { 
-  Settings, 
-  Bot, 
-  BarChart3, 
-  Activity, 
-  Users, 
+import { OAuthManagement } from './OAuthManagement';
+import { APISettings } from './APISettings';
+import { ChatbotManagement } from './ChatbotManagement';
+import { MonitoringDashboard } from './MonitoringDashboard';
+import { HelpBot } from '../shared/HelpBot';
+import {
+  Settings,
+  Bot,
+  Activity,
   Key,
-  Database,
-  Globe,
-  Zap,
   Shield,
-  AlertTriangle,
-  CheckCircle,
-  TrendingUp,
-  Clock
+  Map,
+  MessageCircle,
+  Bell,
+  ClipboardCheck,
+  BookOpen
 } from 'lucide-react';
+import RoadmapManagement from './RoadmapManagement';
+import TestManagement from './TestManagement';
 
 export function OperatorDashboard() {
   const { user, signOut } = useAuth();
-  const [activeSection, setActiveSection] = useState('overview');
-  const [systemStats, setSystemStats] = useState({
-    totalUsers: 0,
-    activeChats: 0,
-    apiCallsToday: 0,
-    monthlyCost: 0
-  });
-
-  useEffect(() => {
-    const loadSystemStats = async () => {
-      setSystemStats({
-        totalUsers: 0,
-        activeChats: 0,
-        apiCallsToday: 0,
-        monthlyCost: 0
-      });
-    };
-
-    if (activeSection === 'overview') {
-      loadSystemStats();
-    }
-  }, [activeSection]);
+  const [activeSection, setActiveSection] = useState('test-management');
 
   const sidebarItems = [
-    { id: 'overview', label: 'System Overview', icon: BarChart3 },
-    { id: 'gpt-management', label: 'GPT Management', icon: Bot },
-    { id: 'usage-monitoring', label: 'Usage Monitoring', icon: TrendingUp },
-    { id: 'user-activity', label: 'User Activity', icon: Users },
+    { id: 'test-management', label: 'Test Management', icon: ClipboardCheck },
+    { id: 'roadmap', label: 'Roadmap Management', icon: Map },
+    { id: 'monitoring', label: 'Monitoring & Alerts', icon: Bell },
     { id: 'system-health', label: 'System Health', icon: Activity },
+    { id: 'api-settings', label: 'API Settings', icon: Key },
+    { id: 'gpt-management', label: 'GPT Management', icon: Bot },
+    { id: 'oauth-management', label: 'OAuth Apps', icon: Settings },
+    { id: 'chatbot-management', label: 'Chatbot Logs', icon: MessageCircle },
   ];
 
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <div className="w-64 bg-slate-900 text-white flex flex-col">
-        <div className="p-4 border-b border-slate-700">
+      <div className="w-64 bg-gray-800 text-white flex flex-col">
+        <div className="p-4 border-b border-gray-700">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center">
+            <div className="w-8 h-8 bg-orange-600 rounded flex items-center justify-center" style={{ backgroundColor: '#ff7700' }}>
               <Shield className="w-5 h-5 text-white" />
             </div>
             <div>
               <div className="font-semibold">Operator Panel</div>
-              <div className="text-xs text-slate-400">System Administrator</div>
+              <div className="text-xs text-gray-400">System Administrator</div>
             </div>
           </div>
         </div>
@@ -80,8 +63,8 @@ export function OperatorDashboard() {
                     onClick={() => setActiveSection(item.id)}
                     className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
                       activeSection === item.id
-                        ? 'bg-slate-700 text-white'
-                        : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                        ? 'bg-gray-700 text-white'
+                        : 'text-gray-300 hover:text-white hover:bg-gray-700'
                     }`}
                   >
                     <Icon size={20} />
@@ -93,10 +76,21 @@ export function OperatorDashboard() {
           </ul>
         </nav>
 
-        <div className="p-4 border-t border-slate-700">
+        <div className="p-4 border-t border-gray-700 space-y-2">
+          <button
+            onClick={() => setActiveSection('travel-journal')}
+            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+              activeSection === 'travel-journal'
+                ? 'bg-gray-700 text-white'
+                : 'text-gray-300 hover:text-white hover:bg-gray-700'
+            }`}
+          >
+            <BookOpen size={20} />
+            <span>Travel Journaal</span>
+          </button>
           <button
             onClick={signOut}
-            className="w-full flex items-center space-x-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            className="w-full flex items-center space-x-3 px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
           >
             <span>Logout</span>
           </button>
@@ -110,18 +104,26 @@ export function OperatorDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                {activeSection === 'overview' && 'System Overview'}
-                {activeSection === 'gpt-management' && 'GPT Management'}
-                {activeSection === 'usage-monitoring' && 'Usage Monitoring'}
-                {activeSection === 'user-activity' && 'User Activity'}
+                {activeSection === 'test-management' && 'Test Management'}
+                {activeSection === 'roadmap' && 'Roadmap Management'}
+                {activeSection === 'monitoring' && 'Monitoring & Alerts'}
                 {activeSection === 'system-health' && 'System Health'}
+                {activeSection === 'api-settings' && 'API Settings'}
+                {activeSection === 'gpt-management' && 'GPT Management'}
+                {activeSection === 'oauth-management' && 'OAuth App Management'}
+                {activeSection === 'chatbot-management' && 'Chatbot Management'}
+                {activeSection === 'travel-journal' && 'Travel Journaal'}
               </h1>
               <p className="text-gray-600 mt-1">
-                {activeSection === 'overview' && 'Monitor system performance and key metrics'}
+                {activeSection === 'test-management' && 'Manage testing rounds and review feedback from testers'}
+                {activeSection === 'roadmap' && 'Manage feature requests and development priorities'}
+                {activeSection === 'monitoring' && 'Real-time error tracking, alerts, and performance monitoring'}
+                {activeSection === 'system-health' && 'Real-time browser metrics and service status'}
+                {activeSection === 'api-settings' && 'Configure API keys and external service credentials'}
                 {activeSection === 'gpt-management' && 'Configure custom GPTs and content generation'}
-                {activeSection === 'usage-monitoring' && 'Track API usage and costs'}
-                {activeSection === 'user-activity' && 'Monitor user behavior and activity logs'}
-                {activeSection === 'system-health' && 'System status and performance monitoring'}
+                {activeSection === 'oauth-management' && 'Manage social media OAuth apps and credentials'}
+                {activeSection === 'chatbot-management' && 'View helpbot conversations and improve responses'}
+                {activeSection === 'travel-journal' && 'Houd een dagboek bij van je reizen en deel je ervaringen'}
               </p>
             </div>
             
@@ -139,154 +141,25 @@ export function OperatorDashboard() {
 
         {/* Content */}
         <main className="flex-1 p-6 overflow-y-auto">
-          {activeSection === 'overview' && (
-            <div className="space-y-6">
-              {/* Key Metrics */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white p-6 rounded-lg shadow-sm border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Total Users</p>
-                      <p className="text-2xl font-bold text-gray-900">-</p>
-                      <p className="text-xs text-gray-500 mt-1">No data yet</p>
-                    </div>
-                    <Users className="h-8 w-8 text-blue-600" />
-                  </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-lg shadow-sm border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Active Chats</p>
-                      <p className="text-2xl font-bold text-gray-900">-</p>
-                      <p className="text-xs text-gray-500 mt-1">No sessions</p>
-                    </div>
-                    <Bot className="h-8 w-8 text-green-600" />
-                  </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-lg shadow-sm border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">API Calls Today</p>
-                      <p className="text-2xl font-bold text-gray-900">-</p>
-                      <p className="text-xs text-gray-500 mt-1">Configure APIs</p>
-                    </div>
-                    <Zap className="h-8 w-8 text-orange-600" />
-                  </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-lg shadow-sm border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Monthly Cost</p>
-                      <p className="text-2xl font-bold text-gray-900">$0.00</p>
-                      <p className="text-xs text-gray-500 mt-1">No usage yet</p>
-                    </div>
-                    <TrendingUp className="h-8 w-8 text-red-600" />
-                  </div>
-                </div>
-              </div>
-
-              {/* System Status */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white rounded-lg shadow-sm border p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <Activity className="mr-2" size={20} />
-                    System Health
-                  </h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">System Uptime</span>
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                        <span className="text-sm font-medium text-green-600">-</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Average Response Time</span>
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                        <span className="text-sm font-medium text-green-600">-</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">OpenAI API Status</span>
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                        <span className="text-sm font-medium text-green-600">Operational</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Google APIs Status</span>
-                      <div className="flex items-center space-x-2">
-                        <AlertTriangle className="w-4 h-4 text-yellow-500" />
-                        <span className="text-sm font-medium text-yellow-600">Limited</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-lg shadow-sm border p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <Clock className="mr-2" size={20} />
-                    Recent Activity
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                      <div>
-                        <p className="text-sm text-gray-900">System initialized</p>
-                        <p className="text-xs text-gray-500">Configure APIs to see activity</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                      <div>
-                        <p className="text-sm text-gray-900">Waiting for real data</p>
-                        <p className="text-xs text-gray-500">Connect APIs for live metrics</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  <button 
-                    onClick={() => setActiveSection('gpt-management')}
-                    className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-center"
-                  >
-                    <Bot className="w-6 h-6 mx-auto mb-2 text-blue-600" />
-                    <span className="text-sm font-medium">Manage GPTs</span>
-                  </button>
-                  <button 
-                    onClick={() => setActiveSection('usage-monitoring')}
-                    className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-center"
-                  >
-                    <BarChart3 className="w-6 h-6 mx-auto mb-2 text-orange-600" />
-                    <span className="text-sm font-medium">View Usage</span>
-                  </button>
-                  <button 
-                    onClick={() => setActiveSection('system-health')}
-                    className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-center"
-                  >
-                    <Activity className="w-6 h-6 mx-auto mb-2 text-red-600" />
-                    <span className="text-sm font-medium">System Health</span>
-                  </button>
-                </div>
+          {activeSection === 'test-management' && <TestManagement />}
+          {activeSection === 'roadmap' && <RoadmapManagement />}
+          {activeSection === 'monitoring' && <MonitoringDashboard />}
+          {activeSection === 'system-health' && <SystemHealth />}
+          {activeSection === 'api-settings' && <APISettings />}
+          {activeSection === 'gpt-management' && <GPTManagement />}
+          {activeSection === 'oauth-management' && <OAuthManagement />}
+          {activeSection === 'chatbot-management' && <ChatbotManagement />}
+          {activeSection === 'travel-journal' && (
+            <div className="max-w-6xl mx-auto">
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Travel Journaal</h2>
+                <p className="text-gray-600">Coming soon: Houd een dagboek bij van je reizen en deel je ervaringen.</p>
               </div>
             </div>
           )}
-
-          {activeSection === 'gpt-management' && <GPTManagement />}
-          {activeSection === 'usage-monitoring' && <UsageMonitoring />}
-          {activeSection === 'user-activity' && <UserActivity />}
-          {activeSection === 'system-health' && <SystemHealth />}
         </main>
       </div>
+      <HelpBot />
     </div>
   );
 }

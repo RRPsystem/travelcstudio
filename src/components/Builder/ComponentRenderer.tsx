@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { PageComponent } from '../../types';
-import { Trash2, Settings } from 'lucide-react';
+import { Trash2, Settings, ArrowRight } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import DOMPurify from 'dompurify';
 
 interface ComponentRendererProps {
   component: PageComponent;
@@ -31,9 +33,9 @@ export function ComponentRenderer({ component, isPreview = false, onRemove }: Co
       case 'text':
         return (
           <div className="p-8 max-w-4xl mx-auto bg-white">
-            <div 
+            <div
               className={`text-gray-900 leading-relaxed text-${component.props.alignment || 'left'}`}
-              dangerouslySetInnerHTML={{ __html: component.props.content }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(component.props.content) }}
             />
           </div>
         );
@@ -140,8 +142,8 @@ export function ComponentRenderer({ component, isPreview = false, onRemove }: Co
         return (
           <div className="p-8 max-w-4xl mx-auto bg-white">
             <div className="max-w-sm mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
-              <img 
-                src={component.props.image} 
+              <img
+                src={component.props.image}
                 alt={component.props.title}
                 className="w-full h-48 object-cover"
               />
@@ -159,6 +161,9 @@ export function ComponentRenderer({ component, isPreview = false, onRemove }: Co
             </div>
           </div>
         );
+
+      case 'news-overview':
+        return <NewsOverviewComponent component={component} isPreview={isPreview} />;
 
       default:
         return (
@@ -178,7 +183,7 @@ export function ComponentRenderer({ component, isPreview = false, onRemove }: Co
           <button className="p-2 text-gray-600 hover:text-blue-600 transition-colors">
             <Settings size={16} />
           </button>
-          <button 
+          <button
             onClick={onRemove}
             className="p-2 text-gray-600 hover:text-red-600 transition-colors"
           >
@@ -187,6 +192,152 @@ export function ComponentRenderer({ component, isPreview = false, onRemove }: Co
         </div>
       )}
       {renderComponent()}
+    </div>
+  );
+}
+
+function NewsOverviewComponent({ component, isPreview }: { component: PageComponent; isPreview: boolean }) {
+  const [articles, setArticles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState('Alle');
+  const [brandId, setBrandId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getBrandIdFromUrl = () => {
+      const hash = window.location.hash;
+      const match = hash.match(/brand_id=([^&]+)/);
+      return match ? match[1] : null;
+    };
+
+    const id = getBrandIdFromUrl();
+    setBrandId(id);
+  }, []);
+
+  useEffect(() => {
+    if (!brandId) return;
+
+    const fetchArticles = async () => {
+      try {
+        setLoading(true);
+        const maxArticles = component.props.maxArticles || 6;
+
+        const { data, error } = await supabase
+          .from('news_items')
+          .select('*, news_brand_assignments!inner(*)')
+          .eq('status', 'published')
+          .eq('news_brand_assignments.brand_id', brandId)
+          .order('created_at', { ascending: false })
+          .limit(maxArticles);
+
+        if (error) throw error;
+        setArticles(data || []);
+      } catch (error) {
+        console.error('Error fetching news articles:', error);
+        setArticles([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchArticles();
+  }, [brandId, component.props.maxArticles]);
+
+  const filters = component.props.filters || ['Alle'];
+  const badge = component.props.badge || 'Nieuws';
+  const title = component.props.title || 'Blijf op de hoogte';
+  const showFilters = component.props.showFilters !== false;
+
+  const filteredArticles = activeFilter === 'Alle'
+    ? articles
+    : articles.filter(article => {
+        const tags = article.tags || [];
+        return tags.includes(activeFilter);
+      });
+
+  if (loading) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto bg-white">
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-8 max-w-7xl mx-auto bg-white">
+      <div className="text-center mb-8">
+        <span className="inline-block px-4 py-1 bg-orange-100 text-orange-600 rounded-full text-sm font-medium mb-4">
+          {badge}
+        </span>
+        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">{title}</h2>
+      </div>
+
+      {showFilters && filters.length > 1 && (
+        <div className="flex flex-wrap justify-center gap-2 mb-8">
+          {filters.map((filter) => (
+            <button
+              key={filter}
+              onClick={() => setActiveFilter(filter)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                activeFilter === filter
+                  ? 'bg-orange-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {filter}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {filteredArticles.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-gray-500">Geen nieuwsartikelen gevonden</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredArticles.map((article) => {
+            const imageUrl = article.featured_image || 'https://images.pexels.com/photos/346885/pexels-photo-346885.jpeg';
+            const excerpt = article.excerpt || article.content?.substring(0, 150) || '';
+
+            return (
+              <div key={article.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                <img
+                  src={imageUrl}
+                  alt={article.title}
+                  className="w-full h-48 object-cover"
+                />
+                <div className="p-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    {article.tags && article.tags.length > 0 && (
+                      <span className="inline-block px-2 py-1 bg-orange-100 text-orange-600 rounded text-xs font-medium">
+                        {article.tags[0]}
+                      </span>
+                    )}
+                    <span className="text-sm text-gray-500">
+                      {new Date(article.created_at).toLocaleDateString('nl-NL')}
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2">
+                    {article.title}
+                  </h3>
+                  <p className="text-gray-600 mb-4 line-clamp-3">
+                    {excerpt}
+                  </p>
+                  <a
+                    href={`#/nieuws/${article.slug}`}
+                    className="inline-flex items-center gap-2 text-orange-600 hover:text-orange-700 font-medium transition-colors"
+                  >
+                    Lees verder
+                    <ArrowRight className="w-4 h-4" />
+                  </a>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

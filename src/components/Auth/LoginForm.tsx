@@ -39,21 +39,6 @@ export function LoginForm() {
           </p>
         </div>
         
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <h3 className="font-semibold text-blue-900 mb-2">Demo Login Credentials</h3>
-          <div className="space-y-2 text-sm">
-            <div>
-              <strong>Admin:</strong> admin@travel.com / admin123
-            </div>
-            <div>
-              <strong>Brand:</strong> brand@travel.com / brand123
-            </div>
-            <div>
-              <strong>Operator:</strong> operator@travel.com / operator123
-            </div>
-          </div>
-        </div>
-        
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">

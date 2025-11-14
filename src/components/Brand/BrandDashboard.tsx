@@ -1,60 +1,277 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { BrandContentManagement } from './BrandContentManagement';
+import { db } from '../../lib/supabase';
+import { openVideoGenerator, openTravelImport } from '../../lib/jwtHelper';
 import { AIContentGenerator } from './AIContentGenerator';
-import { NewPage } from './WebsiteManagement/NewPage';
-import PageManagementView from './WebsiteManagement/PageManagementView';
-import MenuBuilderView from './WebsiteManagement/MenuBuilderView';
-import FooterBuilderView from './WebsiteManagement/FooterBuilderView';
-import { Globe, FileText, Users, Settings, Plus, Search, Eye, CreditCard as Edit, Bot, Sparkles, Download, Import as FileImport, ChevronDown, ChevronRight, LayoutGrid as Layout } from 'lucide-react';
-import { Building } from 'lucide-react';
+import { BrandSettings } from './BrandSettings';
+import { HelpBot } from '../shared/HelpBot';
+import { NewsApproval } from './NewsApproval';
+import { DestinationApproval } from './DestinationApproval';
+import { TripApproval } from './TripApproval';
+import { PageManagement } from './PageManagement';
+import { NewPage } from './NewPage';
+import { AgentManagement } from './AgentManagement';
+import { MenuBuilder } from './MenuBuilder';
+import { FooterBuilder } from './FooterBuilder';
+import { SocialMediaConnector } from './SocialMediaConnector';
+import { SocialMediaManager } from './SocialMediaManager';
+import { TravelBroSetup } from '../TravelBro/TravelBroSetup';
+import { Users, Settings, Plus, Bot, Sparkles, Import as FileImport, ChevronDown, ChevronRight, LayoutGrid as Layout, FileText, Globe, Newspaper, MapPin, Plane, Share2, Map, ArrowRight, Menu, ClipboardCheck, Video, BookOpen } from 'lucide-react';
+import RoadmapBoard from './RoadmapBoard';
+import TestDashboard from '../Testing/TestDashboard';
 
 export function BrandDashboard() {
   const { user, signOut } = useAuth();
-  const [activeSection, setActiveSection] = useState('dashboard');
+
+  const getInitialSection = () => {
+    const hash = window.location.hash;
+    if (hash.includes('/brand/content/news')) return 'nieuwsbeheer';
+    if (hash.includes('/brand/website/pages')) return 'pages';
+    if (hash.includes('/brand/menu')) return 'menu';
+    if (hash.includes('/brand/footer')) return 'footer';
+    return 'dashboard';
+  };
+
+  const getInitialSubmenus = () => {
+    const hash = window.location.hash;
+    return {
+      showContentSubmenu: hash.includes('/brand/content/news'),
+      showWebsiteSubmenu: hash.includes('/brand/website/') || hash.includes('/brand/menu') || hash.includes('/brand/footer')
+    };
+  };
+
+  const initialSubmenus = getInitialSubmenus();
+  const [activeSection, setActiveSection] = useState(getInitialSection());
   const [showAISubmenu, setShowAISubmenu] = useState(false);
-  const [showContentSubmenu, setShowContentSubmenu] = useState(false);
-  const [showWebsiteSubmenu, setShowWebsiteSubmenu] = useState(false);
+  const [showWebsiteSubmenu, setShowWebsiteSubmenu] = useState(initialSubmenus.showWebsiteSubmenu);
+  const [showContentSubmenu, setShowContentSubmenu] = useState(initialSubmenus.showContentSubmenu);
+  const [websites, setWebsites] = useState<any[]>([]);
+  const [brandData, setBrandData] = useState<any>(null);
+  const [stats, setStats] = useState({ pages: 0, newsItems: 0, agents: 0 });
+  const [newRoadmapCount, setNewRoadmapCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash.includes('/brand/website/pages')) {
+        console.log('Hash routing: Navigating to pages section');
+        setActiveSection('pages');
+        setShowWebsiteSubmenu(true);
+      } else if (hash.includes('/brand/content/news')) {
+        console.log('Hash routing: Navigating to news section');
+        setActiveSection('nieuwsbeheer');
+        setShowContentSubmenu(true);
+      }
+    };
+
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (activeSection === 'dashboard') {
+      loadDashboardData();
+    }
+  }, [activeSection, user?.brand_id]);
+
+  const loadDashboardData = async () => {
+    if (!user?.brand_id) return;
+    setLoading(true);
+    try {
+      const [brandResult, websitesResult, newsResult, agentsResult] = await Promise.all([
+        db.supabase.from('brands').select('*').eq('id', user.brand_id).maybeSingle(),
+        db.supabase.from('websites').select('id', { count: 'exact' }).eq('brand_id', user.brand_id),
+        db.supabase.from('news_items').select('id', { count: 'exact' }).eq('brand_id', user.brand_id),
+        db.supabase.from('agents').select('id', { count: 'exact' }).eq('brand_id', user.brand_id)
+      ]);
+
+      let pagesCount = 0;
+      if (websitesResult.data && websitesResult.data.length > 0) {
+        const websiteIds = websitesResult.data.map((w: any) => w.id);
+        const pagesResult = await db.supabase
+          .from('website_pages')
+          .select('id', { count: 'exact' })
+          .in('website_id', websiteIds);
+        pagesCount = pagesResult.count || 0;
+      }
+
+      const legacyPagesResult = await db.supabase
+        .from('pages')
+        .select('id', { count: 'exact' })
+        .eq('brand_id', user.brand_id)
+        .eq('is_template', false);
+      pagesCount += legacyPagesResult.count || 0;
+
+      if (brandResult.data) setBrandData(brandResult.data);
+      setStats({
+        pages: pagesCount,
+        newsItems: newsResult.count || 0,
+        agents: agentsResult.count || 0
+      });
+
+      loadRoadmapNotifications();
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadRoadmapNotifications = async () => {
+    try {
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+      const { data, error } = await db.supabase
+        .from('roadmap_items')
+        .select('id')
+        .gte('created_at', oneWeekAgo.toISOString());
+
+      if (data) {
+        setNewRoadmapCount(data.length);
+      }
+    } catch (error) {
+      console.error('Error loading roadmap notifications:', error);
+    }
+  };
+
+  const loadWebsites = async () => {
+    if (!user?.brand_id) return;
+    setLoading(true);
+    try {
+      const data = await db.getWebsites(user.brand_id);
+      setWebsites(data || []);
+    } catch (error) {
+      console.error('Error loading websites:', error);
+      setWebsites([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   React.useEffect(() => {
-    if (['new-page', 'pages', 'menus', 'footers'].includes(activeSection)) {
+    if (['new-page', 'pages'].includes(activeSection)) {
       setShowWebsiteSubmenu(true);
-    }
-    if (['content', 'destinations'].includes(activeSection)) {
-      setShowContentSubmenu(true);
     }
     if (['ai-content', 'ai-travelbro', 'ai-import'].includes(activeSection)) {
       setShowAISubmenu(true);
     }
-  }, [activeSection]);
+    if (['nieuwsbeheer', 'destinations', 'trips'].includes(activeSection)) {
+      setShowContentSubmenu(true);
+    }
+    if (activeSection === 'websites') {
+      loadWebsites();
+    }
+  }, [activeSection, user?.brand_id]);
 
   const sidebarItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Settings },
-    { id: 'websites', label: 'My Websites', icon: Globe },
+    { id: 'dashboard', label: 'Dashboard', icon: Sparkles },
     { id: 'agents', label: 'Agents', icon: Users },
-    { id: 'settings', label: 'Brand Settings', icon: Settings },
+    { id: 'social-media', label: 'Social Media', icon: Share2 },
+    { id: 'testing', label: 'Test Dashboard', icon: ClipboardCheck },
   ];
 
   const websiteManagementItems = [
     { id: 'new-page', label: 'Nieuwe Pagina', icon: Plus },
     { id: 'pages', label: 'Pagina Beheer', icon: FileText },
-    { id: 'menus', label: 'Menu Builder', icon: Layout },
-    { id: 'footers', label: 'Footer Builder', icon: Layout },
-  ];
-
-  const contentItems = [
-    { id: 'content', label: 'Nieuwsberichten', icon: FileText },
-    { id: 'destinations', label: 'Bestemmingen', icon: Building },
+    { id: 'menu', label: 'Menu Beheer', icon: Menu },
+    { id: 'footer', label: 'Footer Beheer', icon: Layout },
   ];
 
   const aiToolsItems = [
     { id: 'ai-content', label: 'AI Content Generator', icon: Sparkles },
     { id: 'ai-travelbro', label: 'AI TravelBRO', icon: Bot },
     { id: 'ai-import', label: 'AI TravelImport', icon: FileImport },
+    { id: 'ai-video', label: 'AI Travel Video', icon: Video },
   ];
+
+  const contentItems = [
+    { id: 'nieuwsbeheer', label: 'Nieuwsbeheer', icon: Newspaper },
+    { id: 'destinations', label: 'Bestemmingen', icon: MapPin },
+    { id: 'trips', label: 'Reizen', icon: Plane },
+  ];
+
+  const handleTravelStudioClick = () => {
+    window.open('https://travelstudio.travelstudio-accept.bookunited.com/login', '_blank');
+  };
+
+  const handleVideoGeneratorClick = async () => {
+    if (!user || !user.brand_id) {
+      console.error('No user or brand_id available');
+      return;
+    }
+
+    try {
+      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand`;
+      const deeplink = await openVideoGenerator(user.brand_id, user.id, { returnUrl });
+      window.open(deeplink, '_blank');
+    } catch (error) {
+      console.error('Error opening video generator:', error);
+      alert('Er is een fout opgetreden bij het openen van de video generator. Probeer het opnieuw.');
+    }
+  };
+
+  const handleTravelImportClick = async () => {
+    if (!user || !user.brand_id) {
+      console.error('No user or brand_id available');
+      return;
+    }
+
+    try {
+      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand`;
+      const deeplink = await openTravelImport(user.brand_id, user.id, { returnUrl });
+      window.open(deeplink, '_blank');
+    } catch (error) {
+      console.error('Error opening travel import:', error);
+      alert('Er is een fout opgetreden bij het openen van de travel import. Probeer het opnieuw.');
+    }
+  };
+
+  const quickActions = [
+    {
+      title: 'Nieuwe Pagina',
+      description: 'Maak een nieuwe website pagina',
+      icon: Plus,
+      color: 'from-blue-500 to-blue-600',
+      action: () => setActiveSection('new-page')
+    },
+    {
+      title: 'AI Content',
+      description: 'Genereer content met AI',
+      icon: Sparkles,
+      color: 'from-purple-500 to-purple-600',
+      action: () => setActiveSection('ai-content')
+    },
+    {
+      title: 'Social Media',
+      description: 'Beheer je sociale media',
+      icon: Share2,
+      color: 'from-pink-500 to-pink-600',
+      action: () => setActiveSection('social-media')
+    },
+    {
+      title: 'TravelBRO',
+      description: 'Chat met je AI assistent',
+      icon: Bot,
+      color: 'from-orange-500 to-orange-600',
+      action: () => setActiveSection('ai-travelbro')
+    },
+    {
+      title: 'Nieuws Beheer',
+      description: 'Bekijk en publiceer nieuws',
+      icon: Newspaper,
+      color: 'from-green-500 to-green-600',
+      action: () => setActiveSection('nieuwsbeheer')
+    }
+  ];
+
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
       <div className="w-64 bg-gray-800 text-white flex flex-col">
         <div className="p-4 border-b border-gray-700">
           <div className="flex items-center space-x-2">
@@ -89,12 +306,11 @@ export function BrandDashboard() {
               );
             })}
 
-            {/* Website Management Menu */}
             <li>
               <button
                 onClick={() => setShowWebsiteSubmenu(!showWebsiteSubmenu)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                  ['pages', 'menus', 'footers'].includes(activeSection)
+                  ['pages'].includes(activeSection)
                     ? 'bg-gray-700 text-white'
                     : 'text-gray-300 hover:text-white hover:bg-gray-700'
                 }`}
@@ -130,23 +346,22 @@ export function BrandDashboard() {
               )}
             </li>
 
-            {/* Content Management Menu */}
             <li>
               <button
                 onClick={() => setShowContentSubmenu(!showContentSubmenu)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                  ['content', 'destinations'].includes(activeSection)
+                  ['nieuwsbeheer', 'destinations', 'trips'].includes(activeSection)
                     ? 'bg-gray-700 text-white'
                     : 'text-gray-300 hover:text-white hover:bg-gray-700'
                 }`}
               >
                 <div className="flex items-center space-x-3">
                   <FileText size={20} />
-                  <span>Content Management</span>
+                  <span>Content</span>
                 </div>
                 {showContentSubmenu ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
               </button>
-              
+
               {showContentSubmenu && (
                 <ul className="mt-2 ml-6 space-y-1">
                   {contentItems.map((item) => {
@@ -170,13 +385,12 @@ export function BrandDashboard() {
                 </ul>
               )}
             </li>
-            
-            {/* AI Tools Menu */}
+
             <li>
               <button
                 onClick={() => setShowAISubmenu(!showAISubmenu)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                  ['ai-content', 'ai-travelbro', 'ai-import'].includes(activeSection)
+                  ['ai-content', 'ai-travelbro', 'ai-import', 'ai-video'].includes(activeSection)
                     ? 'bg-gray-700 text-white'
                     : 'text-gray-300 hover:text-white hover:bg-gray-700'
                 }`}
@@ -187,7 +401,7 @@ export function BrandDashboard() {
                 </div>
                 {showAISubmenu ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
               </button>
-              
+
               {showAISubmenu && (
                 <ul className="mt-2 ml-6 space-y-1">
                   {aiToolsItems.map((item) => {
@@ -195,7 +409,15 @@ export function BrandDashboard() {
                     return (
                       <li key={item.id}>
                         <button
-                          onClick={() => setActiveSection(item.id)}
+                          onClick={() => {
+                            if (item.id === 'ai-video') {
+                              handleVideoGeneratorClick();
+                            } else if (item.id === 'ai-import') {
+                              handleTravelImportClick();
+                            } else {
+                              setActiveSection(item.id);
+                            }
+                          }}
                           className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors text-sm ${
                             activeSection === item.id
                               ? 'bg-gray-700 text-white'
@@ -211,10 +433,60 @@ export function BrandDashboard() {
                 </ul>
               )}
             </li>
+
+            <li>
+              <button
+                onClick={handleTravelStudioClick}
+                className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors text-gray-300 hover:text-white hover:bg-gray-700"
+              >
+                <Globe size={20} />
+                <span>Travel Studio</span>
+              </button>
+            </li>
           </ul>
         </nav>
 
-        <div className="p-4 border-t border-gray-700">
+        <div className="p-4 border-t border-gray-700 space-y-2">
+          <button
+            onClick={() => setActiveSection('settings')}
+            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+              activeSection === 'settings'
+                ? 'bg-gray-700 text-white'
+                : 'text-gray-300 hover:text-white hover:bg-gray-700'
+            }`}
+          >
+            <Settings size={20} />
+            <span>Brand Settings</span>
+          </button>
+          <button
+            onClick={() => setActiveSection('roadmap')}
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
+              activeSection === 'roadmap'
+                ? 'bg-gray-700 text-white'
+                : 'text-gray-300 hover:text-white hover:bg-gray-700'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <Map size={20} />
+              <span>Roadmap</span>
+            </div>
+            {newRoadmapCount > 0 && (
+              <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {newRoadmapCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveSection('travel-journal')}
+            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+              activeSection === 'travel-journal'
+                ? 'bg-gray-700 text-white'
+                : 'text-gray-300 hover:text-white hover:bg-gray-700'
+            }`}
+          >
+            <BookOpen size={20} />
+            <span>Travel Journaal</span>
+          </button>
           <button
             onClick={signOut}
             className="w-full flex items-center space-x-3 px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
@@ -224,95 +496,159 @@ export function BrandDashboard() {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {activeSection === 'dashboard' && 'Brand Dashboard'}
-                {activeSection === 'websites' && 'My Websites'}
-                {activeSection === 'agents' && 'Agents'}
-                {activeSection === 'pages' && 'Pagina Beheer'}
-                {activeSection === 'menus' && 'Menu Builder'}
-                {activeSection === 'footers' && 'Footer Builder'}
-                {activeSection === 'content' && 'Nieuwsberichten'}
-                {activeSection === 'destinations' && 'Bestemmingen'}
-                {activeSection === 'settings' && 'Brand Settings'}
-                {activeSection === 'ai-content' && 'AI Content Generator'}
-                {activeSection === 'ai-travelbro' && 'AI TravelBRO'}
-                {activeSection === 'ai-import' && 'AI TravelImport'}
-              </h1>
-              <p className="text-gray-600 mt-1">
-                {activeSection === 'websites' && 'Manage your travel websites'}
-                {activeSection === 'dashboard' && 'Overview of your brand performance'}
-                {activeSection === 'pages' && 'Beheer alle pagina\'s van je website'}
-                {activeSection === 'menus' && 'Beheer menu\'s en hun structuur'}
-                {activeSection === 'footers' && 'Beheer footer layouts voor je website'}
-                {activeSection === 'content' && 'Beheer uw nieuwsberichten en artikelen'}
-                {activeSection === 'destinations' && 'Beheer bestemmingen en reislocaties'}
-                {activeSection === 'ai-content' && 'Generate travel content with AI'}
-                {activeSection === 'ai-travelbro' && 'Your AI travel assistant'}
-                {activeSection === 'ai-import' && 'Import travel data with AI'}
-              </p>
-            </div>
-            
-            {activeSection === 'websites' && (
-              <button className="text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-orange-700 transition-colors" style={{ backgroundColor: '#ff7700' }}>
-                <Plus size={16} />
-                <span>New Website</span>
-              </button>
-            )}
-            
-            {activeSection === 'content' && (
-              <button className="text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-orange-700 transition-colors" style={{ backgroundColor: '#ff7700' }}>
-                <Plus size={16} />
-                <span>Nieuw Artikel</span>
-              </button>
-            )}
-          </div>
-        </header>
+        {!['nieuwsbeheer', 'destinations', 'trips', 'settings', 'testing', 'roadmap'].includes(activeSection) && (
+          <header className="bg-white border-b border-gray-200 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {activeSection === 'dashboard' && 'Brand Dashboard'}
+                  {activeSection === 'websites' && 'My Websites'}
+                  {activeSection === 'agents' && 'Agents'}
+                  {activeSection === 'pages' && 'Pagina Beheer'}
+                  {activeSection === 'menu' && 'Menu Beheer'}
+                  {activeSection === 'footer' && 'Footer Beheer'}
+                  {activeSection === 'content' && 'Nieuwsberichten'}
+                  {activeSection === 'ai-content' && 'AI Content Generator'}
+                  {activeSection === 'ai-travelbro' && 'AI TravelBRO'}
+                  {activeSection === 'ai-import' && 'AI TravelImport'}
+                  {activeSection === 'ai-video' && 'AI Travel Video'}
+                  {activeSection === 'social-media' && 'Social Media Manager'}
+                </h1>
+                <p className="text-gray-600 mt-1">
+                  {activeSection === 'dashboard' && 'Welkom terug bij je brand dashboard'}
+                  {activeSection === 'websites' && 'Manage your travel websites'}
+                  {activeSection === 'pages' && 'Beheer alle pagina\'s van je website'}
+                  {activeSection === 'menu' && 'Beheer menu\'s voor je website'}
+                  {activeSection === 'footer' && 'Beheer footers voor je website'}
+                  {activeSection === 'ai-content' && 'Generate travel content with AI'}
+                  {activeSection === 'ai-travelbro' && 'Your AI travel assistant'}
+                  {activeSection === 'ai-import' && 'Import travel data with AI'}
+                  {activeSection === 'ai-video' && 'Create engaging travel videos with AI'}
+                  {activeSection === 'social-media' && 'Maak en beheer social media posts'}
+                </p>
+              </div>
 
-        {/* Content */}
+              {activeSection === 'websites' && (
+                <button className="text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-orange-700 transition-colors" style={{ backgroundColor: '#ff7700' }}>
+                  <Plus size={16} />
+                  <span>New Website</span>
+                </button>
+              )}
+            </div>
+          </header>
+        )}
+
         <main className="flex-1 overflow-auto">
-          {activeSection === 'new-page' && <NewPage />}
-          {activeSection === 'pages' && <PageManagementView />}
-          {activeSection === 'menus' && <MenuBuilderView />}
-          {activeSection === 'footers' && <FooterBuilderView />}
-          {activeSection === 'content' && <BrandContentManagement />}
+          {activeSection === 'travel-journal' && (
+            <div className="p-6">
+              <div className="max-w-6xl mx-auto">
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Travel Journaal</h2>
+                  <p className="text-gray-600">Coming soon: Houd een dagboek bij van je reizen en deel je ervaringen.</p>
+                </div>
+              </div>
+            </div>
+          )}
+          {activeSection === 'dashboard' && (
+            <div className="p-6">
+              {loading ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: '#ff7700' }}></div>
+                </div>
+              ) : (
+                <div className="max-w-7xl mx-auto">
+                  <div className="mb-8">
+                    <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-8 text-white shadow-lg">
+                      <h2 className="text-3xl font-bold mb-2">Welkom, {brandData?.name || 'Brand'}!</h2>
+                      <p className="text-orange-100">Bouw en beheer je reiswebsite met krachtige AI tools</p>
+                    </div>
+                  </div>
 
-          {/* AI Tools Content */}
-          {activeSection === 'ai-content' && (
-            <AIContentGenerator />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-gray-600">Website Pagina's</h4>
+                        <FileText className="w-5 h-5 text-blue-500" />
+                      </div>
+                      <p className="text-3xl font-bold text-gray-900">{stats.pages}</p>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-gray-600">Nieuwsberichten</h4>
+                        <Newspaper className="w-5 h-5 text-green-500" />
+                      </div>
+                      <p className="text-3xl font-bold text-gray-900">{stats.newsItems}</p>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-gray-600">Agenten</h4>
+                        <Users className="w-5 h-5 text-purple-500" />
+                      </div>
+                      <p className="text-3xl font-bold text-gray-900">{stats.agents}</p>
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Snelkoppelingen</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {quickActions.map((action, index) => {
+                        const Icon = action.icon;
+                        return (
+                          <button
+                            key={index}
+                            onClick={action.action}
+                            className="group relative bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100"
+                          >
+                            <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
+                              <Icon className="w-7 h-7 text-white" />
+                            </div>
+                            <h4 className="font-semibold text-gray-900 mb-2">{action.title}</h4>
+                            <p className="text-sm text-gray-600 mb-3">{action.description}</p>
+                            <div className="flex items-center text-sm font-medium" style={{ color: '#ff7700' }}>
+                              Start <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
-          
+
+          {activeSection === 'new-page' && <NewPage />}
+          {activeSection === 'pages' && <PageManagement />}
+          {activeSection === 'menu' && <MenuBuilder />}
+          {activeSection === 'footer' && <FooterBuilder />}
+          {activeSection === 'settings' && <BrandSettings />}
+          {activeSection === 'social-connector' && <SocialMediaConnector />}
+          {activeSection === 'nieuwsbeheer' && (
+            <div className="p-6">
+              <NewsApproval />
+            </div>
+          )}
           {activeSection === 'destinations' && (
-            <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #ff7700, #ffaa44)' }}>
-                <Building className="w-8 h-8 text-white" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Bestemmingen Management</h2>
-              <p className="text-gray-600 mb-6">Beheer uw reisbestemmingen, locaties en attracties</p>
-              <button className="text-white px-6 py-3 rounded-lg font-medium transition-colors hover:bg-orange-700" style={{ backgroundColor: '#ff7700' }}>
-                Binnenkort Beschikbaar
-              </button>
+            <div className="p-6">
+              <DestinationApproval />
             </div>
           )}
-          
-          {activeSection === 'ai-travelbro' && (
-            <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #ff7700, #ffaa44)' }}>
-                <Bot className="w-8 h-8 text-white" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">AI TravelBRO</h2>
-              <p className="text-gray-600 mb-6">Your intelligent travel assistant for personalized recommendations</p>
-              <button className="text-white px-6 py-3 rounded-lg font-medium transition-colors hover:bg-orange-700" style={{ backgroundColor: '#ff7700' }}>
-                Chat with TravelBRO
-              </button>
+          {activeSection === 'trips' && (
+            <div className="p-6">
+              <TripApproval />
             </div>
           )}
-          
+          {activeSection === 'ai-content' && <AIContentGenerator />}
+          {activeSection === 'ai-travelbro' && <TravelBroSetup />}
+          {activeSection === 'social-media' && <SocialMediaManager />}
+          {activeSection === 'settings' && <BrandSettings />}
+          {activeSection === 'agents' && <AgentManagement />}
+          {activeSection === 'testing' && <TestDashboard />}
+          {activeSection === 'roadmap' && <RoadmapBoard />}
+
           {activeSection === 'ai-import' && (
             <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
               <div className="w-16 h-16 mx-auto mb-4 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #ff7700, #ffaa44)' }}>
@@ -325,132 +661,63 @@ export function BrandDashboard() {
               </button>
             </div>
           )}
-          
-          {activeSection === 'dashboard' && (
-            <div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div className="bg-white p-6 rounded-lg shadow-sm border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Active Websites</p>
-                      <p className="text-2xl font-bold text-gray-900">3</p>
-                    </div>
-                    <Globe className="h-8 w-8" style={{ color: '#ff7700' }} />
-                  </div>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-sm border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Total Agents</p>
-                      <p className="text-2xl font-bold text-gray-900">8</p>
-                    </div>
-                    <Users className="h-8 w-8 text-green-600" />
-                  </div>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-sm border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Monthly Visitors</p>
-                      <p className="text-2xl font-bold text-gray-900">2.4k</p>
-                    </div>
-                    <Eye className="h-8 w-8 text-purple-600" />
-                  </div>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-sm border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Content Articles</p>
-                      <p className="text-2xl font-bold text-gray-900">24</p>
-                    </div>
-                    <FileText className="h-8 w-8" style={{ color: '#ff7700' }} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h2>
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-sm text-gray-700">Website "Summer Destinations" was published</span>
-                    <span className="text-xs text-gray-500 ml-auto">2 hours ago</span>
-                  </div>
-                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#ff7700' }}></div>
-                    <span className="text-sm text-gray-700">New agent "Sarah Johnson" was added</span>
-                    <span className="text-xs text-gray-500 ml-auto">1 day ago</span>
-                  </div>
-                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#ff7700' }}></div>
-                    <span className="text-sm text-gray-700">Content article "Best Travel Tips" was updated</span>
-                    <span className="text-xs text-gray-500 ml-auto">3 days ago</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="bg-white rounded-lg shadow-sm border border-dashed border-gray-300 flex items-center justify-center min-h-64 hover:border-orange-400 transition-colors cursor-pointer mt-6">
-                <div className="text-center">
-                  <Plus className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900">Create New Website</h3>
-                  <p className="text-gray-500">Create a new travel website</p>
-                </div>
-              </div>
-            </div>
-          )}
 
           {activeSection === 'websites' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-                <div className="h-32" style={{ background: 'linear-gradient(135deg, #ff7700, #ffaa44)' }}></div>
-                <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-2">Summer Destinations</h3>
-                  <p className="text-sm text-gray-600 mb-3">summer-destinations.travel</p>
-                  <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
-                    <span>5 pages</span>
-                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded">Published</span>
-                  </div>
-                  <div className="flex space-x-2">
-                    <button className="flex-1 text-white py-2 px-3 rounded text-sm hover:bg-orange-700 transition-colors" style={{ backgroundColor: '#ff7700' }}>
-                      Edit
-                    </button>
-                    <button className="p-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded">
-                      <Eye size={16} />
-                    </button>
+            <div className="p-6">
+              {loading ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+                </div>
+              ) : websites.length === 0 ? (
+                <div className="bg-white rounded-lg shadow-sm border p-12 text-center">
+                  <Globe className="mx-auto h-16 w-16 text-gray-400 mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No websites yet</h3>
+                  <p className="text-gray-600 mb-6">Create your first travel website to get started</p>
+                  <button className="text-white px-6 py-3 rounded-lg font-medium transition-colors hover:bg-orange-700" style={{ backgroundColor: '#ff7700' }}>
+                    <Plus className="inline-block mr-2" size={16} />
+                    Create Website
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {websites.map((website) => (
+                    <div key={website.id} className="bg-white rounded-lg shadow-sm border overflow-hidden">
+                      <div className="h-32" style={{ background: 'linear-gradient(135deg, #ff7700, #ffaa44)' }}></div>
+                      <div className="p-4">
+                        <h3 className="font-semibold text-gray-900 mb-2">{website.name}</h3>
+                        <p className="text-sm text-gray-600 mb-3">{website.domain || 'No domain set'}</p>
+                        <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                          <span>{website.page_count || 0} pages</span>
+                          <span className={`px-2 py-1 rounded ${
+                            website.status === 'published'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {website.status || 'Draft'}
+                          </span>
+                        </div>
+                        <div className="flex space-x-2">
+                          <button className="flex-1 text-white py-2 px-3 rounded text-sm hover:bg-orange-700 transition-colors" style={{ backgroundColor: '#ff7700' }}>
+                            Edit
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="bg-white rounded-lg shadow-sm border border-dashed border-gray-300 flex items-center justify-center min-h-64 hover:border-orange-400 transition-colors cursor-pointer">
+                    <div className="text-center">
+                      <Plus className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900">Create New Website</h3>
+                      <p className="text-gray-500">Start building your travel website</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-                <div className="h-32" style={{ background: 'linear-gradient(135deg, #ff7700, #ffaa44)' }}></div>
-                <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-2">Winter Adventures</h3>
-                  <p className="text-sm text-gray-600 mb-3">winter-adventures.travel</p>
-                  <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
-                    <span>3 pages</span>
-                    <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Draft</span>
-                  </div>
-                  <div className="flex space-x-2">
-                    <button className="flex-1 text-white py-2 px-3 rounded text-sm hover:bg-orange-700 transition-colors" style={{ backgroundColor: '#ff7700' }}>
-                      Edit
-                    </button>
-                    <button className="p-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded">
-                      <Eye size={16} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow-sm border border-dashed border-gray-300 flex items-center justify-center min-h-64 hover:border-orange-400 transition-colors cursor-pointer">
-                <div className="text-center">
-                  <Plus className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900">Create New Website</h3>
-                  <p className="text-gray-500">Start building your travel website</p>
-                </div>
-              </div>
+              )}
             </div>
           )}
         </main>
       </div>
+      <HelpBot />
     </div>
   );
 }
