@@ -223,6 +223,26 @@ export function TripApproval() {
     if (!user?.brand_id || !user?.id) return;
 
     try {
+      const { data: tripData, error: tripError } = await supabase
+        .from('trips')
+        .select('id, slug, title')
+        .eq('brand_id', user.brand_id)
+        .eq('title', assignment.trip.title)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (tripError) {
+        console.error('Error fetching trip:', tripError);
+        throw new Error('Kon trip niet ophalen uit database');
+      }
+
+      if (!tripData) {
+        throw new Error('Trip niet gevonden in database');
+      }
+
+      const correctTripId = tripData.id;
+
       const jwtResponse = await generateBuilderJWT(user.brand_id, user.id, [
         'pages:read',
         'pages:write',
@@ -235,7 +255,7 @@ export function TripApproval() {
         pageId: assignment.page_id
       });
 
-      const builderBaseUrl = 'https://www.ai-websitestudio.nl';
+      const builderBaseUrl = 'https://www.ai-websitestudio.nl/builder.html';
       const apiBaseUrl = jwtResponse.api_url || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
       const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
       const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/content/trips`;
@@ -246,24 +266,18 @@ export function TripApproval() {
         token: jwtResponse.token,
         apikey: apiKey,
         content_type: 'trips',
-        return_url: returnUrl
+        return_url: returnUrl,
+        id: correctTripId
       });
 
-      if (assignment.page_id) {
-        params.append('page_id', assignment.page_id);
-      } else {
-        params.append('slug', assignment.trip.slug);
-        params.append('id', assignment.trip.id);
-      }
-
-      const deeplink = `${builderBaseUrl}?${params.toString()}`;
+      const deeplink = `${builderBaseUrl}?${params.toString()}#/mode/travel`;
 
       console.log('🔗 Opening trip edit deeplink:', deeplink);
       console.log('Trip details:', {
-        page_id: assignment.page_id,
-        slug: assignment.trip.slug,
-        title: assignment.trip.title,
-        id: assignment.trip.id
+        correctTripId,
+        slug: tripData.slug,
+        title: tripData.title,
+        page_id: assignment.page_id
       });
 
       const result = window.open(deeplink, '_blank');
