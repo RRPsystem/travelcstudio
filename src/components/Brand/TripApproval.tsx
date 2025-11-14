@@ -297,8 +297,12 @@ export function TripApproval() {
     }
 
     try {
-      if (assignment.status === 'brand') {
+      const isBrandTrip = assignment.status === 'brand' || assignment.id.startsWith('brand-trip-');
+
+      if (isBrandTrip) {
         const tripId = assignment.trip_id || assignment.trip.id;
+
+        console.log('Deleting brand trip with ID:', tripId);
 
         const { data, error } = await supabase
           .from('trips')
@@ -314,13 +318,15 @@ export function TripApproval() {
 
         if (!data || data.length === 0) {
           console.error('No rows deleted - item not found or no permission');
-          alert('Item kon niet worden verwijderd');
+          alert('Item kon niet worden verwijderd. Check console voor details.');
           return;
         }
+
+        console.log('Successfully deleted trip:', data);
       } else {
-        const assignmentId = assignment.id.startsWith('brand-trip-')
-          ? assignment.trip_id
-          : assignment.id;
+        const assignmentId = assignment.id;
+
+        console.log('Deleting assignment with ID:', assignmentId);
 
         const { data, error } = await supabase
           .from('trip_brand_assignments')
@@ -336,9 +342,11 @@ export function TripApproval() {
 
         if (!data || data.length === 0) {
           console.error('No assignment rows deleted - not found');
-          alert('Assignment kon niet worden verwijderd');
+          alert('Assignment kon niet worden verwijderd. Check console voor details.');
           return;
         }
+
+        console.log('Successfully deleted assignment:', data);
       }
 
       await loadAssignments();
