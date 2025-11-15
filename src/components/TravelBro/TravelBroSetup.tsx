@@ -702,25 +702,29 @@ export function TravelBroSetup() {
 
       const shareLink = `https://${brandInfo?.travelbro_domain || 'travelbro.nl'}/${selectedTrip.share_token}`;
 
+      const requestPayload = {
+        to: invitePhone,
+        brandId: user?.brand_id,
+        useTemplate: true,
+        templateSid: 'HX23e0ee5840758fb35bd1bedf502fdf42',
+        templateVariables: {
+          '1': clientNameText,
+          '2': selectedTrip.destination || 'je reis'
+        },
+        tripId: selectedTrip.id,
+        sessionToken: sessionToken,
+        skipIntake: skipIntake
+      };
+
+      console.log('🚀 Sending WhatsApp invite request:', JSON.stringify(requestPayload, null, 2));
+
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
-        body: JSON.stringify({
-          to: invitePhone,
-          brandId: user?.brand_id,
-          useTemplate: true,
-          templateSid: 'HX23e0ee5840758fb35bd1bedf502fdf42',
-          templateVariables: {
-            '1': clientNameText,
-            '2': selectedTrip.destination || 'je reis'
-          },
-          tripId: selectedTrip.id,
-          sessionToken: sessionToken,
-          skipIntake: skipIntake
-        }),
+        body: JSON.stringify(requestPayload),
       });
 
       const result = await response.json();
