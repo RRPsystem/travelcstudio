@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/supabase';
-import { Rocket, ExternalLink, Edit2, Trash2, Globe, Calendar, CheckCircle } from 'lucide-react';
+import { Rocket, ExternalLink, Edit2, Trash2, Globe, Calendar, CheckCircle, Eye } from 'lucide-react';
 
 interface Website {
   id: string;
@@ -15,22 +15,53 @@ interface Website {
     modified: boolean;
     order: number;
   }>;
-  status: string;
+  status: 'draft' | 'preview' | 'live';
   domain?: string;
+  preview_url?: string;
+  live_url?: string;
   created_at: string;
   updated_at: string;
   published_at?: string;
+}
+
+interface Brand {
+  id: string;
+  name: string;
+  slug: string;
+  domain?: string;
 }
 
 export function QuickStartWebsite() {
   const { user } = useAuth();
   const [websites, setWebsites] = useState<Website[]>([]);
   const [loading, setLoading] = useState(true);
+  const [brand, setBrand] = useState<Brand | null>(null);
+  const [publishingWebsiteId, setPublishingWebsiteId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadWebsites();
-    handleTemplateReturn();
+    if (user?.brand_id) {
+      loadBrand();
+      loadWebsites();
+      handleTemplateReturn();
+    }
   }, [user?.brand_id]);
+
+  async function loadBrand() {
+    if (!user?.brand_id) return;
+
+    try {
+      const { data, error } = await db.supabase
+        .from('brands')
+        .select('id, name, slug, domain')
+        .eq('id', user.brand_id)
+        .single();
+
+      if (error) throw error;
+      setBrand(data);
+    } catch (error) {
+      console.error('Error loading brand:', error);
+    }
+  }
 
   async function loadWebsites() {
     if (!user?.brand_id) return;
@@ -149,6 +180,67 @@ export function QuickStartWebsite() {
     }
   }
 
+  async function publishToLive(website: Website) {
+    if (!brand?.domain) {
+      alert('⚠️ Configureer eerst een domein in Brand Settings');
+      return;
+    }
+
+    if (!confirm(`Website publiceren naar ${brand.domain}?`)) {
+      return;
+    }
+
+    setPublishingWebsiteId(website.id);
+
+    try {
+      const response = await fetch('/api/vercel/add-domain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain: brand.domain,
+          websiteId: website.id,
+          type: 'live'
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to publish to live domain');
+      }
+
+      const { error: updateError } = await db.supabase
+        .from('websites')
+        .update({
+          live_url: brand.domain,
+          status: 'live',
+          published_at: new Date().toISOString()
+        })
+        .eq('id', website.id);
+
+      if (updateError) throw updateError;
+
+      await loadWebsites();
+      alert(`✅ Website live op ${brand.domain}!`);
+
+    } catch (error) {
+      console.error('Publish error:', error);
+      alert('❌ Fout bij publiceren naar live domein: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setPublishingWebsiteId(null);
+    }
+  }
+
+  function getStatusBadge(status: string) {
+    switch (status) {
+      case 'live':
+        return <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded">🟢 Live</span>;
+      case 'preview':
+        return <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-medium rounded">🟡 Preview</span>;
+      default:
+        return <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded">⚪ Draft</span>;
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -205,16 +297,11 @@ export function QuickStartWebsite() {
                 key={website.id}
                 className="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md transition-shadow"
               >
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h4 className="text-lg font-semibold text-gray-900">{website.name}</h4>
-                      {website.is_published && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded">
-                          <CheckCircle size={12} />
-                          Gepubliceerd
-                        </span>
-                      )}
+                      {getStatusBadge(website.status)}
                     </div>
 
                     <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
@@ -243,36 +330,90 @@ export function QuickStartWebsite() {
                       )}
                     </div>
                   </div>
+                </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => editWebsite(website)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                      title="Bewerken"
-                    >
-                      <Edit2 size={18} />
-                    </button>
-
-                    {website.domain && (
+                {website.preview_url && (
+                  <div className="mb-4">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-gray-600 mb-2">
+                      <Eye size={14} /> Preview URL
+                    </label>
+                    <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                      <code className="flex-1 text-sm font-mono text-blue-600">{website.preview_url}</code>
                       <a
-                        href={`https://${website.domain}`}
+                        href={`https://${website.preview_url}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 text-gray-600 hover:bg-gray-50 rounded transition-colors"
-                        title="Bekijken"
+                        className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                        title="Open Preview"
                       >
-                        <ExternalLink size={18} />
+                        <ExternalLink size={16} />
                       </a>
-                    )}
-
-                    <button
-                      onClick={() => deleteWebsite(website.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
-                      title="Verwijderen"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    </div>
                   </div>
+                )}
+
+                <div className="mb-4">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-gray-600 mb-2">
+                    <Globe size={14} /> Live URL
+                  </label>
+                  {website.live_url ? (
+                    <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <code className="flex-1 text-sm font-mono text-green-700">{website.live_url}</code>
+                      <a
+                        href={`https://${website.live_url}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                        title="Open Live Site"
+                      >
+                        <ExternalLink size={16} />
+                      </a>
+                    </div>
+                  ) : (
+                    <div>
+                      {brand?.domain ? (
+                        <button
+                          onClick={() => publishToLive(website)}
+                          disabled={publishingWebsiteId === website.id}
+                          className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          {publishingWebsiteId === website.id ? (
+                            <>⏳ Publiceren...</>
+                          ) : (
+                            <>📤 Publiceer naar {brand.domain}</>
+                          )}
+                        </button>
+                      ) : (
+                        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+                          <p className="text-sm text-yellow-800 mb-2">Geen domein geconfigureerd</p>
+                          <a
+                            href="#/brand/settings"
+                            className="text-sm font-semibold text-blue-600 hover:underline"
+                          >
+                            Configureer domein →
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 pt-4 border-t border-gray-200">
+                  <button
+                    onClick={() => editWebsite(website)}
+                    className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium"
+                  >
+                    <Edit2 size={16} />
+                    Bewerken
+                  </button>
+
+                  <button
+                    onClick={() => deleteWebsite(website.id)}
+                    className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium ml-auto"
+                  >
+                    <Trash2 size={16} />
+                    Verwijderen
+                  </button>
                 </div>
               </div>
             ))}
