@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/supabase';
-import { Rocket, ExternalLink, Edit2, Trash2, Globe, Calendar, CheckCircle, Eye } from 'lucide-react';
+import { Rocket, ExternalLink, Edit2, Trash2, Globe, Calendar, CheckCircle, Eye, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface Website {
   id: string;
@@ -37,6 +37,7 @@ export function QuickStartWebsite() {
   const [loading, setLoading] = useState(true);
   const [brand, setBrand] = useState<Brand | null>(null);
   const [publishingWebsiteId, setPublishingWebsiteId] = useState<string | null>(null);
+  const [expandedWebsites, setExpandedWebsites] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (user?.brand_id) {
@@ -241,6 +242,28 @@ export function QuickStartWebsite() {
     }
   }
 
+  function toggleWebsite(id: string) {
+    setExpandedWebsites(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  }
+
+  function navigateToSettings() {
+    const dashboardElement = document.querySelector('[data-component="dashboard"]');
+    if (dashboardElement) {
+      const event = new CustomEvent('navigate', { detail: { path: 'brand/settings' } });
+      dashboardElement.dispatchEvent(event);
+    } else {
+      window.location.hash = '#/brand/settings';
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -292,131 +315,162 @@ export function QuickStartWebsite() {
           <h3 className="text-lg font-semibold text-gray-900">Mijn Websites ({websites.length})</h3>
 
           <div className="grid gap-4">
-            {websites.map((website) => (
-              <div
-                key={website.id}
-                className="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h4 className="text-lg font-semibold text-gray-900">{website.name}</h4>
-                      {getStatusBadge(website.status)}
-                    </div>
+            {websites.map((website) => {
+              const isExpanded = expandedWebsites.has(website.id);
 
-                    <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
-                      {website.template_name && (
-                        <span className="capitalize">{website.template_name} Template</span>
-                      )}
-                      {website.pages && Array.isArray(website.pages) && (
-                        <span>{website.pages.length} pagina's</span>
-                      )}
-                      {website.domain && (
-                        <span className="flex items-center gap-1">
-                          <Globe size={14} />
-                          {website.domain}
-                        </span>
-                      )}
-                    </div>
+              return (
+                <div
+                  key={website.id}
+                  className="bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow"
+                >
+                  <div
+                    className="p-5 cursor-pointer"
+                    onClick={() => toggleWebsite(website.id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 flex-1">
+                        <h4 className="text-lg font-semibold text-gray-900">{website.name}</h4>
+                        {getStatusBadge(website.status)}
 
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <Calendar size={12} />
-                      Aangemaakt: {new Date(website.created_at).toLocaleDateString('nl-NL')}
-                      {website.published_at && (
-                        <>
-                          {' • '}
-                          Gepubliceerd: {new Date(website.published_at).toLocaleDateString('nl-NL')}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {website.preview_url && (
-                  <div className="mb-4">
-                    <label className="flex items-center gap-2 text-xs font-semibold text-gray-600 mb-2">
-                      <Eye size={14} /> Preview URL
-                    </label>
-                    <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                      <code className="flex-1 text-sm font-mono text-blue-600">{website.preview_url}</code>
-                      <a
-                        href={`https://${website.preview_url}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                        title="Open Preview"
-                      >
-                        <ExternalLink size={16} />
-                      </a>
-                    </div>
-                  </div>
-                )}
-
-                <div className="mb-4">
-                  <label className="flex items-center gap-2 text-xs font-semibold text-gray-600 mb-2">
-                    <Globe size={14} /> Live URL
-                  </label>
-                  {website.live_url ? (
-                    <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <code className="flex-1 text-sm font-mono text-green-700">{website.live_url}</code>
-                      <a
-                        href={`https://${website.live_url}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                        title="Open Live Site"
-                      >
-                        <ExternalLink size={16} />
-                      </a>
-                    </div>
-                  ) : (
-                    <div>
-                      {brand?.domain ? (
-                        <button
-                          onClick={() => publishToLive(website)}
-                          disabled={publishingWebsiteId === website.id}
-                          className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                          {publishingWebsiteId === website.id ? (
-                            <>⏳ Publiceren...</>
-                          ) : (
-                            <>📤 Publiceer naar {brand.domain}</>
-                          )}
-                        </button>
-                      ) : (
-                        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
-                          <p className="text-sm text-yellow-800 mb-2">Geen domein geconfigureerd</p>
+                        {website.live_url && (
                           <a
-                            href="#/brand/settings"
-                            className="text-sm font-semibold text-blue-600 hover:underline"
+                            href={`https://${website.live_url}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-green-600 hover:text-green-700 flex items-center gap-1"
+                            title="Open Live Site"
                           >
-                            Configureer domein →
+                            <ExternalLink size={16} />
                           </a>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500">
+                          {website.pages && Array.isArray(website.pages) ? website.pages.length : 0} pagina's
+                        </span>
+                        {isExpanded ? (
+                          <ChevronUp className="text-gray-400" size={20} />
+                        ) : (
+                          <ChevronDown className="text-gray-400" size={20} />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="px-5 pb-5 space-y-4 border-t border-gray-100">
+                      <div className="pt-4 grid grid-cols-2 gap-4 text-sm">
+                        {website.template_name && (
+                          <div>
+                            <span className="text-gray-500">Template:</span>
+                            <span className="ml-2 font-medium capitalize">{website.template_name}</span>
+                          </div>
+                        )}
+                        <div>
+                          <span className="text-gray-500">Aangemaakt:</span>
+                          <span className="ml-2 font-medium">{new Date(website.created_at).toLocaleDateString('nl-NL')}</span>
+                        </div>
+                      </div>
+
+                      {website.preview_url && (
+                        <div>
+                          <label className="flex items-center gap-2 text-xs font-semibold text-gray-600 mb-2">
+                            <Eye size={14} /> Preview URL
+                          </label>
+                          <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <code className="flex-1 text-sm font-mono text-blue-600 truncate">{website.preview_url}</code>
+                            <a
+                              href={`https://${website.preview_url}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex-shrink-0"
+                              title="Open Preview"
+                            >
+                              <ExternalLink size={16} />
+                            </a>
+                          </div>
                         </div>
                       )}
+
+                      <div>
+                        <label className="flex items-center gap-2 text-xs font-semibold text-gray-600 mb-2">
+                          <Globe size={14} /> Live URL
+                        </label>
+                        {website.live_url ? (
+                          <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                            <code className="flex-1 text-sm font-mono text-green-700 truncate">{website.live_url}</code>
+                            <a
+                              href={`https://${website.live_url}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex-shrink-0"
+                              title="Open Live Site"
+                            >
+                              <ExternalLink size={16} />
+                            </a>
+                          </div>
+                        ) : (
+                          <div>
+                            {brand?.domain ? (
+                              <button
+                                onClick={() => publishToLive(website)}
+                                disabled={publishingWebsiteId === website.id}
+                                className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                              >
+                                {publishingWebsiteId === website.id ? (
+                                  <>⏳ Publiceren...</>
+                                ) : (
+                                  <>📤 Publiceer naar {brand.domain}</>
+                                )}
+                              </button>
+                            ) : (
+                              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+                                <p className="text-sm text-yellow-800 mb-2">Geen domein geconfigureerd</p>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigateToSettings();
+                                  }}
+                                  className="text-sm font-semibold text-blue-600 hover:underline"
+                                >
+                                  Configureer domein →
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-4 border-t border-gray-200">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            editWebsite(website);
+                          }}
+                          className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium"
+                        >
+                          <Edit2 size={16} />
+                          Bewerken
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteWebsite(website.id);
+                          }}
+                          className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium ml-auto"
+                        >
+                          <Trash2 size={16} />
+                          Verwijderen
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
-
-                <div className="flex items-center gap-2 pt-4 border-t border-gray-200">
-                  <button
-                    onClick={() => editWebsite(website)}
-                    className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium"
-                  >
-                    <Edit2 size={16} />
-                    Bewerken
-                  </button>
-
-                  <button
-                    onClick={() => deleteWebsite(website.id)}
-                    className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium ml-auto"
-                  >
-                    <Trash2 size={16} />
-                    Verwijderen
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
