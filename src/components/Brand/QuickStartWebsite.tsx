@@ -40,6 +40,7 @@ export function QuickStartWebsite() {
   const [expandedWebsites, setExpandedWebsites] = useState<Set<string>>(new Set());
   const [editingNameId, setEditingNameId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [changingStatus, setChangingStatus] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.brand_id) {
@@ -233,15 +234,65 @@ export function QuickStartWebsite() {
     }
   }
 
-  function getStatusBadge(status: string) {
-    switch (status) {
-      case 'live':
-        return <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded">🟢 Live</span>;
-      case 'preview':
-        return <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-medium rounded">🟡 Preview</span>;
-      default:
-        return <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded">⚪ Draft</span>;
-    }
+  function getStatusBadge(status: string, websiteId: string) {
+    const statusConfig = {
+      live: { bg: 'bg-green-100', text: 'text-green-700', label: 'Live', icon: '🟢' },
+      preview: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Preview', icon: '🔵' },
+      draft: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Draft', icon: '⚪' }
+    };
+
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
+
+    return (
+      <div className="relative group">
+        <button
+          onClick={(e) => e.stopPropagation()}
+          className={`inline-flex items-center gap-1 px-2 py-1 ${config.bg} ${config.text} text-xs font-medium rounded hover:opacity-80 transition-opacity`}
+        >
+          {config.icon} {config.label}
+          <ChevronDown size={12} />
+        </button>
+
+        <div className="hidden group-hover:block absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[120px]">
+          {status !== 'draft' && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                changeWebsiteStatus(websiteId, 'draft');
+              }}
+              disabled={changingStatus === websiteId}
+              className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 first:rounded-t-lg disabled:opacity-50"
+            >
+              ⚪ Draft
+            </button>
+          )}
+          {status !== 'preview' && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                changeWebsiteStatus(websiteId, 'preview');
+              }}
+              disabled={changingStatus === websiteId}
+              className="w-full px-3 py-2 text-left text-sm text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+            >
+              🔵 Preview
+            </button>
+          )}
+          {status !== 'live' && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                changeWebsiteStatus(websiteId, 'live');
+              }}
+              disabled={changingStatus === websiteId}
+              className="w-full px-3 py-2 text-left text-sm text-green-700 hover:bg-green-50 last:rounded-b-lg disabled:opacity-50"
+            >
+              🟢 Live
+            </button>
+          )}
+        </div>
+      </div>
+    );
   }
 
   function toggleWebsite(id: string) {
@@ -272,7 +323,7 @@ export function QuickStartWebsite() {
 
   async function saveWebsiteName(websiteId: string) {
     if (!editingName.trim()) {
-      alert('⚠️ Naam mag niet leeg zijn');
+      alert('Naam mag niet leeg zijn');
       return;
     }
 
@@ -289,7 +340,29 @@ export function QuickStartWebsite() {
       setEditingName('');
     } catch (error) {
       console.error('Error updating website name:', error);
-      alert('❌ Fout bij opslaan naam');
+      alert('Fout bij opslaan naam');
+    }
+  }
+
+  async function changeWebsiteStatus(websiteId: string, newStatus: 'draft' | 'preview' | 'live') {
+    setChangingStatus(websiteId);
+    try {
+      const { error } = await db.supabase
+        .from('websites')
+        .update({
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', websiteId);
+
+      if (error) throw error;
+
+      await loadWebsites();
+    } catch (error) {
+      console.error('Error updating website status:', error);
+      alert('Fout bij wijzigen status');
+    } finally {
+      setChangingStatus(null);
     }
   }
 
@@ -401,7 +474,7 @@ export function QuickStartWebsite() {
                             </button>
                           </>
                         )}
-                        {getStatusBadge(website.status)}
+                        {getStatusBadge(website.status, website.id)}
 
                         {website.live_url && (
                           <a
@@ -444,11 +517,11 @@ export function QuickStartWebsite() {
                         {website.preview_url && (
                           <div>
                             <div className="flex items-center gap-2 mb-2">
-                              <Eye size={16} className="text-blue-600" />
+                              <Eye size={16} className="text-gray-600" />
                               <label className="font-semibold text-gray-900">Preview URL</label>
                             </div>
-                            <div className="flex items-center gap-2 p-3 bg-white border border-gray-200 rounded-lg">
-                              <code className="flex-1 text-sm font-mono text-blue-600 truncate">{website.preview_url}</code>
+                            <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                              <code className="flex-1 text-sm font-mono text-gray-700 truncate">{website.preview_url}</code>
                               <a
                                 href={`https://${website.preview_url}`}
                                 target="_blank"
@@ -503,8 +576,8 @@ export function QuickStartWebsite() {
                                   )}
                                 </button>
                               ) : (
-                                <div className="p-4 bg-yellow-50 border border-yellow-300 rounded-lg text-center">
-                                  <Globe className="w-10 h-10 text-yellow-600 mx-auto mb-2" />
+                                <div className="p-4 bg-gray-50 border border-gray-300 rounded-lg text-center">
+                                  <Globe className="w-10 h-10 text-gray-500 mx-auto mb-2" />
                                   <p className="text-sm text-gray-700 mb-3">Geen domein geconfigureerd</p>
                                   <a
                                     href="#brand-settings-domains"
@@ -513,7 +586,7 @@ export function QuickStartWebsite() {
                                       e.stopPropagation();
                                       window.location.hash = 'brand-settings-domains';
                                     }}
-                                    className="inline-block px-4 py-2 bg-yellow-600 text-white rounded-lg font-semibold hover:bg-yellow-700 transition-colors"
+                                    className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
                                   >
                                     Configureer Domein →
                                   </a>
