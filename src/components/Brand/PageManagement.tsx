@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard as Edit, Copy, Trash2, Eye, Plus, RefreshCw, Upload, FileX } from 'lucide-react';
+import { CreditCard as Edit, Copy, Trash2, Eye, Plus, RefreshCw, Upload, FileX, ExternalLink } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { openBuilder, generateBuilderJWT } from '../../lib/jwtHelper';
 import { useAuth } from '../../contexts/AuthContext';
+import {
+  detectPageType,
+  getPageTypeLabel,
+  getPageTypeBadgeColor,
+  generateTemplatePreviewUrl,
+  isTemplateVisibleType,
+  PageMetadata
+} from '../../lib/pageHelpers';
 
 interface Page {
   id: string;
@@ -15,6 +23,7 @@ interface Page {
   show_in_menu: boolean;
   menu_order: number;
   parent_slug: string | null;
+  metadata?: PageMetadata;
 }
 
 export function PageManagement() {
@@ -56,7 +65,34 @@ export function PageManagement() {
         throw error;
       }
 
-      setPages(data || []);
+      const pagesWithMetadata = (data || []).map(page => {
+        if (!page.metadata || !page.metadata.type) {
+          const detectedType = detectPageType(page.slug, page.title);
+          return {
+            ...page,
+            metadata: {
+              ...page.metadata,
+              type: detectedType
+            }
+          };
+        }
+        return page;
+      });
+
+      setPages(pagesWithMetadata);
+
+      const pagesToUpdate = pagesWithMetadata.filter(
+        page => !data?.find(p => p.id === page.id)?.metadata?.type
+      );
+
+      if (pagesToUpdate.length > 0) {
+        for (const page of pagesToUpdate) {
+          await supabase
+            .from('pages')
+            .update({ metadata: page.metadata })
+            .eq('id', page.id);
+        }
+      }
     } catch (error) {
       console.error('Error loading pages:', error);
     } finally {
@@ -275,6 +311,9 @@ export function PageManagement() {
                   Slug
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Type
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -289,13 +328,28 @@ export function PageManagement() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {pages.map((page) => (
+              {pages.map((page) => {
+                const pageType = page.metadata?.type || 'page';
+                const isVisible = isTemplateVisibleType(pageType);
+
+                return (
                 <tr key={page.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{page.title}</div>
+                    {isVisible && (
+                      <div className="mt-1 flex items-center gap-1 text-xs text-blue-600">
+                        <ExternalLink size={12} />
+                        <span>Zichtbaar in template</span>
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-600">{page.slug}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPageTypeBadgeColor(pageType)}`}>
+                      {getPageTypeLabel(pageType)}
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
@@ -328,6 +382,18 @@ export function PageManagement() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end space-x-2">
+                      {isVisible && user?.brand_id && (
+                        <button
+                          onClick={() => {
+                            const url = generateTemplatePreviewUrl(user.brand_id!, pageType);
+                            window.open(url, '_blank');
+                          }}
+                          className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                          title="Bekijk in Template"
+                        >
+                          <ExternalLink size={18} />
+                        </button>
+                      )}
                       <button
                         onClick={() => openInBuilder(page.id)}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -374,7 +440,8 @@ export function PageManagement() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
