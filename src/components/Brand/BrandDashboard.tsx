@@ -26,6 +26,7 @@ export function BrandDashboard() {
     const hash = window.location.hash;
     if (hash.includes('/brand/content/news')) return 'nieuwsbeheer';
     if (hash.includes('/brand/website/pages')) return 'pages';
+    if (hash.includes('brand-settings')) return 'settings';
     return 'dashboard';
   };
 
@@ -59,6 +60,9 @@ export function BrandDashboard() {
         console.log('Hash routing: Navigating to news section');
         setActiveSection('nieuwsbeheer');
         setShowContentSubmenu(true);
+      } else if (hash.includes('brand-settings')) {
+        console.log('Hash routing: Navigating to settings section');
+        setActiveSection('settings');
       }
     };
 

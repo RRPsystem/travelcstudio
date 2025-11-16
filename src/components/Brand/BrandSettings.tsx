@@ -8,7 +8,12 @@ type TabType = 'general' | 'domains';
 
 export function BrandSettings() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabType>('general');
+  const getInitialTab = (): TabType => {
+    const hash = window.location.hash;
+    if (hash.includes('domains')) return 'domains';
+    return 'general';
+  };
+  const [activeTab, setActiveTab] = useState<TabType>(getInitialTab());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -36,6 +41,18 @@ export function BrandSettings() {
   useEffect(() => {
     loadBrandData();
   }, [user]);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash.includes('domains')) {
+        setActiveTab('domains');
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   const loadBrandData = async () => {
     if (!user?.brand_id) {
