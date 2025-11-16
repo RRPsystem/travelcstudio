@@ -620,9 +620,12 @@ export function QuickStartWebsite() {
                             e.stopPropagation();
                             editWebsite(website);
                           }}
-                          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                          className="flex-1 flex items-center justify-center gap-2 px-5 py-3 text-white rounded-lg transition-colors font-semibold"
+                          style={{ backgroundColor: '#ff7700' }}
+                          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#e66900'}
+                          onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#ff7700'}
                         >
-                          <Edit2 size={16} />
+                          <Edit2 size={18} />
                           Bewerken in Builder
                         </button>
 
@@ -631,9 +634,9 @@ export function QuickStartWebsite() {
                             e.stopPropagation();
                             deleteWebsite(website.id);
                           }}
-                          className="px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-semibold flex items-center gap-2"
+                          className="px-5 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-semibold flex items-center gap-2"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={18} />
                           Verwijderen
                         </button>
                       </div>
