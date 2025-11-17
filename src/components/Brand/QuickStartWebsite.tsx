@@ -37,6 +37,7 @@ export function QuickStartWebsite() {
   const [loading, setLoading] = useState(true);
   const [brand, setBrand] = useState<Brand | null>(null);
   const [publishingWebsiteId, setPublishingWebsiteId] = useState<string | null>(null);
+  const [togglingWebsiteId, setTogglingWebsiteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.brand_id) {
@@ -181,15 +182,24 @@ export function QuickStartWebsite() {
   }
 
   async function toggleWebsiteStatus(websiteId: string, currentStatus: string) {
-    const newStatus = currentStatus === 'live' ? 'draft' : 'live';
+    setTogglingWebsiteId(websiteId);
+
+    const isCurrentlyLive = currentStatus === 'live';
+    const newStatus = isCurrentlyLive ? 'draft' : 'live';
 
     try {
+      const updateData: any = {
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      };
+
+      if (newStatus === 'live') {
+        updateData.published_at = new Date().toISOString();
+      }
+
       const { error } = await db.supabase
         .from('websites')
-        .update({
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', websiteId);
 
       if (error) throw error;
@@ -197,7 +207,9 @@ export function QuickStartWebsite() {
       await loadWebsites();
     } catch (error) {
       console.error('Error updating website status:', error);
-      alert('Fout bij wijzigen status');
+      alert('Fout bij wijzigen status: ' + (error instanceof Error ? error.message : 'Onbekende fout'));
+    } finally {
+      setTogglingWebsiteId(null);
     }
   }
 
@@ -349,10 +361,11 @@ export function QuickStartWebsite() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <button
                       onClick={() => toggleWebsiteStatus(website.id, website.status)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      disabled={togglingWebsiteId === website.id}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                         website.status === 'live' ? 'bg-green-600' : 'bg-gray-300'
                       }`}
-                      title={website.status === 'live' ? 'Live' : 'Offline'}
+                      title={togglingWebsiteId === website.id ? 'Bezig...' : (website.status === 'live' ? 'Live - Klik om offline te zetten' : 'Offline - Klik om live te zetten')}
                     >
                       <span
                         className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
