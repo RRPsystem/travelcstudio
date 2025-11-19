@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/supabase';
-import { Rocket, ExternalLink, Edit2, Trash2, Globe, Eye, Plus } from 'lucide-react';
+import { Rocket, ExternalLink, Edit2, Trash2, Globe, Eye, Plus, Layout } from 'lucide-react';
+import WordPressTemplateSelector from './WordPressTemplateSelector';
 
 interface Website {
   id: string;
@@ -38,6 +39,10 @@ export function QuickStartWebsite() {
   const [brand, setBrand] = useState<Brand | null>(null);
   const [publishingWebsiteId, setPublishingWebsiteId] = useState<string | null>(null);
   const [togglingWebsiteId, setTogglingWebsiteId] = useState<string | null>(null);
+  const [showNewWebsiteModal, setShowNewWebsiteModal] = useState(false);
+  const [selectedSourceType, setSelectedSourceType] = useState<'external_builder' | 'wordpress_template' | null>(null);
+  const [selectedWPTemplate, setSelectedWPTemplate] = useState<any>(null);
+  const [creatingWebsite, setCreatingWebsite] = useState(false);
 
   useEffect(() => {
     if (user?.brand_id) {
@@ -240,6 +245,49 @@ export function QuickStartWebsite() {
     });
   }
 
+  async function createWordPressWebsite() {
+    if (!selectedWPTemplate || !user?.brand_id) return;
+
+    setCreatingWebsite(true);
+    try {
+      const { data: template, error: fetchError } = await db.supabase
+        .from('wordpress_templates')
+        .select('*')
+        .eq('id', selectedWPTemplate.id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const { error: insertError } = await db.supabase
+        .from('websites')
+        .insert({
+          brand_id: user.brand_id,
+          created_by: user.id,
+          name: `${template.name}`,
+          slug: `${template.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+          template_name: template.name,
+          source_type: 'wordpress_template',
+          source_template_id: template.id,
+          custom_html: template.cached_html,
+          status: 'draft'
+        });
+
+      if (insertError) throw insertError;
+
+      setShowNewWebsiteModal(false);
+      setSelectedSourceType(null);
+      setSelectedWPTemplate(null);
+      await loadWebsites();
+
+      alert('✅ Website aangemaakt! Je kunt deze nu aanpassen en publiceren.');
+    } catch (error) {
+      console.error('Error creating WordPress website:', error);
+      alert('❌ Fout bij aanmaken website: ' + (error instanceof Error ? error.message : 'Onbekende fout'));
+    } finally {
+      setCreatingWebsite(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -264,12 +312,7 @@ export function QuickStartWebsite() {
           </div>
         </div>
         <button
-          onClick={async () => {
-            const deeplink = await generateQuickStartDeeplink();
-            if (deeplink) {
-              window.location.href = deeplink;
-            }
-          }}
+          onClick={() => setShowNewWebsiteModal(true)}
           className="text-white px-6 py-3 rounded-lg transition-colors flex items-center gap-2 font-medium"
           style={{ backgroundColor: '#ff7700' }}
           onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#e66900'}
@@ -406,6 +449,125 @@ export function QuickStartWebsite() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {showNewWebsiteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-2xl font-bold text-gray-900">Nieuwe Website Maken</h3>
+                <button
+                  onClick={() => {
+                    setShowNewWebsiteModal(false);
+                    setSelectedSourceType(null);
+                    setSelectedWPTemplate(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {!selectedSourceType ? (
+                <div className="space-y-4">
+                  <p className="text-gray-600 mb-6">Kies hoe je jouw website wilt maken:</p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button
+                      onClick={() => setSelectedSourceType('wordpress_template')}
+                      className="p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="p-3 bg-blue-100 rounded-lg">
+                          <Layout className="h-8 w-8 text-blue-600" />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-semibold text-gray-900 mb-2">WordPress Templates</h4>
+                          <p className="text-sm text-gray-600">
+                            Kies uit professionele, kant-en-klare templates. Snel en makkelijk aanpasbaar.
+                          </p>
+                          <div className="mt-3 flex items-center gap-2 text-sm text-green-600">
+                            <span>✓</span>
+                            <span>Aanbevolen voor snelle start</span>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={async () => {
+                        const deeplink = await generateQuickStartDeeplink();
+                        if (deeplink) {
+                          window.location.href = deeplink;
+                        }
+                      }}
+                      className="p-6 border-2 border-gray-200 rounded-lg hover:border-orange-500 hover:bg-orange-50 transition-all text-left"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="p-3 bg-orange-100 rounded-lg">
+                          <Rocket className="h-8 w-8" style={{ color: '#ff7700' }} />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-semibold text-gray-900 mb-2">Externe Builder</h4>
+                          <p className="text-sm text-gray-600">
+                            Gebruik onze geavanceerde externe builder voor volledige controle en maatwerk.
+                          </p>
+                          <div className="mt-3 flex items-center gap-2 text-sm" style={{ color: '#ff7700' }}>
+                            <span>→</span>
+                            <span>Voor advanced gebruikers</span>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              ) : selectedSourceType === 'wordpress_template' ? (
+                <div className="space-y-6">
+                  <WordPressTemplateSelector
+                    onSelect={setSelectedWPTemplate}
+                    selectedTemplateId={selectedWPTemplate?.id}
+                  />
+
+                  {selectedWPTemplate && (
+                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+                      <button
+                        onClick={() => {
+                          setSelectedSourceType(null);
+                          setSelectedWPTemplate(null);
+                        }}
+                        className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        Terug
+                      </button>
+                      <button
+                        onClick={createWordPressWebsite}
+                        disabled={creatingWebsite}
+                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {creatingWebsite ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            <span>Bezig...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-5 w-5" />
+                            <span>Website Aanmaken</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          </div>
         </div>
       )}
     </div>
