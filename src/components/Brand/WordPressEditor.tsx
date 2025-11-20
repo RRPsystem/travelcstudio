@@ -59,23 +59,32 @@ export function WordPressEditor({ websiteId, onBack }: WordPressEditorProps) {
 
       if (websiteError) throw websiteError;
 
+      console.log('Loaded website:', websiteData);
+
       setWebsite(websiteData);
 
-      if (websiteData.pages && websiteData.pages.length > 0) {
+      if (websiteData.pages && Array.isArray(websiteData.pages) && websiteData.pages.length > 0) {
+        console.log('Using existing pages:', websiteData.pages.length);
         setPages(websiteData.pages);
       } else if (websiteData.template_name) {
+        console.log('Loading template pages for:', websiteData.template_name);
         const { data: templatePages, error: pagesError } = await db.supabase
           .from('wordpress_template_pages')
           .select('*')
           .eq('template_name', websiteData.template_name)
           .order('page_order');
 
-        if (pagesError) throw pagesError;
+        if (pagesError) {
+          console.error('Error loading template pages:', pagesError);
+          throw pagesError;
+        }
+
+        console.log('Template pages loaded:', templatePages?.length || 0);
 
         const formattedPages: WebsitePage[] = (templatePages || []).map((page: any) => ({
           name: page.page_name,
           path: page.page_path,
-          html: page.html_content,
+          html: page.html_content || page.cached_html || '',
           modified: false,
           order: page.page_order
         }));
@@ -87,11 +96,12 @@ export function WordPressEditor({ websiteId, onBack }: WordPressEditorProps) {
           .update({ pages: formattedPages })
           .eq('id', websiteId);
       } else {
+        console.log('No pages found, setting empty array');
         setPages([]);
       }
     } catch (error) {
       console.error('Error loading website:', error);
-      alert('Fout bij laden website');
+      alert('Fout bij laden website: ' + (error as Error).message);
     } finally {
       setLoading(false);
     }
