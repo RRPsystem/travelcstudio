@@ -51,16 +51,44 @@ export function WordPressEditor({ websiteId, onBack }: WordPressEditorProps) {
 
   async function loadWebsite() {
     try {
-      const { data, error } = await db.supabase
+      const { data: websiteData, error: websiteError } = await db.supabase
         .from('websites')
         .select('*')
         .eq('id', websiteId)
         .single();
 
-      if (error) throw error;
+      if (websiteError) throw websiteError;
 
-      setWebsite(data);
-      setPages(data.pages || []);
+      setWebsite(websiteData);
+
+      if (websiteData.pages && websiteData.pages.length > 0) {
+        setPages(websiteData.pages);
+      } else if (websiteData.template_name) {
+        const { data: templatePages, error: pagesError } = await db.supabase
+          .from('wordpress_template_pages')
+          .select('*')
+          .eq('template_name', websiteData.template_name)
+          .order('page_order');
+
+        if (pagesError) throw pagesError;
+
+        const formattedPages: WebsitePage[] = (templatePages || []).map((page: any) => ({
+          name: page.page_name,
+          path: page.page_path,
+          html: page.html_content,
+          modified: false,
+          order: page.page_order
+        }));
+
+        setPages(formattedPages);
+
+        await db.supabase
+          .from('websites')
+          .update({ pages: formattedPages })
+          .eq('id', websiteId);
+      } else {
+        setPages([]);
+      }
     } catch (error) {
       console.error('Error loading website:', error);
       alert('Fout bij laden website');
