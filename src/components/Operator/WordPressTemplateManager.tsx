@@ -13,10 +13,11 @@ interface WordPressTemplate {
   id: string;
   wordpress_source_id: string;
   wp_page_id: string;
-  name: string;
+  template_name: string;
   description: string | null;
   preview_image_url: string | null;
   category: string;
+  category_preview_url: string | null;
   color_scheme: any;
   is_active: boolean;
   order_index: number;
@@ -37,10 +38,11 @@ export default function WordPressTemplateManager() {
 
   const [newTemplate, setNewTemplate] = useState({
     wp_page_id: '',
-    name: '',
+    template_name: '',
     description: '',
     preview_image_url: '',
-    category: 'general'
+    category: '',
+    category_preview_url: ''
   });
 
   useEffect(() => {
@@ -115,8 +117,8 @@ export default function WordPressTemplateManager() {
   };
 
   const addTemplate = async () => {
-    if (!selectedSource || !newTemplate.wp_page_id || !newTemplate.name) {
-      setError('WordPress Page ID and Name are required');
+    if (!selectedSource || !newTemplate.wp_page_id || !newTemplate.template_name || !newTemplate.category) {
+      setError('WordPress Page ID, Page Name, and Template Name are required');
       return;
     }
 
@@ -126,24 +128,26 @@ export default function WordPressTemplateManager() {
         .insert({
           wordpress_source_id: selectedSource,
           wp_page_id: newTemplate.wp_page_id,
-          name: newTemplate.name,
+          template_name: newTemplate.template_name,
           description: newTemplate.description || null,
           preview_image_url: newTemplate.preview_image_url || null,
           category: newTemplate.category,
+          category_preview_url: newTemplate.category_preview_url || null,
           is_active: true,
           order_index: templates.length
         });
 
       if (error) throw error;
 
-      setSuccess('Template added successfully');
+      setSuccess('Page added successfully');
       setShowNewTemplate(false);
       setNewTemplate({
         wp_page_id: '',
-        name: '',
+        template_name: '',
         description: '',
         preview_image_url: '',
-        category: 'general'
+        category: '',
+        category_preview_url: ''
       });
       await fetchTemplates(selectedSource);
     } catch (err: any) {
@@ -274,6 +278,34 @@ export default function WordPressTemplateManager() {
               </button>
             </div>
             <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Template Name (Category) *
+                  </label>
+                  <input
+                    type="text"
+                    value={newTemplate.category}
+                    onChange={(e) => setNewTemplate({ ...newTemplate, category: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="Traveler, Amerika, Modern Luxury"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Dit is wat brands kiezen</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Page Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={newTemplate.template_name}
+                    onChange={(e) => setNewTemplate({ ...newTemplate, template_name: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="Home, Over Ons, Contact"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Pagina binnen de template</p>
+                </div>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   WordPress Page ID *
@@ -283,19 +315,7 @@ export default function WordPressTemplateManager() {
                   value={newTemplate.wp_page_id}
                   onChange={(e) => setNewTemplate({ ...newTemplate, wp_page_id: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="42"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Template Name *
-                </label>
-                <input
-                  type="text"
-                  value={newTemplate.name}
-                  onChange={(e) => setNewTemplate({ ...newTemplate, name: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Modern Agency Template"
+                  placeholder="520"
                 />
               </div>
               <div>
@@ -307,36 +327,36 @@ export default function WordPressTemplateManager() {
                   onChange={(e) => setNewTemplate({ ...newTemplate, description: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   rows={2}
-                  placeholder="Perfect for modern travel agencies..."
+                  placeholder="Perfect voor moderne reisbureaus..."
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Preview Image URL
-                </label>
-                <input
-                  type="text"
-                  value={newTemplate.preview_image_url}
-                  onChange={(e) => setNewTemplate({ ...newTemplate, preview_image_url: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="https://..."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category
-                </label>
-                <select
-                  value={newTemplate.category}
-                  onChange={(e) => setNewTemplate({ ...newTemplate, category: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="general">General</option>
-                  <option value="agency">Agency</option>
-                  <option value="tours">Tours</option>
-                  <option value="luxury">Luxury</option>
-                  <option value="adventure">Adventure</option>
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Template Preview (voor category)
+                  </label>
+                  <input
+                    type="text"
+                    value={newTemplate.category_preview_url}
+                    onChange={(e) => setNewTemplate({ ...newTemplate, category_preview_url: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://... (hoofdafbeelding)"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Zelfde voor alle pagina's</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Page Preview (optioneel)
+                  </label>
+                  <input
+                    type="text"
+                    value={newTemplate.preview_image_url}
+                    onChange={(e) => setNewTemplate({ ...newTemplate, preview_image_url: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://... (specifiek voor pagina)"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Voor deze specifieke pagina</p>
+                </div>
               </div>
               <div className="flex justify-end gap-2">
                 <button
@@ -350,7 +370,7 @@ export default function WordPressTemplateManager() {
                   className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                 >
                   <Save className="h-4 w-4" />
-                  Add Template
+                  Add Page
                 </button>
               </div>
             </div>
@@ -359,7 +379,7 @@ export default function WordPressTemplateManager() {
 
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-900">
-            Templates ({templates.length})
+            Pages ({templates.length})
           </h3>
 
           {templates.length === 0 ? (
@@ -392,8 +412,9 @@ export default function WordPressTemplateManager() {
                   <div className="p-4">
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <h4 className="font-semibold text-gray-900">{template.name}</h4>
-                        <p className="text-sm text-gray-500">ID: {template.wp_page_id}</p>
+                        <h4 className="font-semibold text-gray-900">{template.template_name}</h4>
+                        <p className="text-sm text-gray-500">{template.category}</p>
+                        <p className="text-xs text-gray-400">WP ID: {template.wp_page_id}</p>
                       </div>
                       <span className={`text-xs px-2 py-1 rounded ${
                         template.is_active
@@ -447,13 +468,13 @@ export default function WordPressTemplateManager() {
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="font-semibold text-blue-900 mb-2">How to use:</h3>
+        <h3 className="font-semibold text-blue-900 mb-2">Hoe werkt het:</h3>
         <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
-          <li>Create templates in WordPress (Pages or Custom Post Types)</li>
-          <li>Note the Page ID from WordPress (find in URL when editing)</li>
-          <li>Add templates here manually OR use "Sync from WordPress"</li>
-          <li>Activate templates to make them available to brands</li>
-          <li>Brands can now select these templates when creating websites</li>
+          <li><strong>Template Name</strong> = De collectie naam (bv "Traveler", "Amerika") - dit kiezen brands</li>
+          <li><strong>Page Name</strong> = De pagina binnen de template (bv "Home", "Over Ons", "Contact")</li>
+          <li>Vul WordPress Page ID in (te vinden in URL bij bewerken)</li>
+          <li>Voeg meerdere pagina's toe met dezelfde Template Name om ze te groeperen</li>
+          <li>Brands kiezen een template en krijgen alle pagina's uit die template</li>
         </ol>
       </div>
     </div>

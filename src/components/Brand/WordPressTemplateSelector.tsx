@@ -4,26 +4,35 @@ import { Check, ExternalLink, Palette, Layout } from 'lucide-react';
 
 interface WordPressTemplate {
   id: string;
-  name: string;
+  template_name: string;
   description: string | null;
   preview_image_url: string | null;
   category: string;
+  category_preview_url: string | null;
   color_scheme: any;
+  wp_page_id: string;
+}
+
+interface TemplateCategory {
+  category: string;
+  preview_url: string | null;
+  pages: WordPressTemplate[];
 }
 
 interface WordPressTemplateSelectorProps {
-  onSelect: (template: WordPressTemplate) => void;
-  selectedTemplateId?: string | null;
+  onSelect: (category: string, templates: WordPressTemplate[]) => void;
+  selectedCategory?: string | null;
 }
 
 export default function WordPressTemplateSelector({
   onSelect,
-  selectedTemplateId
+  selectedCategory: externalSelectedCategory
 }: WordPressTemplateSelectorProps) {
   const [templates, setTemplates] = useState<WordPressTemplate[]>([]);
+  const [categories, setCategories] = useState<TemplateCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
 
   useEffect(() => {
     fetchTemplates();
@@ -34,12 +43,26 @@ export default function WordPressTemplateSelector({
       setLoading(true);
       const { data, error } = await supabase
         .from('wordpress_templates')
-        .select('id, name, description, preview_image_url, category, color_scheme')
+        .select('id, template_name, description, preview_image_url, category, category_preview_url, color_scheme, wp_page_id')
         .eq('is_active', true)
-        .order('order_index');
+        .order('category, order_index');
 
       if (error) throw error;
       setTemplates(data || []);
+
+      const grouped = (data || []).reduce((acc, template) => {
+        if (!acc[template.category]) {
+          acc[template.category] = {
+            category: template.category,
+            preview_url: template.category_preview_url || template.preview_image_url,
+            pages: []
+          };
+        }
+        acc[template.category].pages.push(template);
+        return acc;
+      }, {} as Record<string, TemplateCategory>);
+
+      setCategories(Object.values(grouped));
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -47,11 +70,11 @@ export default function WordPressTemplateSelector({
     }
   };
 
-  const categories = ['all', ...new Set(templates.map(t => t.category))];
+  const categoryNames = ['all', ...categories.map(c => c.category)];
 
-  const filteredTemplates = selectedCategory === 'all'
-    ? templates
-    : templates.filter(t => t.category === selectedCategory);
+  const filteredCategories = filterCategory === 'all'
+    ? categories
+    : categories.filter(c => c.category === filterCategory);
 
   if (loading) {
     return (
@@ -86,48 +109,53 @@ export default function WordPressTemplateSelector({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">
-          Kies een WordPress Template
-        </h3>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Kies een WordPress Template
+          </h3>
+          <p className="text-sm text-gray-600 mt-1">
+            Selecteer een template collectie en krijg alle pagina's
+          </p>
+        </div>
         <div className="flex gap-2">
-          {categories.map(category => (
+          {categoryNames.map(category => (
             <button
               key={category}
-              onClick={() => setSelectedCategory(category)}
+              onClick={() => setFilterCategory(category)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                selectedCategory === category
+                filterCategory === category
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              {category === 'all' ? 'Alle' : category.charAt(0).toUpperCase() + category.slice(1)}
+              {category === 'all' ? 'Alle' : category}
             </button>
           ))}
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredTemplates.map(template => (
+        {filteredCategories.map(categoryData => (
           <div
-            key={template.id}
-            onClick={() => onSelect(template)}
+            key={categoryData.category}
+            onClick={() => onSelect(categoryData.category, categoryData.pages)}
             className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
-              selectedTemplateId === template.id
+              externalSelectedCategory === categoryData.category
                 ? 'border-blue-600 shadow-lg ring-2 ring-blue-200'
                 : 'border-gray-200 hover:border-blue-300 hover:shadow-md'
             }`}
           >
-            {selectedTemplateId === template.id && (
+            {externalSelectedCategory === categoryData.category && (
               <div className="absolute top-4 right-4 z-10 bg-blue-600 text-white rounded-full p-2 shadow-lg">
                 <Check className="h-5 w-5" />
               </div>
             )}
 
             <div className="aspect-[4/5] bg-gray-100 relative">
-              {template.preview_image_url ? (
+              {categoryData.preview_url ? (
                 <img
-                  src={template.preview_image_url}
-                  alt={template.name}
+                  src={categoryData.preview_url}
+                  alt={categoryData.category}
                   className="w-full h-full object-cover object-top"
                 />
               ) : (
@@ -139,17 +167,22 @@ export default function WordPressTemplateSelector({
 
             <div className="p-4 bg-white">
               <div className="flex items-start justify-between mb-2">
-                <h4 className="font-semibold text-gray-900">{template.name}</h4>
-                <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded capitalize">
-                  {template.category}
+                <h4 className="font-semibold text-gray-900">{categoryData.category}</h4>
+                <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">
+                  {categoryData.pages.length} pagina's
                 </span>
               </div>
 
-              {template.description && (
-                <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                  {template.description}
-                </p>
-              )}
+              <div className="mb-3">
+                <p className="text-xs text-gray-500 font-medium mb-1">Bevat:</p>
+                <div className="flex flex-wrap gap-1">
+                  {categoryData.pages.map(page => (
+                    <span key={page.id} className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">
+                      {page.template_name}
+                    </span>
+                  ))}
+                </div>
+              </div>
 
               <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                 <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -159,15 +192,15 @@ export default function WordPressTemplateSelector({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    onSelect(template);
+                    onSelect(categoryData.category, categoryData.pages);
                   }}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    selectedTemplateId === template.id
+                    externalSelectedCategory === categoryData.category
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  {selectedTemplateId === template.id ? 'Geselecteerd' : 'Selecteer'}
+                  {externalSelectedCategory === categoryData.category ? 'Geselecteerd' : 'Selecteer'}
                 </button>
               </div>
             </div>
@@ -175,10 +208,10 @@ export default function WordPressTemplateSelector({
         ))}
       </div>
 
-      {filteredTemplates.length === 0 && (
+      {filteredCategories.length === 0 && (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <p className="text-gray-600">
-            Geen templates gevonden in de categorie "{selectedCategory}"
+            Geen templates gevonden in de filter "{filterCategory}"
           </p>
         </div>
       )}

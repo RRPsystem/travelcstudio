@@ -41,7 +41,8 @@ export function QuickStartWebsite() {
   const [togglingWebsiteId, setTogglingWebsiteId] = useState<string | null>(null);
   const [showNewWebsiteModal, setShowNewWebsiteModal] = useState(false);
   const [selectedSourceType, setSelectedSourceType] = useState<'external_builder' | 'wordpress_template' | null>(null);
-  const [selectedWPTemplate, setSelectedWPTemplate] = useState<any>(null);
+  const [selectedWPCategory, setSelectedWPCategory] = useState<string | null>(null);
+  const [selectedWPTemplates, setSelectedWPTemplates] = useState<any[]>([]);
   const [creatingWebsite, setCreatingWebsite] = useState(false);
 
   useEffect(() => {
@@ -246,29 +247,28 @@ export function QuickStartWebsite() {
   }
 
   async function createWordPressWebsite() {
-    if (!selectedWPTemplate || !user?.brand_id) return;
+    if (!selectedWPCategory || selectedWPTemplates.length === 0 || !user?.brand_id) return;
 
     setCreatingWebsite(true);
     try {
-      const { data: template, error: fetchError } = await db.supabase
-        .from('wordpress_templates')
-        .select('*')
-        .eq('id', selectedWPTemplate.id)
-        .single();
-
-      if (fetchError) throw fetchError;
+      const pages = selectedWPTemplates.map((template, index) => ({
+        name: template.template_name,
+        path: index === 0 ? '/' : `/${template.template_name.toLowerCase().replace(/\s+/g, '-')}`,
+        html: template.cached_html || '',
+        modified: false,
+        order: index
+      }));
 
       const { error: insertError } = await db.supabase
         .from('websites')
         .insert({
           brand_id: user.brand_id,
           created_by: user.id,
-          name: `${template.name}`,
-          slug: `${template.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
-          template_name: template.name,
+          name: selectedWPCategory,
+          slug: `${selectedWPCategory.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+          template_name: selectedWPCategory,
           source_type: 'wordpress_template',
-          source_template_id: template.id,
-          custom_html: template.cached_html,
+          pages: pages,
           status: 'draft'
         });
 
@@ -276,10 +276,11 @@ export function QuickStartWebsite() {
 
       setShowNewWebsiteModal(false);
       setSelectedSourceType(null);
-      setSelectedWPTemplate(null);
+      setSelectedWPCategory(null);
+      setSelectedWPTemplates([]);
       await loadWebsites();
 
-      alert('✅ Website aangemaakt! Je kunt deze nu aanpassen en publiceren.');
+      alert(`✅ Website "${selectedWPCategory}" aangemaakt met ${pages.length} pagina's! Je kunt deze nu aanpassen en publiceren.`);
     } catch (error) {
       console.error('Error creating WordPress website:', error);
       alert('❌ Fout bij aanmaken website: ' + (error instanceof Error ? error.message : 'Onbekende fout'));
@@ -530,16 +531,20 @@ export function QuickStartWebsite() {
               ) : selectedSourceType === 'wordpress_template' ? (
                 <div className="space-y-6">
                   <WordPressTemplateSelector
-                    onSelect={setSelectedWPTemplate}
-                    selectedTemplateId={selectedWPTemplate?.id}
+                    onSelect={(category, templates) => {
+                      setSelectedWPCategory(category);
+                      setSelectedWPTemplates(templates);
+                    }}
+                    selectedCategory={selectedWPCategory}
                   />
 
-                  {selectedWPTemplate && (
+                  {selectedWPCategory && (
                     <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
                       <button
                         onClick={() => {
                           setSelectedSourceType(null);
-                          setSelectedWPTemplate(null);
+                          setSelectedWPCategory(null);
+                          setSelectedWPTemplates([]);
                         }}
                         className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                       >
