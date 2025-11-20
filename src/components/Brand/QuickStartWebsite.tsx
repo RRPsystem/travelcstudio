@@ -3,12 +3,14 @@ import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/supabase';
 import { Rocket, ExternalLink, Edit2, Trash2, Globe, Eye, Plus, Layout } from 'lucide-react';
 import WordPressTemplateSelector from './WordPressTemplateSelector';
+import { WordPressEditor } from './WordPressEditor';
 
 interface Website {
   id: string;
   brand_id: string;
   name: string;
   template_name?: string;
+  source_type?: string;
   pages?: Array<{
     name: string;
     path: string;
@@ -44,6 +46,7 @@ export function QuickStartWebsite() {
   const [selectedWPCategory, setSelectedWPCategory] = useState<string | null>(null);
   const [selectedWPTemplates, setSelectedWPTemplates] = useState<any[]>([]);
   const [creatingWebsite, setCreatingWebsite] = useState(false);
+  const [editingWebsiteId, setEditingWebsiteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.brand_id) {
@@ -150,22 +153,26 @@ export function QuickStartWebsite() {
   async function editWebsite(website: Website) {
     if (!user?.brand_id || !website.id || !db.supabase) return;
 
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    if (website.source_type === 'wordpress_template') {
+      setEditingWebsiteId(website.id);
+    } else {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-    const { data: { session } } = await db.supabase.auth.getSession();
-    const jwtToken = session?.access_token || '';
+      const { data: { session } } = await db.supabase.auth.getSession();
+      const jwtToken = session?.access_token || '';
 
-    const params = new URLSearchParams({
-      website_id: website.id,
-      brand_id: user.brand_id,
-      token: jwtToken,
-      apikey: supabaseKey,
-      api: `${supabaseUrl}/functions/v1`,
-      return_url: window.location.href
-    });
+      const params = new URLSearchParams({
+        website_id: website.id,
+        brand_id: user.brand_id,
+        token: jwtToken,
+        apikey: supabaseKey,
+        api: `${supabaseUrl}/functions/v1`,
+        return_url: window.location.href
+      });
 
-    window.location.href = `https://www.ai-websitestudio.nl/template-editor.html?${params.toString()}`;
+      window.location.href = `https://www.ai-websitestudio.nl/template-editor.html?${params.toString()}`;
+    }
   }
 
   async function deleteWebsite(id: string) {
@@ -287,6 +294,18 @@ export function QuickStartWebsite() {
     } finally {
       setCreatingWebsite(false);
     }
+  }
+
+  if (editingWebsiteId) {
+    return (
+      <WordPressEditor
+        websiteId={editingWebsiteId}
+        onBack={() => {
+          setEditingWebsiteId(null);
+          loadWebsites();
+        }}
+      />
+    );
   }
 
   if (loading) {
