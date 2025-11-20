@@ -45,7 +45,11 @@ export function WordPressEditor({ websiteId, onBack }: WordPressEditorProps) {
 
   useEffect(() => {
     if (pages[selectedPageIndex]) {
-      setEditingHtml(pages[selectedPageIndex].html);
+      const html = pages[selectedPageIndex].html;
+      console.log('Setting editing HTML for page:', pages[selectedPageIndex].name);
+      console.log('HTML length:', html?.length || 0);
+      console.log('HTML preview:', html?.substring(0, 200) || 'EMPTY');
+      setEditingHtml(html || '');
     }
   }, [selectedPageIndex, pages]);
 
@@ -65,6 +69,8 @@ export function WordPressEditor({ websiteId, onBack }: WordPressEditorProps) {
 
       if (websiteData.pages && Array.isArray(websiteData.pages) && websiteData.pages.length > 0) {
         console.log('Using existing pages:', websiteData.pages.length);
+        console.log('First page HTML length:', websiteData.pages[0]?.html?.length || 0);
+        console.log('First page HTML preview:', websiteData.pages[0]?.html?.substring(0, 200));
         setPages(websiteData.pages);
       } else if (websiteData.template_name) {
         console.log('Loading template pages for:', websiteData.template_name);
