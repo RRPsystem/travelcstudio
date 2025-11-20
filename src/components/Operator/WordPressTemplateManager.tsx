@@ -376,13 +376,19 @@ export default function WordPressTemplateManager() {
                     template.is_active ? 'border-green-200 bg-white' : 'border-gray-200 bg-gray-50'
                   }`}
                 >
-                  {template.preview_image_url && (
-                    <img
-                      src={template.preview_image_url}
-                      alt={template.name}
-                      className="w-full h-48 object-cover"
-                    />
-                  )}
+                  <div className="aspect-[4/5] bg-gray-100">
+                    {template.preview_image_url ? (
+                      <img
+                        src={template.preview_image_url}
+                        alt={template.name}
+                        className="w-full h-full object-cover object-top"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-gray-300">
+                        No preview
+                      </div>
+                    )}
+                  </div>
                   <div className="p-4">
                     <div className="flex items-start justify-between mb-2">
                       <div>
