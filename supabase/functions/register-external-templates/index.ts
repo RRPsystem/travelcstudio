@@ -80,25 +80,20 @@ Deno.serve(async (req: Request) => {
             .select('id')
             .eq('template_type', 'external_builder')
             .eq('category', category.category)
-            .eq('template_slug', page.page_slug)
+            .eq('template_name', page.template_name)
             .maybeSingle();
 
           const templateData = {
             template_name: page.template_name,
-            template_slug: page.page_slug,
             template_type: 'external_builder',
             category: category.category,
             description: page.description || null,
             preview_image_url: page.preview_image_url,
             category_preview_url: category.category_preview_url,
-            html_content: page.html_content,
+            cached_html: page.html_content,
+            cache_updated_at: new Date().toISOString(),
             order_index: page.order_index,
-            is_active: false,
-            metadata: {
-              builder_name: body.builder_name,
-              registered_at: new Date().toISOString(),
-              category_description: category.description
-            }
+            is_active: false
           };
 
           if (existingTemplate) {

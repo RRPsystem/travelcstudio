@@ -303,10 +303,10 @@ export function QuickStart() {
                     console.log('Looking up template pages with IDs:', pageIds);
 
                     const { data: templatePages, error: templateError } = await supabase
-                      .from('template_pages')
+                      .from('website_page_templates')
                       .select('*')
                       .in('id', pageIds)
-                      .order('menu_order');
+                      .order('order_index');
 
                     if (templateError) {
                       console.error('Template pages error:', templateError);
@@ -322,15 +322,15 @@ export function QuickStart() {
                       website_id: websiteData.id,
                       brand_id: user.brand_id,
                       created_by: user.id,
-                      title: tp.title,
-                      slug: index === 0 ? '/' : `/${tp.slug.replace(/^\//, '')}`,
+                      title: tp.template_name,
+                      slug: index === 0 ? '/' : `/${tp.template_name.toLowerCase().replace(/\s+/g, '-')}`,
                       status: 'draft',
-                      body_html: tp.content,
+                      body_html: tp.cached_html || '',
                       content_json: {},
                       is_template: false,
                       show_in_menu: true,
-                      menu_order: tp.menu_order,
-                      menu_label: tp.title
+                      menu_order: tp.order_index,
+                      menu_label: tp.template_name
                     }));
 
                     console.log('Creating pages:', newPages);
