@@ -91,6 +91,7 @@ export function QuickStart() {
         .order('template_category, menu_order');
 
       if (tpError) console.error('Error loading template_pages:', tpError);
+      console.log('Loaded template_pages:', templatePages);
 
       const { data: wpTemplates, error: wpError } = await supabase
         .from('website_page_templates')
@@ -156,6 +157,7 @@ export function QuickStart() {
         allTemplates.push(...Object.values(wpGrouped));
       }
 
+      console.log('Final allTemplates:', allTemplates);
       setWebsiteCategories(allTemplates);
     } catch (error) {
       console.error('Error loading website templates:', error);
@@ -325,6 +327,7 @@ export function QuickStart() {
                       status: 'draft',
                       body_html: tp.content,
                       content_json: {},
+                      is_template: false,
                       show_in_menu: true,
                       menu_order: tp.menu_order,
                       menu_label: tp.title
