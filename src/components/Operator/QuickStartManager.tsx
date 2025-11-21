@@ -120,11 +120,17 @@ export default function QuickStartManager() {
 
   const loadAvailablePages = async (builderId: string, categoryId: string) => {
     try {
-      const category = categories.find(c => c.id === categoryId);
-      if (!category) return;
+      const { data: categoryData, error: catError } = await supabase
+        .from('builder_categories')
+        .select('*')
+        .eq('id', categoryId)
+        .single();
+
+      if (catError) throw catError;
+      if (!categoryData) return;
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-external-page?builder_id=${builderId}&category=${category.category_slug}&action=list`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-external-page?builder_id=${builderId}&category=${categoryData.category_slug}&action=list`,
         {
           headers: {
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
@@ -137,13 +143,14 @@ export default function QuickStartManager() {
 
       setAvailablePages(result.pages || []);
 
-      if (category.recommended_pages.length > 0 && formData.selected_pages.length === 0) {
+      if (categoryData.recommended_pages && categoryData.recommended_pages.length > 0 && formData.selected_pages.length === 0) {
         setFormData(prev => ({
           ...prev,
-          selected_pages: category.recommended_pages,
+          selected_pages: categoryData.recommended_pages,
         }));
       }
     } catch (err: any) {
+      console.error('Error loading pages:', err);
       setError(err.message);
     }
   };
@@ -175,7 +182,7 @@ export default function QuickStartManager() {
     }
   };
 
-  const handleEdit = (template: QuickStartTemplate) => {
+  const handleEdit = async (template: QuickStartTemplate) => {
     setFormData({
       builder_id: template.builder_id,
       category_id: template.category_id,
@@ -187,6 +194,9 @@ export default function QuickStartManager() {
     });
     setEditingId(template.id);
     setShowForm(true);
+
+    await loadCategories(template.builder_id);
+    await loadAvailablePages(template.builder_id, template.category_id);
   };
 
   const handleDelete = async (id: string) => {
