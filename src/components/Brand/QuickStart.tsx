@@ -85,40 +85,34 @@ export function QuickStart() {
 
   const loadWebsiteTemplates = async () => {
     try {
-      const { data, error } = await supabase
-        .from('website_page_templates')
-        .select('id, template_name, description, template_type, category, preview_image_url, category_preview_url, order_index')
-        .eq('is_active', true)
-        .order('category, order_index', { ascending: true });
+      const { data: templatePages, error } = await supabase
+        .from('template_pages')
+        .select('*')
+        .order('template_category, menu_order');
 
       if (error) throw error;
 
-      const mappedData = data?.map(item => ({
-        id: item.id,
-        title: item.template_name,
-        description: item.description || '',
-        template_type: item.template_type as 'wordpress' | 'external_builder',
-        category: item.category,
-        preview_image_url: item.preview_image_url,
-        category_preview_url: item.category_preview_url,
-        sort_order: item.order_index
-      })) || [];
-
-      setWebsiteTemplates(mappedData);
-
-      const grouped = mappedData.reduce((acc, template) => {
-        const key = `${template.template_type}-${template.category}`;
-        if (!acc[key]) {
-          acc[key] = {
-            category: template.category || 'Unnamed',
-            template_type: template.template_type,
-            preview_url: (template as any).category_preview_url || template.preview_image_url,
+      const grouped = (templatePages || []).reduce((acc, page) => {
+        const category = page.template_category;
+        if (!acc[category]) {
+          acc[category] = {
+            category: category,
+            template_type: 'external_builder' as const,
+            preview_url: page.preview_image_url,
             page_count: 0,
             pages: []
           };
         }
-        acc[key].pages.push(template);
-        acc[key].page_count = acc[key].pages.length;
+        acc[category].pages.push({
+          id: page.id,
+          title: page.title,
+          description: `${page.title} pagina`,
+          template_type: 'external_builder' as const,
+          category: category,
+          preview_image_url: page.preview_image_url,
+          sort_order: page.menu_order
+        });
+        acc[category].page_count = acc[category].pages.length;
         return acc;
       }, {} as Record<string, TemplateCategory>);
 
@@ -231,11 +225,76 @@ export function QuickStart() {
               <div
                 key={idx}
                 className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow bg-white cursor-pointer"
-                onClick={() => {
-                  if (category.template_type === 'wordpress') {
-                    alert('WordPress template functionaliteit komt binnenkort');
-                  } else {
-                    alert('External Builder template functionaliteit komt binnenkort');
+                onClick={async () => {
+                  if (!user?.brand_id) return;
+
+                  try {
+                    const websiteSlug = `${category.category.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+
+                    const { data: websiteData, error: insertError } = await supabase
+                      .from('websites')
+                      .insert({
+                        brand_id: user.brand_id,
+                        created_by: user.id,
+                        name: category.category,
+                        slug: websiteSlug,
+                        template_name: category.category,
+                        source_type: 'external_builder',
+                        status: 'draft'
+                      })
+                      .select()
+                      .single();
+
+                    if (insertError) throw insertError;
+
+                    const pageIds = category.pages.map(p => p.id);
+                    const { data: templatePages, error: templateError } = await supabase
+                      .from('template_pages')
+                      .select('*')
+                      .in('id', pageIds)
+                      .order('menu_order');
+
+                    if (templateError) throw templateError;
+
+                    if (templatePages && templatePages.length > 0) {
+                      const newPages = templatePages.map((tp: any) => ({
+                        website_id: websiteData.id,
+                        brand_id: user.brand_id,
+                        created_by: user.id,
+                        title: tp.title,
+                        slug: tp.slug,
+                        status: 'draft',
+                        body_html: tp.content,
+                        content_json: {},
+                        show_in_menu: true,
+                        menu_order: tp.menu_order,
+                        menu_label: tp.title
+                      }));
+
+                      const { error: pagesError } = await supabase
+                        .from('pages')
+                        .insert(newPages);
+
+                      if (pagesError) throw pagesError;
+                    }
+
+                    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+                    const previewUrl = `${supabaseUrl}/functions/v1/website-viewer?website_id=${websiteData.id}`;
+
+                    await supabase
+                      .from('websites')
+                      .update({
+                        preview_url: previewUrl,
+                        live_url: previewUrl
+                      })
+                      .eq('id', websiteData.id);
+
+                    alert(`✅ Website "${category.category}" aangemaakt met ${templatePages?.length || 0} pagina's!\n\n📍 Preview URL: ${previewUrl}\n\nDe website is nu beschikbaar in Website Management.`);
+
+                    window.location.href = '#/brand/website/manage';
+                  } catch (error) {
+                    console.error('Error creating website:', error);
+                    alert('❌ Fout bij aanmaken website: ' + (error instanceof Error ? error.message : 'Onbekende fout'));
                   }
                 }}
               >
