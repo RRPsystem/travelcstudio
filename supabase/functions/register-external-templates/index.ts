@@ -41,8 +41,10 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('Missing Authorization header');
+    const apiKey = req.headers.get('apikey');
+    
+    if (!authHeader && !apiKey) {
+      throw new Error('Missing Authorization header or apikey header');
     }
 
     const body: RegisterTemplatesRequest = await req.json();
