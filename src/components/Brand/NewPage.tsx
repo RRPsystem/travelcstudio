@@ -106,10 +106,47 @@ export function NewPage() {
     }
 
     try {
+      const { data: existingPages } = await supabase
+        .from('pages')
+        .select('menu_order')
+        .eq('brand_id', user.brand_id)
+        .order('menu_order', { ascending: false })
+        .limit(1);
+
+      const nextMenuOrder = existingPages && existingPages.length > 0
+        ? (existingPages[0].menu_order || 0) + 1
+        : 1;
+
+      const newPage = {
+        title: 'Nieuwe Pagina',
+        slug: `page-${Date.now()}`,
+        content_json: {},
+        brand_id: user.brand_id,
+        status: 'draft',
+        version: 1,
+        content_type: 'page',
+        is_template: false,
+        owner_user_id: user.id,
+        created_by: user.id,
+        show_in_menu: true,
+        menu_order: nextMenuOrder,
+      };
+
+      const { data: newPageData, error: createError } = await supabase
+        .from('pages')
+        .insert(newPage)
+        .select('id')
+        .maybeSingle();
+
+      if (createError || !newPageData) {
+        throw new Error('Kon geen pagina aanmaken');
+      }
+
       const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/website/pages`;
-      console.log('Opening builder with brand_id:', user.brand_id, 'returnUrl:', returnUrl);
-      const deeplink = await openBuilder(user.brand_id, user.id, { returnUrl });
-      console.log('Generated deeplink:', deeplink);
+      const deeplink = await openBuilder(user.brand_id, user.id, {
+        pageId: newPageData.id,
+        returnUrl
+      });
       window.open(deeplink, '_blank');
     } catch (error) {
       console.error('Error opening builder:', error);
@@ -121,7 +158,6 @@ export function NewPage() {
     if (!user || !user.brand_id) return;
 
     try {
-      // First, copy the template to create a new page for this brand
       const { data: template, error: templateError } = await supabase
         .from('pages')
         .select('*')
@@ -132,8 +168,17 @@ export function NewPage() {
         throw new Error('Template niet gevonden');
       }
 
-      // Create a new page from the template
-      // Ensure content_json has the correct structure for the builder
+      const { data: existingPages } = await supabase
+        .from('pages')
+        .select('menu_order')
+        .eq('brand_id', user.brand_id)
+        .order('menu_order', { ascending: false })
+        .limit(1);
+
+      const nextMenuOrder = existingPages && existingPages.length > 0
+        ? (existingPages[0].menu_order || 0) + 1
+        : 1;
+
       console.log('[NewPage] Template content_json:', template.content_json);
 
       let contentJson = template.content_json || {};
@@ -167,8 +212,8 @@ export function NewPage() {
         is_template: false,
         owner_user_id: user.id,
         created_by: user.id,
-        show_in_menu: false,
-        menu_order: 0,
+        show_in_menu: true,
+        menu_order: nextMenuOrder,
       };
 
       const { data: newPageData, error: createError } = await supabase
