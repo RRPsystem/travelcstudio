@@ -141,16 +141,18 @@ We maken een API endpoint waar je alle templates in één keer kunt uploaden.
 
 **Endpoint:**
 ```
-POST https://jouw-platform.com/supabase/functions/v1/register-external-templates
+POST https://huaaogdxxdcakxryecnw.supabase.co/functions/v1/register-external-templates
 ```
 
 **Headers:**
 ```json
 {
-  "Authorization": "Bearer YOUR_API_KEY",
+  "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh1YWFvZ2R4eGRjYWt4cnllY253Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2MzY3MzMsImV4cCI6MjA3NDIxMjczM30.EqZK_6xjEAVwUtsYj6nENe4x8-7At_oRAVsPMDvJBSI",
   "Content-Type": "application/json"
 }
 ```
+
+**Let op:** De Authorization header gebruikt de Supabase Anon Key. Deze is publiek en kan veilig gedeeld worden.
 
 **Request Body:**
 ```json
@@ -463,6 +465,97 @@ Voordat je templates aanlever, controleer:
 - [ ] API key is aangevraagd en ontvangen
 - [ ] Test API call is succesvol
 - [ ] Volledige template set is verstuurd
+
+---
+
+## Test Voorbeeld
+
+Hier is een minimaal werkend voorbeeld om de API te testen met cURL:
+
+```bash
+curl -X POST https://huaaogdxxdcakxryecnw.supabase.co/functions/v1/register-external-templates \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh1YWFvZ2R4eGRjYWt4cnllY253Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2MzY3MzMsImV4cCI6MjA3NDIxMjczM30.EqZK_6xjEAVwUtsYj6nENe4x8-7At_oRAVsPMDvJBSI" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "builder_name": "GoWild Test",
+    "templates": [
+      {
+        "category": "Test Template",
+        "description": "Een simpele test template",
+        "category_preview_url": "https://via.placeholder.com/800x1200/4A90E2/FFFFFF?text=Test+Category",
+        "pages": [
+          {
+            "template_name": "Home",
+            "page_slug": "home",
+            "description": "Test homepage",
+            "preview_image_url": "https://via.placeholder.com/1200x800/4A90E2/FFFFFF?text=Home+Page",
+            "html_content": "<!DOCTYPE html><html><head><title>Test</title></head><body><h1>Test Homepage</h1><p>Dit is een test template.</p></body></html>",
+            "order_index": 1
+          }
+        ]
+      }
+    ]
+  }'
+```
+
+**Verwachte response:**
+```json
+{
+  "success": true,
+  "builder_name": "GoWild Test",
+  "categories_processed": 1,
+  "templates_created": 1,
+  "template_ids": ["uuid-hier"],
+  "errors": [],
+  "message": "1 templates successfully registered"
+}
+```
+
+### JavaScript/Node.js Voorbeeld
+
+```javascript
+const registerTemplates = async () => {
+  const response = await fetch('https://huaaogdxxdcakxryecnw.supabase.co/functions/v1/register-external-templates', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh1YWFvZ2R4eGRjYWt4cnllY253Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2MzY3MzMsImV4cCI6MjA3NDIxMjczM30.EqZK_6xjEAVwUtsYj6nENe4x8-7At_oRAVsPMDvJBSI',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      builder_name: 'GoWild',
+      templates: [
+        {
+          category: 'Traveler',
+          description: 'Modern reisburo website',
+          category_preview_url: 'https://cdn.gowild.com/templates/traveler-preview.png',
+          pages: [
+            {
+              template_name: 'Home',
+              page_slug: 'home',
+              description: 'Homepage met hero section',
+              preview_image_url: 'https://cdn.gowild.com/templates/traveler-home.png',
+              html_content: '<!DOCTYPE html><html>...</html>',
+              order_index: 1
+            }
+          ]
+        }
+      ]
+    })
+  });
+
+  const result = await response.json();
+  console.log('Result:', result);
+
+  if (result.success) {
+    console.log(`✅ ${result.templates_created} templates registered!`);
+    console.log('Template IDs:', result.template_ids);
+  } else {
+    console.error('❌ Error:', result.error);
+  }
+};
+
+registerTemplates();
+```
 
 ---
 
