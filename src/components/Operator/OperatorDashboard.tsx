@@ -18,11 +18,15 @@ import {
   Bell,
   ClipboardCheck,
   BookOpen,
-  Layout
+  Layout,
+  Puzzle,
+  Zap
 } from 'lucide-react';
 import RoadmapManagement from './RoadmapManagement';
 import TestManagement from './TestManagement';
 import TemplateManager from './TemplateManager';
+import ExternalBuilderManager from './ExternalBuilderManager';
+import QuickStartManager from './QuickStartManager';
 
 export function OperatorDashboard() {
   const { user, signOut } = useAuth();
@@ -30,6 +34,8 @@ export function OperatorDashboard() {
 
   const sidebarItems = [
     { id: 'test-management', label: 'Test Management', icon: ClipboardCheck },
+    { id: 'external-builders', label: 'External Builders', icon: Puzzle },
+    { id: 'quickstart', label: 'QuickStart Templates', icon: Zap },
     { id: 'templates', label: 'Website Templates', icon: Layout },
     { id: 'roadmap', label: 'Roadmap Management', icon: Map },
     { id: 'monitoring', label: 'Monitoring & Alerts', icon: Bell },
@@ -108,6 +114,8 @@ export function OperatorDashboard() {
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
                 {activeSection === 'test-management' && 'Test Management'}
+                {activeSection === 'external-builders' && 'External Builders'}
+                {activeSection === 'quickstart' && 'QuickStart Templates'}
                 {activeSection === 'templates' && 'Website Templates'}
                 {activeSection === 'roadmap' && 'Roadmap Management'}
                 {activeSection === 'monitoring' && 'Monitoring & Alerts'}
@@ -120,6 +128,8 @@ export function OperatorDashboard() {
               </h1>
               <p className="text-gray-600 mt-1">
                 {activeSection === 'test-management' && 'Manage testing rounds and review feedback from testers'}
+                {activeSection === 'external-builders' && 'Register and manage external template builders'}
+                {activeSection === 'quickstart' && 'Configure QuickStart templates for brands'}
                 {activeSection === 'templates' && 'Manage WordPress and External Builder templates for brands'}
                 {activeSection === 'roadmap' && 'Manage feature requests and development priorities'}
                 {activeSection === 'monitoring' && 'Real-time error tracking, alerts, and performance monitoring'}
@@ -147,6 +157,8 @@ export function OperatorDashboard() {
         {/* Content */}
         <main className="flex-1 p-6 overflow-y-auto">
           {activeSection === 'test-management' && <TestManagement />}
+          {activeSection === 'external-builders' && <ExternalBuilderManager />}
+          {activeSection === 'quickstart' && <QuickStartManager />}
           {activeSection === 'templates' && <TemplateManager />}
           {activeSection === 'roadmap' && <RoadmapManagement />}
           {activeSection === 'monitoring' && <MonitoringDashboard />}
