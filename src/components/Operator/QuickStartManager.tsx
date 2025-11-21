@@ -56,6 +56,9 @@ export default function QuickStartManager() {
     display_order: 0,
   });
 
+  const [previewImageUrl, setPreviewImageUrl] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -197,6 +200,16 @@ export default function QuickStartManager() {
 
     await loadCategories(template.builder_id);
     await loadAvailablePages(template.builder_id, template.category_id);
+
+    const { data: categoryData } = await supabase
+      .from('builder_categories')
+      .select('preview_url')
+      .eq('id', template.category_id)
+      .single();
+
+    if (categoryData?.preview_url) {
+      setPreviewImageUrl(categoryData.preview_url);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -229,6 +242,78 @@ export default function QuickStartManager() {
     setShowForm(false);
     setCategories([]);
     setAvailablePages([]);
+    setPreviewImageUrl('');
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file');
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      setError('');
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `quickstart-previews/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('template-previews')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('template-previews')
+        .getPublicUrl(filePath);
+
+      setPreviewImageUrl(publicUrl);
+
+      if (formData.category_id) {
+        const { error: updateError } = await supabase
+          .from('builder_categories')
+          .update({ preview_url: publicUrl })
+          .eq('id', formData.category_id);
+
+        if (updateError) throw updateError;
+
+        await syncPreviewToWebsiteTemplates(formData.category_id, publicUrl);
+      }
+    } catch (err: any) {
+      setError(`Upload failed: ${err.message}`);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const syncPreviewToWebsiteTemplates = async (categoryId: string, previewUrl: string) => {
+    try {
+      const { data: categoryData } = await supabase
+        .from('builder_categories')
+        .select('category_slug')
+        .eq('id', categoryId)
+        .single();
+
+      if (categoryData?.category_slug) {
+        const categoryName = categoryData.category_slug.charAt(0).toUpperCase() +
+                            categoryData.category_slug.slice(1);
+
+        await supabase
+          .from('website_page_templates')
+          .update({ category_preview_url: previewUrl })
+          .eq('category', categoryName);
+      }
+    } catch (err) {
+      console.error('Failed to sync preview to website templates:', err);
+    }
   };
 
   const togglePageSelection = (pageSlug: string) => {
@@ -331,6 +416,78 @@ export default function QuickStartManager() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </div>
+
+            {formData.category_id && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Preview Image</label>
+                <div className="space-y-3">
+                  <div className="flex gap-3">
+                    <input
+                      type="text"
+                      value={previewImageUrl}
+                      onChange={(e) => setPreviewImageUrl(e.target.value)}
+                      placeholder="Enter image URL or upload below"
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (previewImageUrl && formData.category_id) {
+                          try {
+                            const { error } = await supabase
+                              .from('builder_categories')
+                              .update({ preview_url: previewImageUrl })
+                              .eq('id', formData.category_id);
+
+                            if (error) throw error;
+
+                            await syncPreviewToWebsiteTemplates(formData.category_id, previewImageUrl);
+
+                            setError('');
+                            alert('Preview URL saved!');
+                          } catch (err: any) {
+                            setError(`Failed to save URL: ${err.message}`);
+                          }
+                        }
+                      }}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    >
+                      Save URL
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">or</span>
+                    <label className="flex-1">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        disabled={uploadingImage}
+                        className="hidden"
+                      />
+                      <div className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-center cursor-pointer">
+                        {uploadingImage ? 'Uploading...' : 'Upload Image'}
+                      </div>
+                    </label>
+                  </div>
+
+                  {previewImageUrl && (
+                    <div className="mt-3">
+                      <img
+                        src={previewImageUrl}
+                        alt="Preview"
+                        className="w-full max-w-md h-64 object-cover rounded-lg border border-gray-200"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '';
+                          (e.target as HTMLImageElement).alt = 'Failed to load image';
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {availablePages.length > 0 && (
               <div>
