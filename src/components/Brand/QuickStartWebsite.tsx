@@ -258,13 +258,23 @@ export function QuickStartWebsite() {
 
     setCreatingWebsite(true);
     try {
-      const pages = selectedWPTemplates.map((template, index) => ({
-        name: template.template_name,
-        path: index === 0 ? '/' : `/${template.template_name.toLowerCase().replace(/\s+/g, '-')}`,
-        html: template.cached_html || '',
-        modified: false,
-        order: index
-      }));
+      console.log('Creating website with templates:', selectedWPTemplates);
+
+      const pages = selectedWPTemplates.map((template, index) => {
+        console.log(`Template ${template.template_name}:`, {
+          has_cached_html: !!template.cached_html,
+          html_length: template.cached_html?.length || 0,
+          html_preview: template.cached_html?.substring(0, 100)
+        });
+
+        return {
+          name: template.template_name,
+          path: index === 0 ? '/' : `/${template.template_name.toLowerCase().replace(/\s+/g, '-')}`,
+          html: template.cached_html || '',
+          modified: false,
+          order: index
+        };
+      });
 
       const { error: insertError } = await db.supabase
         .from('websites')

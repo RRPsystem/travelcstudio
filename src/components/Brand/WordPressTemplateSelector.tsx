@@ -11,6 +11,7 @@ interface WordPressTemplate {
   category_preview_url: string | null;
   color_scheme: any;
   wp_page_id: string;
+  cached_html: string | null;
 }
 
 interface TemplateCategory {
@@ -43,7 +44,7 @@ export default function WordPressTemplateSelector({
       setLoading(true);
       const { data, error } = await supabase
         .from('wordpress_templates')
-        .select('id, template_name, description, preview_image_url, category, category_preview_url, color_scheme, wp_page_id')
+        .select('id, template_name, description, preview_image_url, category, category_preview_url, color_scheme, wp_page_id, cached_html')
         .eq('is_active', true)
         .order('category, order_index');
 
