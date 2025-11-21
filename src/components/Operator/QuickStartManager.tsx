@@ -350,7 +350,7 @@ export default function QuickStartManager() {
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className="font-medium text-sm">{page.title}</span>
+                        <span className="font-medium text-sm text-gray-900">{page.name || page.title}</span>
                         {formData.selected_pages.includes(page.slug) && (
                           <Check className="w-4 h-4 text-blue-600" />
                         )}
