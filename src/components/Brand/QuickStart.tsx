@@ -132,11 +132,17 @@ export function QuickStart() {
         <p className="text-gray-600">Kies hoe je wilt beginnen met je website</p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-8">
+      <div className="mb-8">
         <h2 className="text-xl font-semibold text-gray-900 mb-6">Enkele Pagina Maken</h2>
+        <p className="text-gray-600 mb-6">
+          Kies een kant-en-klare template of bouw zelf een pagina met de pagebuilder
+        </p>
+
         <div className="grid md:grid-cols-2 gap-6">
-          <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 hover:border-blue-400 transition-colors cursor-pointer bg-white"
-               onClick={() => openBuilder(user?.brand_id || '', 'page')}>
+          <div
+            className="border-2 border-dashed border-gray-300 rounded-xl p-8 hover:border-orange-400 transition-colors cursor-pointer bg-white"
+            onClick={() => openBuilder(user?.brand_id || '', 'page')}
+          >
             <div className="flex flex-col items-center text-center">
               <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: '#ff7700' }}>
                 <Wrench className="text-white" size={32} />
@@ -178,50 +184,77 @@ export function QuickStart() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-8">
+      <div className="mb-8">
         <h2 className="text-xl font-semibold text-gray-900 mb-6">Complete Website Starten</h2>
+        <p className="text-gray-600 mb-6">
+          Start met een complete website template en pas deze aan in de editor
+        </p>
 
-        <div className="mb-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">WordPress Template Websites</h3>
-          <p className="text-gray-600 mb-4">
-            Kies een professionele WordPress template met meerdere pagina's
-          </p>
+        <div className="space-y-8">
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              <Globe className="inline mr-2" size={20} />
+              WordPress Template Websites
+            </h3>
+            <p className="text-gray-600 mb-4 text-sm">
+              Kies een professionele WordPress template collectie met meerdere pagina's
+            </p>
 
-          <WordPressTemplateSelector
-            onSelect={(category, pages) => {
-              setSelectedWPCategory(category);
-              setSelectedWPTemplates(pages);
-            }}
-            selectedCategory={selectedWPCategory}
-          />
+            <WordPressTemplateSelector
+              onSelect={(category, pages) => {
+                setSelectedWPCategory(category);
+                setSelectedWPTemplates(pages);
+              }}
+              selectedCategory={selectedWPCategory}
+            />
 
-          {selectedWPCategory && selectedWPTemplates.length > 0 && (
-            <div className="mt-6 flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-4">
-              <div>
-                <p className="text-green-900 font-medium">
-                  Template geselecteerd: {selectedWPCategory}
-                </p>
-                <p className="text-green-700 text-sm">
-                  {selectedWPTemplates.length} pagina's
+            {selectedWPCategory && selectedWPTemplates.length > 0 && (
+              <div className="mt-6 flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-4">
+                <div>
+                  <p className="text-green-900 font-medium">
+                    Template geselecteerd: {selectedWPCategory}
+                  </p>
+                  <p className="text-green-700 text-sm">
+                    {selectedWPTemplates.length} pagina's
+                  </p>
+                </div>
+                <button
+                  onClick={handleCreateWordPressWebsite}
+                  disabled={creatingWebsite}
+                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 flex items-center gap-2"
+                >
+                  <Rocket size={20} />
+                  {creatingWebsite ? 'Aanmaken...' : 'Website Aanmaken'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              <Rocket className="inline mr-2" size={20} />
+              HTML Complete Websites
+            </h3>
+            <p className="text-gray-600 mb-4 text-sm">
+              Complete website templates gebouwd met de externe builder - Binnenkort beschikbaar
+            </p>
+            <div className="border-2 border-dashed border-gray-300 rounded-xl p-12 bg-gray-50">
+              <div className="text-center">
+                <Rocket size={48} className="mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-500 font-medium mb-2">HTML Website Templates</p>
+                <p className="text-gray-400 text-sm">
+                  Complete website templates met de externe builder komen hier beschikbaar
                 </p>
               </div>
-              <button
-                onClick={handleCreateWordPressWebsite}
-                disabled={creatingWebsite}
-                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 flex items-center gap-2"
-              >
-                <Rocket size={20} />
-                {creatingWebsite ? 'Aanmaken...' : 'Website Aanmaken'}
-              </button>
             </div>
-          )}
+          </div>
         </div>
       </div>
 
-      <div id="page-gallery" className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+      <div id="page-gallery" className="mb-8">
         <div className="mb-6">
           <h2 className="text-2xl font-semibold text-gray-900 mb-2">Pagina Galerij</h2>
-          <p className="text-gray-600">Kies uit onze collectie van professionele website templates</p>
+          <p className="text-gray-600">Kies uit onze collectie van professionele HTML pagina templates</p>
         </div>
 
         <div className="mb-6">
