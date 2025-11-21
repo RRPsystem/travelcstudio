@@ -139,10 +139,7 @@ export function QuickStart() {
         </p>
 
         <div className="grid md:grid-cols-2 gap-6">
-          <div
-            className="border-2 border-dashed border-gray-300 rounded-xl p-8 hover:border-orange-400 transition-colors cursor-pointer bg-white"
-            onClick={() => openBuilder(user?.brand_id || '', 'page')}
-          >
+          <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 hover:border-orange-400 transition-colors bg-white">
             <div className="flex flex-col items-center text-center">
               <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: '#ff7700' }}>
                 <Wrench className="text-white" size={32} />
@@ -152,7 +149,8 @@ export function QuickStart() {
                 Bouw je pagina helemaal zelf met drag-and-drop blokken
               </p>
               <button
-                className="px-6 py-3 text-white rounded-lg transition-colors font-medium flex items-center gap-2"
+                onClick={() => openBuilder(user?.brand_id || '', 'page')}
+                className="px-6 py-3 text-white rounded-lg transition-colors font-medium flex items-center gap-2 cursor-pointer"
                 style={{ backgroundColor: '#ff7700' }}
                 onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#e66900'}
                 onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#ff7700'}
