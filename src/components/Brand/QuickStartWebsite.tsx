@@ -281,27 +281,31 @@ export function QuickStartWebsite() {
 
       const selectedTemplateIds = selectedEBTemplates.map(t => t.id);
       const { data: templatePages, error: templateError } = await db.supabase
-        .from('template_pages')
+        .from('website_page_templates')
         .select('*')
-        .eq('template_category', selectedEBCategory)
+        .eq('category', selectedEBCategory)
         .in('id', selectedTemplateIds)
-        .order('menu_order');
+        .order('order_index');
 
       if (templateError) throw templateError;
 
+      if (!templatePages || templatePages.length === 0) {
+        throw new Error(`Geen template pages gevonden voor IDs: ${selectedTemplateIds.join(', ')}`);
+      }
+
       if (templatePages && templatePages.length > 0) {
-        const newPages = templatePages.map((tp: any) => ({
+        const newPages = templatePages.map((tp: any, index: number) => ({
           website_id: websiteData.id,
           brand_id: user.brand_id,
           created_by: user.id,
-          title: tp.title,
-          slug: tp.slug,
+          title: tp.template_name,
+          slug: tp.template_name.toLowerCase().replace(/\s+/g, '-'),
           status: 'draft',
-          body_html: tp.content,
+          body_html: tp.cached_html || '',
           content_json: {},
           show_in_menu: true,
-          menu_order: tp.menu_order,
-          menu_label: tp.title
+          menu_order: tp.order_index || index,
+          menu_label: tp.template_name
         }));
 
         const { error: pagesError } = await db.supabase
