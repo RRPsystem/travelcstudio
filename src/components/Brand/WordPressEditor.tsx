@@ -45,10 +45,19 @@ export function WordPressEditor({ websiteId, onBack }: WordPressEditorProps) {
 
   useEffect(() => {
     if (pages[selectedPageIndex]) {
-      const html = pages[selectedPageIndex].html;
+      let html = pages[selectedPageIndex].html;
       console.log('Setting editing HTML for page:', pages[selectedPageIndex].name);
       console.log('HTML length:', html?.length || 0);
       console.log('HTML preview:', html?.substring(0, 200) || 'EMPTY');
+
+      // Add permissive CSP meta tag if not present to allow external resources
+      if (html && !html.includes('Content-Security-Policy')) {
+        html = html.replace(
+          '<head>',
+          `<head>\n  <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">`
+        );
+      }
+
       setEditingHtml(html || '');
     }
   }, [selectedPageIndex, pages]);
