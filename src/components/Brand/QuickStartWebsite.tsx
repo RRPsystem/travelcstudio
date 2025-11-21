@@ -4,6 +4,7 @@ import { db } from '../../lib/supabase';
 import { Rocket, ExternalLink, Edit2, Trash2, Globe, Eye, Plus, Layout } from 'lucide-react';
 import WordPressTemplateSelector from './WordPressTemplateSelector';
 import { WordPressEditor } from './WordPressEditor';
+import { ExternalBuilderTemplateSelector } from './ExternalBuilderTemplateSelector';
 
 interface Website {
   id: string;
@@ -45,6 +46,8 @@ export function QuickStartWebsite() {
   const [selectedSourceType, setSelectedSourceType] = useState<'external_builder' | 'wordpress_template' | null>(null);
   const [selectedWPCategory, setSelectedWPCategory] = useState<string | null>(null);
   const [selectedWPTemplates, setSelectedWPTemplates] = useState<any[]>([]);
+  const [selectedEBCategory, setSelectedEBCategory] = useState<string | null>(null);
+  const [selectedEBTemplates, setSelectedEBTemplates] = useState<any[]>([]);
   const [creatingWebsite, setCreatingWebsite] = useState(false);
   const [editingWebsiteId, setEditingWebsiteId] = useState<string | null>(null);
 
@@ -251,6 +254,42 @@ export function QuickStartWebsite() {
       month: 'short',
       day: 'numeric'
     });
+  }
+
+  async function createExternalBuilderWebsite() {
+    if (!selectedEBCategory || selectedEBTemplates.length === 0 || !user?.brand_id) return;
+
+    setCreatingWebsite(true);
+    try {
+      const { data: websiteData, error: insertError } = await db.supabase
+        .from('websites')
+        .insert({
+          brand_id: user.brand_id,
+          created_by: user.id,
+          name: selectedEBCategory,
+          slug: `${selectedEBCategory.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+          template_name: selectedEBCategory,
+          source_type: 'external_builder',
+          pages: [],
+          status: 'draft'
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      setShowNewWebsiteModal(false);
+      setSelectedSourceType(null);
+      setSelectedEBCategory(null);
+      setSelectedEBTemplates([]);
+
+      await editWebsite(websiteData);
+    } catch (error) {
+      console.error('Error creating external builder website:', error);
+      alert('❌ Fout bij aanmaken website: ' + (error instanceof Error ? error.message : 'Onbekende fout'));
+    } finally {
+      setCreatingWebsite(false);
+    }
   }
 
   async function createWordPressWebsite() {
@@ -524,7 +563,10 @@ export function QuickStartWebsite() {
                   onClick={() => {
                     setShowNewWebsiteModal(false);
                     setSelectedSourceType(null);
-                    setSelectedWPTemplate(null);
+                    setSelectedWPCategory(null);
+                    setSelectedWPTemplates([]);
+                    setSelectedEBCategory(null);
+                    setSelectedEBTemplates([]);
                   }}
                   className="text-gray-400 hover:text-gray-600"
                 >
@@ -563,12 +605,7 @@ export function QuickStartWebsite() {
                     </button>
 
                     <button
-                      onClick={async () => {
-                        const deeplink = await generateQuickStartDeeplink();
-                        if (deeplink) {
-                          window.location.href = deeplink;
-                        }
-                      }}
+                      onClick={() => setSelectedSourceType('external_builder')}
                       className="p-6 border-2 border-gray-200 rounded-lg hover:border-orange-500 hover:bg-orange-50 transition-all text-left"
                     >
                       <div className="flex items-start gap-4">
@@ -576,13 +613,13 @@ export function QuickStartWebsite() {
                           <Rocket className="h-8 w-8" style={{ color: '#ff7700' }} />
                         </div>
                         <div>
-                          <h4 className="text-lg font-semibold text-gray-900 mb-2">Externe Builder</h4>
+                          <h4 className="text-lg font-semibold text-gray-900 mb-2">Externe Builder Templates</h4>
                           <p className="text-sm text-gray-600">
-                            Gebruik onze geavanceerde externe builder voor volledige controle en maatwerk.
+                            Professionele templates met volledige aanpasbaarheid via onze externe editor.
                           </p>
                           <div className="mt-3 flex items-center gap-2 text-sm" style={{ color: '#ff7700' }}>
                             <span>→</span>
-                            <span>Voor advanced gebruikers</span>
+                            <span>Met drag & drop editor</span>
                           </div>
                         </div>
                       </div>
@@ -625,6 +662,51 @@ export function QuickStartWebsite() {
                           <>
                             <Plus className="h-5 w-5" />
                             <span>Website Aanmaken</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : selectedSourceType === 'external_builder' ? (
+                <div className="space-y-6">
+                  <ExternalBuilderTemplateSelector
+                    onSelect={(category, templates) => {
+                      setSelectedEBCategory(category);
+                      setSelectedEBTemplates(templates);
+                    }}
+                    selectedCategory={selectedEBCategory}
+                  />
+
+                  {selectedEBCategory && selectedEBTemplates.length > 0 && (
+                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+                      <button
+                        onClick={() => {
+                          setSelectedSourceType(null);
+                          setSelectedEBCategory(null);
+                          setSelectedEBTemplates([]);
+                        }}
+                        className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        Terug
+                      </button>
+                      <button
+                        onClick={createExternalBuilderWebsite}
+                        disabled={creatingWebsite}
+                        className="px-6 py-3 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        style={{ backgroundColor: '#ff7700' }}
+                        onMouseOver={(e) => !creatingWebsite && (e.currentTarget.style.backgroundColor = '#e66900')}
+                        onMouseOut={(e) => !creatingWebsite && (e.currentTarget.style.backgroundColor = '#ff7700')}
+                      >
+                        {creatingWebsite ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            <span>Website aanmaken...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Rocket className="h-5 w-5" />
+                            <span>Maak Website & Open Editor</span>
                           </>
                         )}
                       </button>
