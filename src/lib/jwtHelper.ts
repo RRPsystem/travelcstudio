@@ -184,6 +184,7 @@ export async function openBuilder(
     footerId?: string;
     returnUrl?: string;
     scopes?: string[];
+    mode?: string;
   } = {}
 ): Promise<string> {
   const scopes = options.scopes || [
@@ -218,6 +219,7 @@ export async function openBuilder(
   if (options.headerId) deeplinkOptions.headerId = options.headerId;
   if (options.footerId) deeplinkOptions.footerId = options.footerId;
   if (options.returnUrl) deeplinkOptions.returnUrl = options.returnUrl;
+  if (options.mode) deeplinkOptions.mode = options.mode;
 
   return generateBuilderDeeplink(deeplinkOptions);
 }

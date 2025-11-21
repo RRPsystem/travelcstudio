@@ -152,7 +152,7 @@ export function QuickStart() {
                 onClick={async () => {
                   if (!user?.brand_id || !user?.id) return;
                   const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/quick-start`;
-                  const deeplink = await openBuilder(user.brand_id, user.id, { returnUrl });
+                  const deeplink = await openBuilder(user.brand_id, user.id, { returnUrl, mode: 'page' });
                   window.open(deeplink, '_blank');
                 }}
                 className="px-6 py-3 text-white rounded-lg transition-colors font-medium flex items-center gap-2 cursor-pointer"
@@ -347,7 +347,11 @@ export function QuickStart() {
                 onClick={async () => {
                   if (!user?.brand_id || !user?.id) return;
                   const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/quick-start`;
-                  const deeplink = await openBuilder(user.brand_id, user.id, { templateId: template.id, returnUrl });
+                  const deeplink = await openBuilder(user.brand_id, user.id, {
+                    templateId: template.id,
+                    returnUrl,
+                    mode: 'page'
+                  });
                   window.open(deeplink, '_blank');
                 }}
               >
