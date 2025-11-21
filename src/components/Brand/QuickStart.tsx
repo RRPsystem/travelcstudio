@@ -24,6 +24,14 @@ interface WebsiteTemplate {
   sort_order: number;
 }
 
+interface TemplateCategory {
+  category: string;
+  template_type: 'wordpress' | 'external_builder';
+  preview_url: string | null;
+  page_count: number;
+  pages: WebsiteTemplate[];
+}
+
 const categories = [
   { value: 'all', label: 'Alle Templates' },
   { value: 'home', label: 'Home Pagina\'s' },
@@ -43,6 +51,7 @@ export function QuickStart() {
   const { user } = useAuth();
 
   const [websiteTemplates, setWebsiteTemplates] = useState<WebsiteTemplate[]>([]);
+  const [websiteCategories, setWebsiteCategories] = useState<TemplateCategory[]>([]);
 
   useEffect(() => {
     loadTemplates();
@@ -78,9 +87,9 @@ export function QuickStart() {
     try {
       const { data, error } = await supabase
         .from('website_page_templates')
-        .select('id, template_name, description, template_type, category, preview_image_url, order_index')
+        .select('id, template_name, description, template_type, category, preview_image_url, category_preview_url, order_index')
         .eq('is_active', true)
-        .order('order_index', { ascending: true });
+        .order('category, order_index', { ascending: true });
 
       if (error) throw error;
 
@@ -91,10 +100,29 @@ export function QuickStart() {
         template_type: item.template_type as 'wordpress' | 'external_builder',
         category: item.category,
         preview_image_url: item.preview_image_url,
+        category_preview_url: item.category_preview_url,
         sort_order: item.order_index
       })) || [];
 
       setWebsiteTemplates(mappedData);
+
+      const grouped = mappedData.reduce((acc, template) => {
+        const key = `${template.template_type}-${template.category}`;
+        if (!acc[key]) {
+          acc[key] = {
+            category: template.category || 'Unnamed',
+            template_type: template.template_type,
+            preview_url: (template as any).category_preview_url || template.preview_image_url,
+            page_count: 0,
+            pages: []
+          };
+        }
+        acc[key].pages.push(template);
+        acc[key].page_count = acc[key].pages.length;
+        return acc;
+      }, {} as Record<string, TemplateCategory>);
+
+      setWebsiteCategories(Object.values(grouped));
     } catch (error) {
       console.error('Error loading website templates:', error);
     }
@@ -187,7 +215,7 @@ export function QuickStart() {
           Kies een complete website template collectie met meerdere pagina's
         </p>
 
-        {websiteTemplates.length === 0 ? (
+        {websiteCategories.length === 0 ? (
           <div className="border-2 border-dashed border-gray-300 rounded-xl p-12 bg-gray-50">
             <div className="text-center">
               <Globe size={48} className="mx-auto text-gray-400 mb-4" />
@@ -199,27 +227,34 @@ export function QuickStart() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {websiteTemplates.map(template => (
+            {websiteCategories.map((category, idx) => (
               <div
-                key={template.id}
-                className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow bg-white"
+                key={idx}
+                className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow bg-white cursor-pointer"
+                onClick={() => {
+                  if (category.template_type === 'wordpress') {
+                    alert('WordPress template functionaliteit komt binnenkort');
+                  } else {
+                    alert('External Builder template functionaliteit komt binnenkort');
+                  }
+                }}
               >
-                {template.preview_image_url ? (
-                  <div className="aspect-video bg-gray-100 overflow-hidden">
+                {category.preview_url ? (
+                  <div className="h-80 bg-gray-100 overflow-hidden">
                     <img
-                      src={template.preview_image_url}
-                      alt={template.title}
-                      className="w-full h-full object-cover"
+                      src={category.preview_url}
+                      alt={category.category}
+                      className="w-full h-full object-cover object-top"
                     />
                   </div>
                 ) : (
-                  <div className="aspect-video bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                    <Globe className="text-white" size={48} />
+                  <div className="h-80 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                    <Globe className="text-white" size={64} />
                   </div>
                 )}
-                <div className="p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    {template.template_type === 'wordpress' ? (
+                <div className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    {category.template_type === 'wordpress' ? (
                       <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
                         WordPress
                       </span>
@@ -228,25 +263,16 @@ export function QuickStart() {
                         Builder
                       </span>
                     )}
-                    {template.category && (
-                      <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                        {template.category}
-                      </span>
-                    )}
+                    <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded">
+                      {category.page_count} {category.page_count === 1 ? 'pagina' : "pagina's"}
+                    </span>
                   </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">{template.title}</h3>
-                  {template.description && (
-                    <p className="text-sm text-gray-600 mb-4">{template.description}</p>
-                  )}
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">{category.category}</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Complete website met {category.page_count} professioneel ontworpen {category.page_count === 1 ? 'pagina' : "pagina's"}
+                  </p>
                   <button
-                    onClick={() => {
-                      if (template.template_type === 'wordpress') {
-                        alert('WordPress template functionaliteit komt binnenkort');
-                      } else {
-                        alert('External Builder template functionaliteit komt binnenkort');
-                      }
-                    }}
-                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                   >
                     Gebruik Template
                   </button>
