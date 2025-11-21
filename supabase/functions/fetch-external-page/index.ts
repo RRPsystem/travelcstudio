@@ -42,9 +42,9 @@ Deno.serve(async (req: Request) => {
     let apiUrl: string;
 
     if (action === "list") {
-      apiUrl = `${builder.api_endpoint}/${categorySlug}/list`;
+      apiUrl = `${builder.api_endpoint}/${categorySlug}/pages/list`;
     } else if (pageSlug) {
-      apiUrl = `${builder.api_endpoint}/${categorySlug}/${pageSlug}`;
+      apiUrl = `${builder.api_endpoint}/${categorySlug}/pages/${pageSlug}`;
     } else {
       throw new Error("Either action=list or page parameter is required");
     }
