@@ -149,7 +149,12 @@ export function QuickStart() {
                 Bouw je pagina helemaal zelf met drag-and-drop blokken
               </p>
               <button
-                onClick={() => openBuilder(user?.brand_id || '', 'page')}
+                onClick={async () => {
+                  if (!user?.brand_id || !user?.id) return;
+                  const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/quick-start`;
+                  const deeplink = await openBuilder(user.brand_id, user.id, { returnUrl });
+                  window.open(deeplink, '_blank');
+                }}
                 className="px-6 py-3 text-white rounded-lg transition-colors font-medium flex items-center gap-2 cursor-pointer"
                 style={{ backgroundColor: '#ff7700' }}
                 onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#e66900'}
@@ -339,7 +344,12 @@ export function QuickStart() {
               <div
                 key={template.id}
                 className="group border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer bg-white"
-                onClick={() => openBuilder(user?.brand_id || '', 'page', template.id)}
+                onClick={async () => {
+                  if (!user?.brand_id || !user?.id) return;
+                  const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/quick-start`;
+                  const deeplink = await openBuilder(user.brand_id, user.id, { templateId: template.id, returnUrl });
+                  window.open(deeplink, '_blank');
+                }}
               >
                 <div className="aspect-video bg-gray-100 relative overflow-hidden">
                   {template.preview_image_url ? (
