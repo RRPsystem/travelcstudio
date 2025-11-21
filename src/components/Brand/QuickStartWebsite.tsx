@@ -288,7 +288,8 @@ export function QuickStartWebsite() {
                 console.log(`Fetched HTML for ${template.template_name}:`, result.template?.content?.substring(0, 100));
                 return { ...template, cached_html: result.template?.content || '' };
               } else {
-                console.error(`Failed to fetch HTML for ${template.template_name}:`, response.status);
+                const errorBody = await response.text();
+                console.error(`Failed to fetch HTML for ${template.template_name}:`, response.status, errorBody);
               }
             } catch (error) {
               console.error(`Error fetching HTML for ${template.template_name}:`, error);
