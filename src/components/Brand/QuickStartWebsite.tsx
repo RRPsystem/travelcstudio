@@ -209,6 +209,11 @@ export function QuickStartWebsite() {
         });
 
         const editorUrl = `${builder.editor_url}?${params.toString()}`;
+        console.log('🔨 Opening editor:', {
+          builder_editor_url: builder.editor_url,
+          full_url: editorUrl,
+          website_id: website.id
+        });
         window.open(editorUrl, '_blank');
       } catch (error: any) {
         console.error('Error opening builder:', error);
