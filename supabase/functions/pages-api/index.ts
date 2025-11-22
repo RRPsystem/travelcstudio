@@ -453,7 +453,7 @@ Deno.serve(async (req: Request) => {
       const { brand_id } = claims;
       const isTemplateMode = url.searchParams.get('is_template') === 'true';
 
-      const pageIdFromQuery = url.searchParams.get('page_id');
+      const pageIdFromQuery = url.searchParams.get('page_id') || url.searchParams.get('id');
       const pageIdFromPath = pathParts[pathParts.length - 1];
       const pageId = pageIdFromQuery || pageIdFromPath;
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pageId);
