@@ -140,7 +140,7 @@ export function generateBuilderDeeplink({
   newsSlug?: string;
   destinationSlug?: string;
 }): string {
-  const builderBaseUrl = baseUrl || 'https://www.ai-websitestudio.nl';
+  const builderBaseUrl = baseUrl || 'https://www.ai-websitestudio.nl/simple-template-editor.html';
   const apiBaseUrl = jwtResponse.api_url || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
   const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
@@ -166,7 +166,7 @@ export function generateBuilderDeeplink({
   if (newsSlug) params.append('slug', newsSlug);
   if (destinationSlug) params.append('slug', destinationSlug);
 
-  return `${builderBaseUrl}/?${params.toString()}`;
+  return `${builderBaseUrl}?${params.toString()}`;
 }
 
 /**
