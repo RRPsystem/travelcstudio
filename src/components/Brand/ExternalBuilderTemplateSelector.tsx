@@ -72,7 +72,7 @@ export function ExternalBuilderTemplateSelector({ onSelect, selectedCategory }: 
           .from('website_page_templates')
           .select('*')
           .eq('template_type', 'external_builder')
-          .eq('category', capitalizedCategoryName)
+          .ilike('category', categorySlug)
           .in('template_name', capitalizedPageNames)
           .eq('is_active', true);
 
