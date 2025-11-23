@@ -15,6 +15,7 @@ import { FooterBuilder } from './FooterBuilder';
 import { SocialMediaConnector } from './SocialMediaConnector';
 import { SocialMediaManager } from './SocialMediaManager';
 import { TravelBroSetup } from '../TravelBro/TravelBroSetup';
+import { QuickStartWebsite } from './QuickStartWebsite';
 import { Users, Settings, Plus, Bot, Sparkles, Import as FileImport, ChevronDown, ChevronRight, LayoutGrid as Layout, FileText, Globe, Newspaper, MapPin, Plane, Share2, Map, ArrowRight, Menu, ClipboardCheck } from 'lucide-react';
 import RoadmapBoard from './RoadmapBoard';
 import TestDashboard from '../Testing/TestDashboard';
@@ -176,6 +177,7 @@ export function BrandDashboard() {
   ];
 
   const websiteManagementItems = [
+    { id: 'quickstart', label: 'Nieuwe Website', icon: Sparkles },
     { id: 'new-page', label: 'Nieuwe Pagina', icon: Plus },
     { id: 'pages', label: 'Pagina Beheer', icon: FileText },
     { id: 'menu', label: 'Menu Beheer', icon: Menu },
@@ -566,6 +568,7 @@ export function BrandDashboard() {
             </div>
           )}
 
+          {activeSection === 'quickstart' && <QuickStartWebsite brandId={brandData?.id} />}
           {activeSection === 'new-page' && <NewPage />}
           {activeSection === 'pages' && <PageManagement />}
           {activeSection === 'menu' && <MenuBuilder />}
