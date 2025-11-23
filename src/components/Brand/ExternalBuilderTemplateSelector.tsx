@@ -68,11 +68,11 @@ export function ExternalBuilderTemplateSelector({ onSelect, selectedCategory }: 
           return slug.charAt(0).toUpperCase() + slug.slice(1);
         });
 
-        const { data: pageTemplates, error: ptError} = await db.supabase
+        const { data: pageTemplates, error: ptError } = await db.supabase
           .from('website_page_templates')
           .select('*')
           .eq('template_type', 'external_builder')
-          .ilike('category', capitalizedCategoryName)
+          .eq('category', capitalizedCategoryName)
           .in('template_name', capitalizedPageNames)
           .eq('is_active', true);
 

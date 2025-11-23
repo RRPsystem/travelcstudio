@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/supabase';
+import { openVideoGenerator, openTravelImport } from '../../lib/jwtHelper';
 import { AIContentGenerator } from './AIContentGenerator';
 import { BrandSettings } from './BrandSettings';
 import { HelpBot } from '../shared/HelpBot';
@@ -8,15 +9,12 @@ import { NewsApproval } from './NewsApproval';
 import { DestinationApproval } from './DestinationApproval';
 import { TripApproval } from './TripApproval';
 import { PageManagement } from './PageManagement';
-import { NewPage } from './NewPage';
+import { QuickStart } from './QuickStart';
 import { AgentManagement } from './AgentManagement';
-import { MenuBuilder } from './MenuBuilder';
-import { FooterBuilder } from './FooterBuilder';
 import { SocialMediaConnector } from './SocialMediaConnector';
 import { SocialMediaManager } from './SocialMediaManager';
 import { TravelBroSetup } from '../TravelBro/TravelBroSetup';
-import { QuickStartWebsite } from './QuickStartWebsite';
-import { Users, Settings, Plus, Bot, Sparkles, Import as FileImport, ChevronDown, ChevronRight, LayoutGrid as Layout, FileText, Globe, Newspaper, MapPin, Plane, Share2, Map, ArrowRight, Menu, ClipboardCheck } from 'lucide-react';
+import { Users, Settings, Plus, Bot, Sparkles, Import as FileImport, ChevronDown, ChevronRight, LayoutGrid as Layout, FileText, Globe, Newspaper, MapPin, Plane, Share2, Map, ArrowRight, Menu, ClipboardCheck, Video, BookOpen, Rocket } from 'lucide-react';
 import RoadmapBoard from './RoadmapBoard';
 import TestDashboard from '../Testing/TestDashboard';
 
@@ -27,8 +25,7 @@ export function BrandDashboard() {
     const hash = window.location.hash;
     if (hash.includes('/brand/content/news')) return 'nieuwsbeheer';
     if (hash.includes('/brand/website/pages')) return 'pages';
-    if (hash.includes('/brand/menu')) return 'menu';
-    if (hash.includes('/brand/footer')) return 'footer';
+    if (hash.includes('brand-settings')) return 'settings';
     return 'dashboard';
   };
 
@@ -36,7 +33,7 @@ export function BrandDashboard() {
     const hash = window.location.hash;
     return {
       showContentSubmenu: hash.includes('/brand/content/news'),
-      showWebsiteSubmenu: hash.includes('/brand/website/') || hash.includes('/brand/menu') || hash.includes('/brand/footer')
+      showWebsiteSubmenu: hash.includes('/brand/website/')
     };
   };
 
@@ -62,6 +59,9 @@ export function BrandDashboard() {
         console.log('Hash routing: Navigating to news section');
         setActiveSection('nieuwsbeheer');
         setShowContentSubmenu(true);
+      } else if (hash.includes('brand-settings')) {
+        console.log('Hash routing: Navigating to settings section');
+        setActiveSection('settings');
       }
     };
 
@@ -177,17 +177,15 @@ export function BrandDashboard() {
   ];
 
   const websiteManagementItems = [
-    { id: 'quickstart', label: 'Nieuwe Website', icon: Sparkles },
-    { id: 'new-page', label: 'Nieuwe Pagina', icon: Plus },
+    { id: 'new-page', label: 'Quick Start', icon: Rocket },
     { id: 'pages', label: 'Pagina Beheer', icon: FileText },
-    { id: 'menu', label: 'Menu Beheer', icon: Menu },
-    { id: 'footer', label: 'Footer Beheer', icon: Layout },
   ];
 
   const aiToolsItems = [
     { id: 'ai-content', label: 'AI Content Generator', icon: Sparkles },
     { id: 'ai-travelbro', label: 'AI TravelBRO', icon: Bot },
     { id: 'ai-import', label: 'AI TravelImport', icon: FileImport },
+    { id: 'ai-video', label: 'AI Travel Video', icon: Video },
   ];
 
   const contentItems = [
@@ -200,11 +198,43 @@ export function BrandDashboard() {
     window.open('https://travelstudio.travelstudio-accept.bookunited.com/login', '_blank');
   };
 
+  const handleVideoGeneratorClick = async () => {
+    if (!user || !user.brand_id) {
+      console.error('No user or brand_id available');
+      return;
+    }
+
+    try {
+      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand`;
+      const deeplink = await openVideoGenerator(user.brand_id, user.id, { returnUrl });
+      window.open(deeplink, '_blank');
+    } catch (error) {
+      console.error('Error opening video generator:', error);
+      alert('Er is een fout opgetreden bij het openen van de video generator. Probeer het opnieuw.');
+    }
+  };
+
+  const handleTravelImportClick = async () => {
+    if (!user || !user.brand_id) {
+      console.error('No user or brand_id available');
+      return;
+    }
+
+    try {
+      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand`;
+      const deeplink = await openTravelImport(user.brand_id, user.id, { returnUrl });
+      window.open(deeplink, '_blank');
+    } catch (error) {
+      console.error('Error opening travel import:', error);
+      alert('Er is een fout opgetreden bij het openen van de travel import. Probeer het opnieuw.');
+    }
+  };
+
   const quickActions = [
     {
-      title: 'Nieuwe Pagina',
-      description: 'Maak een nieuwe website pagina',
-      icon: Plus,
+      title: 'Quick Start',
+      description: 'Start snel met een nieuwe pagina of website',
+      icon: Rocket,
       color: 'from-blue-500 to-blue-600',
       action: () => setActiveSection('new-page')
     },
@@ -278,7 +308,7 @@ export function BrandDashboard() {
               <button
                 onClick={() => setShowWebsiteSubmenu(!showWebsiteSubmenu)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                  ['pages'].includes(activeSection)
+                  ['quickstart', 'pages', 'new-page'].includes(activeSection)
                     ? 'bg-gray-700 text-white'
                     : 'text-gray-300 hover:text-white hover:bg-gray-700'
                 }`}
@@ -358,7 +388,7 @@ export function BrandDashboard() {
               <button
                 onClick={() => setShowAISubmenu(!showAISubmenu)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                  ['ai-content', 'ai-travelbro', 'ai-import'].includes(activeSection)
+                  ['ai-content', 'ai-travelbro', 'ai-import', 'ai-video'].includes(activeSection)
                     ? 'bg-gray-700 text-white'
                     : 'text-gray-300 hover:text-white hover:bg-gray-700'
                 }`}
@@ -377,7 +407,15 @@ export function BrandDashboard() {
                     return (
                       <li key={item.id}>
                         <button
-                          onClick={() => setActiveSection(item.id)}
+                          onClick={() => {
+                            if (item.id === 'ai-video') {
+                              handleVideoGeneratorClick();
+                            } else if (item.id === 'ai-import') {
+                              handleTravelImportClick();
+                            } else {
+                              setActiveSection(item.id);
+                            }
+                          }}
                           className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors text-sm ${
                             activeSection === item.id
                               ? 'bg-gray-700 text-white'
@@ -437,6 +475,17 @@ export function BrandDashboard() {
             )}
           </button>
           <button
+            onClick={() => setActiveSection('travel-journal')}
+            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+              activeSection === 'travel-journal'
+                ? 'bg-gray-700 text-white'
+                : 'text-gray-300 hover:text-white hover:bg-gray-700'
+            }`}
+          >
+            <BookOpen size={20} />
+            <span>Travel Journaal</span>
+          </button>
+          <button
             onClick={signOut}
             className="w-full flex items-center space-x-3 px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
           >
@@ -446,7 +495,7 @@ export function BrandDashboard() {
       </div>
 
       <div className="flex-1 flex flex-col">
-        {!['nieuwsbeheer', 'destinations', 'trips', 'settings'].includes(activeSection) && (
+        {!['nieuwsbeheer', 'destinations', 'trips', 'settings', 'testing', 'roadmap', 'quickstart'].includes(activeSection) && (
           <header className="bg-white border-b border-gray-200 px-6 py-4">
             <div className="flex items-center justify-between">
               <div>
@@ -454,36 +503,26 @@ export function BrandDashboard() {
                   {activeSection === 'dashboard' && 'Brand Dashboard'}
                   {activeSection === 'websites' && 'My Websites'}
                   {activeSection === 'agents' && 'Agents'}
+                  {activeSection === 'new-page' && 'Quick Start'}
                   {activeSection === 'pages' && 'Pagina Beheer'}
-                  {activeSection === 'menu' && 'Menu Beheer'}
-                  {activeSection === 'footer' && 'Footer Beheer'}
                   {activeSection === 'content' && 'Nieuwsberichten'}
-                  {activeSection === 'nieuwsbeheer' && 'Nieuwsbeheer'}
-                  {activeSection === 'destinations' && 'Bestemmingen'}
-                  {activeSection === 'trips' && 'Reizen'}
                   {activeSection === 'ai-content' && 'AI Content Generator'}
                   {activeSection === 'ai-travelbro' && 'AI TravelBRO'}
                   {activeSection === 'ai-import' && 'AI TravelImport'}
+                  {activeSection === 'ai-video' && 'AI Travel Video'}
                   {activeSection === 'social-media' && 'Social Media Manager'}
-                  {activeSection === 'testing' && 'Test Dashboard'}
-                  {activeSection === 'roadmap' && 'Roadmap'}
                 </h1>
                 <p className="text-gray-600 mt-1">
                   {activeSection === 'dashboard' && 'Welkom terug bij je brand dashboard'}
                   {activeSection === 'websites' && 'Manage your travel websites'}
+                  {activeSection === 'quickstart' && 'Maak snel een complete website met templates'}
+                  {activeSection === 'new-page' && 'Voeg een nieuwe pagina toe aan je website'}
                   {activeSection === 'pages' && 'Beheer alle pagina\'s van je website'}
-                  {activeSection === 'menu' && 'Beheer menu\'s voor je website'}
-                  {activeSection === 'footer' && 'Beheer footers voor je website'}
-                  {activeSection === 'nieuwsbeheer' && 'Beheer nieuwsberichten voor je website'}
-                  {activeSection === 'destinations' && 'Beheer bestemmingen voor je website'}
-                  {activeSection === 'trips' && 'Beheer reizen voor je website'}
                   {activeSection === 'ai-content' && 'Generate travel content with AI'}
                   {activeSection === 'ai-travelbro' && 'Your AI travel assistant'}
                   {activeSection === 'ai-import' && 'Import travel data with AI'}
+                  {activeSection === 'ai-video' && 'Create engaging travel videos with AI'}
                   {activeSection === 'social-media' && 'Maak en beheer social media posts'}
-                  {activeSection === 'settings' && 'Beheer je brand en domein instellingen'}
-                  {activeSection === 'testing' && 'Test features and provide feedback'}
-                  {activeSection === 'roadmap' && 'Vote on features and track development progress'}
                 </p>
               </div>
 
@@ -498,6 +537,16 @@ export function BrandDashboard() {
         )}
 
         <main className="flex-1 overflow-auto">
+          {activeSection === 'travel-journal' && (
+            <div className="p-6">
+              <div className="max-w-6xl mx-auto">
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Travel Journaal</h2>
+                  <p className="text-gray-600">Coming soon: Houd een dagboek bij van je reizen en deel je ervaringen.</p>
+                </div>
+              </div>
+            </div>
+          )}
           {activeSection === 'dashboard' && (
             <div className="p-6">
               {loading ? (
@@ -568,11 +617,8 @@ export function BrandDashboard() {
             </div>
           )}
 
-          {activeSection === 'quickstart' && <QuickStartWebsite brandId={brandData?.id} />}
-          {activeSection === 'new-page' && <NewPage />}
+          {activeSection === 'new-page' && <QuickStart />}
           {activeSection === 'pages' && <PageManagement />}
-          {activeSection === 'menu' && <MenuBuilder />}
-          {activeSection === 'footer' && <FooterBuilder />}
           {activeSection === 'settings' && <BrandSettings />}
           {activeSection === 'social-connector' && <SocialMediaConnector />}
           {activeSection === 'nieuwsbeheer' && (
