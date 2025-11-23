@@ -85,14 +85,6 @@ export function QuickStart() {
 
   const loadWebsiteTemplates = async () => {
     try {
-      const { data: templatePages, error: tpError } = await supabase
-        .from('template_pages')
-        .select('*')
-        .order('template_category, menu_order');
-
-      if (tpError) console.error('Error loading template_pages:', tpError);
-      console.log('Loaded template_pages:', templatePages);
-
       const { data: wpTemplates, error: wpError } = await supabase
         .from('website_page_templates')
         .select('id, template_name, description, template_type, category, preview_image_url, category_preview_url, order_index')
@@ -102,33 +94,6 @@ export function QuickStart() {
       if (wpError) console.error('Error loading website_page_templates:', wpError);
 
       const allTemplates: any[] = [];
-
-      if (templatePages && templatePages.length > 0) {
-        const tpGrouped = templatePages.reduce((acc, page) => {
-          const category = page.template_category;
-          if (!acc[category]) {
-            acc[category] = {
-              category: category,
-              template_type: 'external_builder' as const,
-              preview_url: page.preview_image_url,
-              page_count: 0,
-              pages: []
-            };
-          }
-          acc[category].pages.push({
-            id: page.id,
-            title: page.title,
-            description: `${page.title} pagina`,
-            template_type: 'external_builder' as const,
-            category: category,
-            preview_image_url: page.preview_image_url,
-            sort_order: page.menu_order
-          });
-          acc[category].page_count = acc[category].pages.length;
-          return acc;
-        }, {} as Record<string, TemplateCategory>);
-        allTemplates.push(...Object.values(tpGrouped));
-      }
 
       if (wpTemplates && wpTemplates.length > 0) {
         const wpGrouped = wpTemplates.reduce((acc, template) => {
@@ -157,7 +122,6 @@ export function QuickStart() {
         allTemplates.push(...Object.values(wpGrouped));
       }
 
-      console.log('Final allTemplates:', allTemplates);
       setWebsiteCategories(allTemplates);
     } catch (error) {
       console.error('Error loading website templates:', error);
