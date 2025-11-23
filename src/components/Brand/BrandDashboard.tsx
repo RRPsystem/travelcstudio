@@ -9,7 +9,7 @@ import { NewsApproval } from './NewsApproval';
 import { DestinationApproval } from './DestinationApproval';
 import { TripApproval } from './TripApproval';
 import { PageManagement } from './PageManagement';
-import { QuickStart } from './QuickStart';
+import { QuickStartWebsite } from './QuickStartWebsite';
 import { AgentManagement } from './AgentManagement';
 import { SocialMediaConnector } from './SocialMediaConnector';
 import { SocialMediaManager } from './SocialMediaManager';
@@ -617,7 +617,7 @@ export function BrandDashboard() {
             </div>
           )}
 
-          {activeSection === 'new-page' && <QuickStart />}
+          {activeSection === 'new-page' && <QuickStartWebsite />}
           {activeSection === 'pages' && <PageManagement />}
           {activeSection === 'settings' && <BrandSettings />}
           {activeSection === 'social-connector' && <SocialMediaConnector />}
