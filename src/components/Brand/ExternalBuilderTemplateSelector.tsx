@@ -95,8 +95,10 @@ export function ExternalBuilderTemplateSelector({ onSelect, selectedCategory }: 
         }
       }
 
-      console.log('Loaded quickstart categories:', Object.values(categoriesMap));
-      setCategories(Object.values(categoriesMap));
+      const finalCategories = Object.values(categoriesMap);
+      console.log('Loaded quickstart categories:', finalCategories);
+      console.log('Preview URLs:', finalCategories.map(c => ({ category: c.category, preview_url: c.preview_url })));
+      setCategories(finalCategories);
     } catch (error) {
       console.error('Error loading templates:', error);
     } finally {
@@ -161,11 +163,20 @@ export function ExternalBuilderTemplateSelector({ onSelect, selectedCategory }: 
                   alt={category.category}
                   className="w-full h-48 object-cover"
                   onError={(e) => {
+                    console.error('Failed to load image:', category.preview_url);
                     (e.target as HTMLImageElement).style.display = 'none';
-                    (e.target as HTMLImageElement).parentElement!.querySelector('.fallback-icon')!.classList.remove('hidden');
+                    const fallback = (e.target as HTMLImageElement).parentElement!.querySelector('.fallback-icon');
+                    if (fallback) fallback.classList.remove('hidden');
+                  }}
+                  onLoad={() => {
+                    console.log('Image loaded successfully:', category.preview_url);
                   }}
                 />
-              ) : null}
+              ) : (
+                <div className="flex items-center justify-center h-48 bg-gray-100">
+                  <Layout className="w-16 h-16 text-gray-400" />
+                </div>
+              )}
               <div className="fallback-icon hidden flex items-center justify-center h-48 bg-gray-100">
                 <Layout className="w-16 h-16 text-gray-400" />
               </div>
