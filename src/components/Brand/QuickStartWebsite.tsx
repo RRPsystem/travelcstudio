@@ -412,19 +412,25 @@ export function QuickStartWebsite() {
       }
 
       if (templatePages && templatePages.length > 0) {
-        const newPages = templatePages.map((tp: any, index: number) => ({
-          website_id: websiteData.id,
-          brand_id: user.brand_id,
-          created_by: user.id,
-          title: tp.template_name,
-          slug: tp.template_name.toLowerCase().replace(/\s+/g, '-'),
-          status: 'draft',
-          body_html: tp.cached_html || '',
-          content_json: {},
-          show_in_menu: true,
-          menu_order: tp.order_index || index,
-          menu_label: tp.template_name
-        }));
+        const baseTimestamp = Date.now();
+        const newPages = templatePages.map((tp: any, index: number) => {
+          const baseSlug = tp.template_name.toLowerCase().replace(/\s+/g, '-');
+          const uniqueSlug = index === 0 ? baseSlug : `${baseSlug}-${baseTimestamp + index}`;
+
+          return {
+            website_id: websiteData.id,
+            brand_id: user.brand_id,
+            created_by: user.id,
+            title: tp.template_name,
+            slug: uniqueSlug,
+            status: 'draft',
+            body_html: tp.cached_html || '',
+            content_json: {},
+            show_in_menu: true,
+            menu_order: tp.order_index || index,
+            menu_label: tp.template_name
+          };
+        });
 
         const { error: pagesError } = await db.supabase
           .from('pages')
@@ -454,9 +460,10 @@ export function QuickStartWebsite() {
       alert(`✅ Website "${selectedEBCategory}" aangemaakt met ${templatePages?.length || 0} pagina's!\n\n📍 Preview URL: ${previewUrl}\n\nJe gaat nu naar de editor om de website aan te passen.`);
 
       await editWebsite(websiteData);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating external builder website:', error);
-      alert('❌ Fout bij aanmaken website: ' + (error instanceof Error ? error.message : 'Onbekende fout'));
+      const errorMsg = error?.message || JSON.stringify(error);
+      alert('❌ Fout bij aanmaken website: ' + errorMsg);
     } finally {
       setCreatingWebsite(false);
     }
@@ -509,13 +516,19 @@ export function QuickStartWebsite() {
         })
       );
 
-      const pages = templatesWithHtml.map((template, index) => ({
-        name: template.template_name,
-        path: index === 0 ? '/' : `/${template.template_name.toLowerCase().replace(/\s+/g, '-')}`,
-        html: template.cached_html || '',
-        modified: false,
-        order: index
-      }));
+      const baseTimestamp = Date.now();
+      const pages = templatesWithHtml.map((template, index) => {
+        const basePath = template.template_name.toLowerCase().replace(/\s+/g, '-');
+        const uniquePath = index === 0 ? '/' : `/${basePath}-${baseTimestamp + index}`;
+
+        return {
+          name: template.template_name,
+          path: uniquePath,
+          html: template.cached_html || '',
+          modified: false,
+          order: index
+        };
+      });
 
       const { error: insertError } = await db.supabase
         .from('websites')
@@ -539,9 +552,10 @@ export function QuickStartWebsite() {
       await loadWebsites();
 
       alert(`✅ Website "${selectedWPCategory}" aangemaakt met ${pages.length} pagina's! Je kunt deze nu aanpassen en publiceren.`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating WordPress website:', error);
-      alert('❌ Fout bij aanmaken website: ' + (error instanceof Error ? error.message : 'Onbekende fout'));
+      const errorMsg = error?.message || JSON.stringify(error);
+      alert('❌ Fout bij aanmaken website: ' + errorMsg);
     } finally {
       setCreatingWebsite(false);
     }
