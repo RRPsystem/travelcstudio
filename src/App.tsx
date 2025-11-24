@@ -14,22 +14,27 @@ function AppContent() {
   console.log('🚀 AppContent component rendering');
 
   const path = window.location.pathname;
+  console.log('[App] Current path:', path);
 
   // Match TravelBRO chat links: /travelbro/[token], /travel/[token], or just /[token]
   const travelMatch = path.match(/^\/(?:travel|travelbro)\/([a-f0-9]+)$/) ||
                       path.match(/^\/([a-f0-9]{8,})$/);
 
   if (travelMatch) {
+    console.log('[App] Matched TravelBRO route');
     return <ClientInterface shareToken={travelMatch[1]} />;
   }
 
   const agentProfileMatch = path.match(/^\/agents\/([a-z0-9-]+)$/);
   if (agentProfileMatch) {
+    console.log('[App] Matched agent profile route');
     return <AgentProfile slug={agentProfileMatch[1]} />;
   }
 
   const pagePreviewMatch = path.match(/^\/preview\/([a-f0-9-]+)$/);
+  console.log('[App] Page preview check:', { path, match: pagePreviewMatch });
   if (pagePreviewMatch) {
+    console.log('[App] ✅ Rendering PreviewPage with pageId:', pagePreviewMatch[1]);
     return <PreviewPage pageId={pagePreviewMatch[1]} />;
   }
 
