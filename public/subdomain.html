@@ -68,14 +68,16 @@
                 console.log('Pages found:', pages.length);
 
                 if (!pages || pages.length === 0) {
-                    document.write('<h1 style="text-align:center;margin-top:50px;">Page not found for slug: ' + slug + '</h1>');
+                    document.body.innerHTML = '<h1 style="text-align:center;margin-top:50px;">Page not found for slug: ' + slug + '</h1>';
                     return;
                 }
 
+                document.open();
                 document.write(pages[0].body_html);
+                document.close();
             } catch (error) {
                 console.error('Error loading website:', error);
-                document.write('<h1 style="text-align:center;margin-top:50px;">Error loading website: ' + error.message + '</h1>');
+                document.body.innerHTML = '<h1 style="text-align:center;margin-top:50px;">Error loading website: ' + error.message + '</h1>';
             }
         })();
     </script>
