@@ -19,6 +19,20 @@ function enhanceHtmlWithBrandMeta(html: string, brandId: string): string {
     }
   }
 
+  const travelSearchWidgetPattern = /<div([^>]*)id=["']travel-search-widget["']([^>]*)>/gi;
+  enhancedHtml = enhancedHtml.replace(travelSearchWidgetPattern, (match, beforeId, afterId) => {
+    if (match.includes('data-brand-id=')) {
+      return match;
+    }
+
+    const hasDataMode = match.includes('data-mode=');
+    if (hasDataMode) {
+      return match.replace(/data-mode=(["'][^"']*["'])/, `data-mode=$1 data-brand-id="${brandId}"`);
+    } else {
+      return match.replace('>', ` data-brand-id="${brandId}">`);
+    }
+  });
+
   if (!html.includes('dynamic-menu.js')) {
     const menuScript = `\n    <!-- Dynamic Menu Widget -->
     <script src="https://www.ai-websitestudio.nl/widgets/dynamic-menu.js"></script>\n`;
