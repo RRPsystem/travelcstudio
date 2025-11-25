@@ -1,6 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req, res) {
   try {
     const host = req.headers.host || '';
     const pathname = (req.url || '/').replace('/api/proxy/subdomain', '/');
@@ -14,7 +12,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const invalidSubdomains = ['www', 'app', 'ai-travelstudio', 'localhost'];
     if (!host.includes('.ai-travelstudio.nl') || invalidSubdomains.includes(subdomain)) {
       console.log('[PROXY] Invalid subdomain, passing through to main app');
-      // Return empty response, let Vercel handle it with next rewrite
       return res.status(404).send('Not a valid subdomain website');
     }
 
@@ -53,7 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         <head><title>Error</title></head>
         <body style="font-family: system-ui; padding: 2rem; text-align: center;">
           <h1>Error loading website</h1>
-          <p>${error instanceof Error ? error.message : 'Unknown error'}</p>
+          <p>${error.message || 'Unknown error'}</p>
           <p style="color: #666; font-size: 0.9rem;">Host: ${req.headers.host}</p>
         </body>
       </html>
