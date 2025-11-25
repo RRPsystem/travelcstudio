@@ -5,15 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Loading...</title>
     <style>
-        body {
+        body, html {
             margin: 0;
             padding: 0;
-            font-family: system-ui, -apple-system, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: none;
+        }
+        .loader-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: system-ui, -apple-system, sans-serif;
         }
         .loader {
             text-align: center;
@@ -31,66 +49,57 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        .error {
+            text-align: center;
+            color: white;
+            padding: 2rem;
+        }
     </style>
 </head>
 <body>
-    <div class="loader">
-        <div class="spinner"></div>
-        <p>Website laden...</p>
+    <div class="loader-container" id="loader">
+        <div class="loader">
+            <div class="spinner"></div>
+            <p>Website laden...</p>
+        </div>
     </div>
+    <iframe id="content"></iframe>
     <script>
-        (async function() {
-            try {
-                const host = window.location.host;
-                const pathname = window.location.pathname;
-                const subdomain = host.split('.')[0];
+        (function() {
+            const host = window.location.host;
+            const pathname = window.location.pathname;
+            const search = window.location.search;
+            const subdomain = host.split('.')[0];
 
-                const params = new URLSearchParams(window.location.search);
-                params.set('subdomain', subdomain);
+            const params = new URLSearchParams(search);
+            params.set('subdomain', subdomain);
 
-                const targetUrl = `https://huaaogdxxdcakxryecnw.supabase.co/functions/v1/website-viewer${pathname}?${params.toString()}`;
+            const targetUrl = `https://huaaogdxxdcakxryecnw.supabase.co/functions/v1/website-viewer${pathname}?${params.toString()}`;
 
-                console.log('[LOADER] Fetching:', targetUrl);
+            console.log('[LOADER] Loading URL:', targetUrl);
 
-                const response = await fetch(targetUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'text/html'
-                    }
-                });
+            const iframe = document.getElementById('content');
+            const loader = document.getElementById('loader');
 
-                console.log('[LOADER] Response:', response.status, response.statusText);
+            iframe.onload = function() {
+                console.log('[LOADER] Content loaded');
+                loader.style.display = 'none';
+                iframe.style.display = 'block';
+            };
 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('[LOADER] Error response:', errorText);
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                const html = await response.text();
-                console.log('[LOADER] HTML length:', html.length);
-
-                // Replace entire document with fetched HTML
-                document.open();
-                document.write(html);
-                document.close();
-            } catch (error) {
-                console.error('[LOADER] Fetch error:', error);
-                document.body.innerHTML = `
-                    <div style="text-align: center; color: white; padding: 2rem;">
+            iframe.onerror = function() {
+                console.error('[LOADER] Failed to load content');
+                loader.innerHTML = `
+                    <div class="error">
                         <h1>Fout bij laden website</h1>
-                        <p><strong>Error:</strong> ${error.message}</p>
-                        <p style="font-size: 0.9rem; opacity: 0.8; margin-top: 1rem;">
-                            <strong>Host:</strong> ${window.location.host}<br>
-                            <strong>Subdomain:</strong> ${host.split('.')[0]}<br>
-                            <strong>URL:</strong> ${window.location.href}
-                        </p>
-                        <p style="font-size: 0.8rem; opacity: 0.7; margin-top: 1rem;">
-                            Kijk in de browser console (F12) voor meer details
-                        </p>
+                        <p><strong>Host:</strong> ${host}</p>
+                        <p><strong>Subdomain:</strong> ${subdomain}</p>
+                        <p><strong>URL:</strong> ${window.location.href}</p>
                     </div>
                 `;
-            }
+            };
+
+            iframe.src = targetUrl;
         })();
     </script>
 </body>
