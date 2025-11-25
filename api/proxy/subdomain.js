@@ -1,14 +1,23 @@
 const https = require('https');
 
 module.exports = async (req, res) => {
+  console.log('[PROXY] Starting request handler');
+
   try {
     const host = req.headers.host || '';
-    const pathname = (req.url || '/').replace('/api/proxy/subdomain', '/');
+    let pathname = req.url || '/';
 
-    console.log('[PROXY] Host:', host, 'Path:', pathname);
+    console.log('[PROXY] Raw request:', { host, pathname, headers: req.headers });
+
+    // Remove /api/proxy/subdomain prefix if present
+    if (pathname.startsWith('/api/proxy/subdomain')) {
+      pathname = pathname.replace('/api/proxy/subdomain', '') || '/';
+    }
 
     // Extract subdomain
     const subdomain = host.split('.')[0];
+
+    console.log('[PROXY] Parsed:', { host, subdomain, pathname });
 
     // Reject invalid subdomains (main app domains)
     const invalidSubdomains = ['www', 'app', 'ai-travelstudio', 'localhost'];
@@ -17,13 +26,11 @@ module.exports = async (req, res) => {
       return res.status(404).send('Not a valid subdomain website');
     }
 
-    // Add subdomain to query params
-    const url = new URL(`https://huaaogdxxdcakxryecnw.supabase.co/functions/v1/website-viewer${pathname}`);
-    url.searchParams.set('subdomain', subdomain);
+    // Build target URL manually to avoid URL constructor issues
+    let targetUrl = `https://huaaogdxxdcakxryecnw.supabase.co/functions/v1/website-viewer${pathname}`;
+    targetUrl += `?subdomain=${encodeURIComponent(subdomain)}`;
 
-    const targetUrl = url.toString();
-
-    console.log('[PROXY] Fetching:', targetUrl);
+    console.log('[PROXY] Target URL:', targetUrl);
 
     // Use native https module for compatibility
     const htmlResponse = await new Promise((resolve, reject) => {
