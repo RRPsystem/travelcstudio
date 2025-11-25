@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/subdomain.html",
-      "destination": "https://huaaogdxxdcakxryecnw.supabase.co/functions/v1/website-viewer/"
+      "destination": "/api/proxy/subdomain"
     },
     {
       "source": "/(.*)",
