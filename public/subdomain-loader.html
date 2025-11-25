@@ -1,18 +1,77 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Loading...</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .loader {
+            text-align: center;
+            color: white;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
+    <div class="loader">
+        <div class="spinner"></div>
+        <p>Website laden...</p>
+    </div>
     <script>
-        // Immediately redirect to proxy API
-        const pathname = window.location.pathname;
-        window.location.replace('/api/proxy/subdomain' + pathname + window.location.search);
+        (async function() {
+            try {
+                const host = window.location.host;
+                const pathname = window.location.pathname;
+
+                const targetUrl = `https://huaaogdxxdcakxryecnw.supabase.co/functions/v1/website-viewer${pathname}${window.location.search}`;
+
+                const response = await fetch(targetUrl, {
+                    headers: {
+                        'host': host,
+                        'x-forwarded-host': host
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const html = await response.text();
+
+                document.open();
+                document.write(html);
+                document.close();
+            } catch (error) {
+                document.body.innerHTML = `
+                    <div style="text-align: center; color: white; padding: 2rem;">
+                        <h1>Fout bij laden website</h1>
+                        <p>${error.message}</p>
+                        <p style="font-size: 0.9rem; opacity: 0.8;">Host: ${window.location.host}</p>
+                    </div>
+                `;
+            }
+        })();
     </script>
-    <noscript>
-        <meta http-equiv="refresh" content="0; url=/api/proxy/subdomain">
-    </noscript>
 </body>
 </html>

@@ -8,7 +8,7 @@
           "value": "(?<subdomain>(?!www|app|api|ai-travelstudio)[a-z0-9-]+)\\.ai-travelstudio\\.nl"
         }
       ],
-      "destination": "https://huaaogdxxdcakxryecnw.supabase.co/functions/v1/website-viewer/$1"
+      "destination": "/subdomain-loader.html"
     },
     {
       "source": "/(.*)",
