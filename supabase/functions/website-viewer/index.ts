@@ -30,6 +30,7 @@ Deno.serve(async (req: Request) => {
     }
 
     let brandId: string | null = null;
+    let websiteId: string | null = null;
     let isCustomDomain = false;
 
     if (!host.includes("supabase.co") && !host.includes("localhost")) {
@@ -37,24 +38,36 @@ Deno.serve(async (req: Request) => {
 
       if (host.includes("ai-travelstudio.nl")) {
         const subdomain = domainParts[0];
+
         if (subdomain.startsWith("brand-")) {
           brandId = subdomain.replace("brand-", "");
+        } else {
+          const { data: domainData } = await supabase
+            .from("brand_domains")
+            .select("brand_id, status, website_id, domain_type")
+            .eq("subdomain_prefix", subdomain)
+            .eq("domain_type", "subdomain")
+            .eq("status", "verified")
+            .maybeSingle();
+
+          if (domainData) {
+            brandId = domainData.brand_id;
+            websiteId = domainData.website_id;
+            console.log("[VIEWER] Found subdomain:", { subdomain, brandId, websiteId });
+          }
         }
       } else {
         const { data: domainData } = await supabase
           .from("brand_domains")
-          .select("brand_id, status, website_id")
+          .select("brand_id, status, website_id, domain_type")
           .eq("domain", host)
           .eq("status", "verified")
           .maybeSingle();
 
         if (domainData) {
           brandId = domainData.brand_id;
+          websiteId = domainData.website_id;
           isCustomDomain = true;
-
-          if (domainData.website_id) {
-            return await renderWebsite(supabase, domainData.website_id, pathname);
-          }
         }
       }
     }
@@ -70,10 +83,14 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log("[VIEWER] Brand ID:", brandId, "Custom domain:", isCustomDomain);
+    console.log("[VIEWER] Brand ID:", brandId, "Website ID:", websiteId, "Custom domain:", isCustomDomain);
+
+    if (websiteId) {
+      return await renderWebsite(supabase, websiteId, pathname);
+    }
 
     let slug = pathname === "/" || pathname === "" ? "home" : pathname.substring(1);
-    
+
     if (slug.endsWith("/")) {
       slug = slug.substring(0, slug.length - 1);
     }
