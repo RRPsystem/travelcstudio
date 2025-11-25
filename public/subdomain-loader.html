@@ -50,23 +50,43 @@
 
                 const targetUrl = `https://huaaogdxxdcakxryecnw.supabase.co/functions/v1/website-viewer${pathname}?${params.toString()}`;
 
-                const response = await fetch(targetUrl);
+                console.log('[LOADER] Fetching:', targetUrl);
+
+                const response = await fetch(targetUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'text/html'
+                    }
+                });
+
+                console.log('[LOADER] Response:', response.status, response.statusText);
 
                 if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('[LOADER] Error response:', errorText);
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
 
                 const html = await response.text();
+                console.log('[LOADER] HTML length:', html.length);
 
                 document.open();
                 document.write(html);
                 document.close();
             } catch (error) {
+                console.error('[LOADER] Fetch error:', error);
                 document.body.innerHTML = `
                     <div style="text-align: center; color: white; padding: 2rem;">
                         <h1>Fout bij laden website</h1>
-                        <p>${error.message}</p>
-                        <p style="font-size: 0.9rem; opacity: 0.8;">Host: ${window.location.host}</p>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p style="font-size: 0.9rem; opacity: 0.8; margin-top: 1rem;">
+                            <strong>Host:</strong> ${window.location.host}<br>
+                            <strong>Subdomain:</strong> ${host.split('.')[0]}<br>
+                            <strong>URL:</strong> ${window.location.href}
+                        </p>
+                        <p style="font-size: 0.8rem; opacity: 0.7; margin-top: 1rem;">
+                            Kijk in de browser console (F12) voor meer details
+                        </p>
                     </div>
                 `;
             }

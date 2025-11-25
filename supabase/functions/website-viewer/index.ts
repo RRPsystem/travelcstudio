@@ -5,6 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, host, x-forwarded-host",
+  "Content-Type": "text/html; charset=utf-8",
 };
 
 Deno.serve(async (req: Request) => {
@@ -134,7 +135,10 @@ Deno.serve(async (req: Request) => {
 
     return new Response(renderPage(page), {
       status: 200,
-      headers: { ...corsHeaders, "Content-Type": "text/html" },
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "text/html; charset=utf-8"
+      },
     });
   } catch (error) {
     console.error("[VIEWER] Error:", error);
