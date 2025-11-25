@@ -17,7 +17,11 @@ module.exports = async (req, res) => {
       return res.status(404).send('Not a valid subdomain website');
     }
 
-    const targetUrl = `https://huaaogdxxdcakxryecnw.supabase.co/functions/v1/website-viewer${pathname}`;
+    // Add subdomain to query params
+    const url = new URL(`https://huaaogdxxdcakxryecnw.supabase.co/functions/v1/website-viewer${pathname}`);
+    url.searchParams.set('subdomain', subdomain);
+
+    const targetUrl = url.toString();
 
     console.log('[PROXY] Fetching:', targetUrl);
 
@@ -25,9 +29,7 @@ module.exports = async (req, res) => {
     const htmlResponse = await new Promise((resolve, reject) => {
       https.get(targetUrl, {
         headers: {
-          'host': host,
           'user-agent': req.headers['user-agent'] || 'Mozilla/5.0',
-          'x-forwarded-host': host,
         },
       }, (response) => {
         let data = '';
