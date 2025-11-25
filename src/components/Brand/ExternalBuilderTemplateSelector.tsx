@@ -173,12 +173,20 @@ export function ExternalBuilderTemplateSelector({ onSelect, selectedCategory }: 
                   }}
                 />
               ) : (
-                <div className="flex items-center justify-center h-48 bg-gray-100">
-                  <Layout className="w-16 h-16 text-gray-400" />
+                <div className="flex flex-col items-center justify-center h-48 bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 border-b border-gray-300">
+                  <div className="bg-white p-3 rounded-lg shadow-sm mb-2">
+                    <Layout className="w-12 h-12 text-gray-400" />
+                  </div>
+                  <p className="text-sm font-medium text-gray-500">{category.category}</p>
+                  <p className="text-xs text-gray-400">Preview coming soon</p>
                 </div>
               )}
-              <div className="fallback-icon hidden flex items-center justify-center h-48 bg-gray-100">
-                <Layout className="w-16 h-16 text-gray-400" />
+              <div className="fallback-icon hidden flex flex-col items-center justify-center h-48 bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 border-b border-gray-300">
+                <div className="bg-white p-3 rounded-lg shadow-sm mb-2">
+                  <Layout className="w-12 h-12 text-gray-400" />
+                </div>
+                <p className="text-sm font-medium text-gray-500">{category.category}</p>
+                <p className="text-xs text-gray-400">Image failed to load</p>
               </div>
               <div className="p-4 bg-white text-left">
                 <div className="flex items-center justify-between">

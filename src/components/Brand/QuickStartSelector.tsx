@@ -164,8 +164,12 @@ export default function QuickStartSelector({ brandId, onSelect, onCancel }: Quic
                   }}
                 />
               ) : (
-                <div className="w-full h-48 bg-gradient-to-br from-blue-100 to-blue-200 rounded-t-lg flex items-center justify-center">
-                  <Zap className="w-16 h-16 text-blue-600 opacity-50" />
+                <div className="w-full h-48 bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 rounded-t-lg flex flex-col items-center justify-center border-b border-gray-300">
+                  <div className="bg-white p-4 rounded-lg shadow-sm mb-2">
+                    <Zap className="w-12 h-12 text-gray-400" />
+                  </div>
+                  <p className="text-sm font-medium text-gray-500">{template.category.display_name}</p>
+                  <p className="text-xs text-gray-400">Preview coming soon</p>
                 </div>
               )}
               {selectedTemplate?.id === template.id && (
