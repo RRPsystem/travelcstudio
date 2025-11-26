@@ -243,6 +243,14 @@ export function TripApproval() {
 
       const correctTripId = tripData.id;
 
+      const jwtPayload: any = {
+        contentType: 'trips'
+      };
+
+      if (assignment.page_id) {
+        jwtPayload.pageId = assignment.page_id;
+      }
+
       const jwtResponse = await generateBuilderJWT(user.brand_id, user.id, [
         'pages:read',
         'pages:write',
@@ -250,17 +258,14 @@ export function TripApproval() {
         'trips:write',
         'content:read',
         'content:write'
-      ], {
-        contentType: 'trips',
-        pageId: assignment.page_id
-      });
+      ], jwtPayload);
 
       const builderBaseUrl = 'https://www.ai-websitestudio.nl/builder.html';
       const apiBaseUrl = jwtResponse.api_url || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
       const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
       const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/content/trips`;
 
-      const params = new URLSearchParams({
+      const params: Record<string, string> = {
         api: apiBaseUrl,
         brand_id: user.brand_id,
         token: jwtResponse.token,
@@ -268,9 +273,15 @@ export function TripApproval() {
         content_type: 'trips',
         return_url: returnUrl,
         id: correctTripId
-      });
+      };
 
-      const deeplink = `${builderBaseUrl}?${params.toString()}#/mode/travel`;
+      if (assignment.page_id) {
+        params.page_id = assignment.page_id;
+      }
+
+      const urlParams = new URLSearchParams(params);
+
+      const deeplink = `${builderBaseUrl}?${urlParams.toString()}#/mode/travel`;
 
       console.log('🔗 Opening trip edit deeplink:', deeplink);
       console.log('Trip details:', {
