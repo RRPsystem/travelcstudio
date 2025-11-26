@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     const subdomain = host.split('.')[0];
 
     // Build Supabase Edge Function URL
-    const supabaseUrl = `https://huaaogdxxdcakxryecnw.supabase.co/functions/v1/website-viewer${pathname}`;
+    const supabaseUrl = `https://eihjzeaaidlknubdnwto.supabase.co/functions/v1/website-viewer${pathname}`;
     const targetUrl = `${supabaseUrl}?subdomain=${encodeURIComponent(subdomain)}`;
 
     console.log('[PROXY] Fetching:', targetUrl);
