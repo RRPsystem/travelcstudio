@@ -31,11 +31,32 @@ export function NewPage() {
   const [themes, setThemes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [initialPageCount, setInitialPageCount] = useState<number | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [modalType, setModalType] = useState<'blank' | 'template'>('blank');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [newPageTitle, setNewPageTitle] = useState('');
+  const [newPageSlug, setNewPageSlug] = useState('');
   const { user } = useAuth();
 
   useEffect(() => {
     loadTemplates();
   }, []);
+
+  const generateSlug = (title: string): string => {
+    return '/' + title
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  };
+
+  const handleTitleChange = (title: string) => {
+    setNewPageTitle(title);
+    if (!newPageSlug || newPageSlug === generateSlug(newPageTitle)) {
+      setNewPageSlug(generateSlug(title));
+    }
+  };
 
   useEffect(() => {
     if (!user?.brand_id) return;
@@ -99,11 +120,16 @@ export function NewPage() {
     }
   };
 
-  const handleOpenPageBuilder = async () => {
-    if (!user || !user.brand_id) {
-      console.error('No user or brand_id available');
-      return;
-    }
+  const handleOpenPageBuilder = () => {
+    setModalType('blank');
+    setNewPageTitle('Nieuwe Pagina');
+    setNewPageSlug('/nieuwe-pagina');
+    setSelectedTemplateId(null);
+    setShowModal(true);
+  };
+
+  const handleConfirmCreate = async () => {
+    if (!user || !user.brand_id || !newPageTitle || !newPageSlug) return;
 
     try {
       const { data: existingPages } = await supabase
@@ -117,16 +143,17 @@ export function NewPage() {
         ? (existingPages[0].menu_order || 0) + 1
         : 1;
 
-      const defaultHtml = `<!DOCTYPE html>
+      if (modalType === 'blank') {
+        const defaultHtml = `<!DOCTYPE html>
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="brand-id" content="${user.brand_id}">
-    <title>Nieuwe Pagina</title>
+    <title>${newPageTitle}</title>
 </head>
 <body>
-    <h1>Nieuwe Pagina</h1>
+    <h1>${newPageTitle}</h1>
     <p>Start met bouwen...</p>
 
     <!-- Dynamic Menu Widget -->
@@ -134,41 +161,114 @@ export function NewPage() {
 </body>
 </html>`;
 
-      const newPage = {
-        title: 'Nieuwe Pagina',
-        slug: `page-${Date.now()}`,
-        content_json: {},
-        body_html: defaultHtml,
-        brand_id: user.brand_id,
-        status: 'draft',
-        version: 1,
-        content_type: 'page',
-        is_template: false,
-        owner_user_id: user.id,
-        created_by: user.id,
-        show_in_menu: true,
-        menu_order: nextMenuOrder,
-      };
+        const newPage = {
+          title: newPageTitle,
+          slug: newPageSlug,
+          content_json: {},
+          body_html: defaultHtml,
+          brand_id: user.brand_id,
+          status: 'draft',
+          version: 1,
+          content_type: 'page',
+          is_template: false,
+          owner_user_id: user.id,
+          created_by: user.id,
+          show_in_menu: true,
+          menu_order: nextMenuOrder,
+        };
 
-      const { data: newPageData, error: createError } = await supabase
-        .from('pages')
-        .insert(newPage)
-        .select('id')
-        .maybeSingle();
+        const { data: newPageData, error: createError } = await supabase
+          .from('pages')
+          .insert(newPage)
+          .select('id')
+          .maybeSingle();
 
-      if (createError || !newPageData) {
-        throw new Error('Kon geen pagina aanmaken');
+        if (createError || !newPageData) {
+          throw new Error('Kon geen pagina aanmaken');
+        }
+
+        setShowModal(false);
+        const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/website/pages`;
+        const deeplink = await openBuilder(user.brand_id, user.id, {
+          pageId: newPageData.id,
+          returnUrl
+        });
+        window.open(deeplink, '_blank');
+      } else if (modalType === 'template' && selectedTemplateId) {
+        const { data: template, error: templateError } = await supabase
+          .from('pages')
+          .select('*')
+          .eq('id', selectedTemplateId)
+          .maybeSingle();
+
+        if (templateError || !template) {
+          throw new Error('Template niet gevonden');
+        }
+
+        let contentJson = template.content_json || {};
+
+        if (contentJson && contentJson.htmlSnapshot && !contentJson.layout && !contentJson.json) {
+          contentJson = {
+            ...contentJson,
+            layout: {
+              html: contentJson.htmlSnapshot,
+              css: contentJson.css || '',
+              js: contentJson.js || ''
+            }
+          };
+        }
+
+        let bodyHtml = template.body_html;
+        if (bodyHtml && !bodyHtml.includes('meta name="brand-id"')) {
+          const brandMetaTag = `\n    <meta name="brand-id" content="${user.brand_id}">`;
+          if (bodyHtml.includes('<head>')) {
+            bodyHtml = bodyHtml.replace('<head>', `<head>${brandMetaTag}`);
+          }
+        }
+        if (bodyHtml && !bodyHtml.includes('dynamic-menu.js')) {
+          const menuScript = `\n    <!-- Dynamic Menu Widget -->\n    <script src="https://www.ai-websitestudio.nl/widgets/dynamic-menu.js"></script>\n`;
+          if (bodyHtml.includes('</body>')) {
+            bodyHtml = bodyHtml.replace('</body>', `${menuScript}</body>`);
+          }
+        }
+
+        const newPage = {
+          title: newPageTitle,
+          slug: newPageSlug,
+          content_json: contentJson,
+          body_html: bodyHtml,
+          brand_id: user.brand_id,
+          status: 'draft',
+          version: 1,
+          content_type: 'page',
+          is_template: false,
+          owner_user_id: user.id,
+          created_by: user.id,
+          show_in_menu: true,
+          menu_order: nextMenuOrder,
+        };
+
+        const { data: newPageData, error: createError } = await supabase
+          .from('pages')
+          .insert(newPage)
+          .select('id')
+          .maybeSingle();
+
+        if (createError || !newPageData) {
+          throw new Error('Kon geen pagina aanmaken van template');
+        }
+
+        setShowModal(false);
+        const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/website/pages`;
+        const deeplink = await openBuilder(user.brand_id, user.id, {
+          pageId: newPageData.id,
+          returnUrl
+        });
+        window.open(deeplink, '_blank');
       }
-
-      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/website/pages`;
-      const deeplink = await openBuilder(user.brand_id, user.id, {
-        pageId: newPageData.id,
-        returnUrl
-      });
-      window.open(deeplink, '_blank');
     } catch (error) {
-      console.error('Error opening builder:', error);
-      alert('Er is een fout opgetreden bij het openen van de builder. Probeer het opnieuw.');
+      console.error('Error creating page:', error);
+      alert('Er is een fout opgetreden bij het aanmaken van de pagina. Probeer het opnieuw.');
     }
   };
 
@@ -178,7 +278,7 @@ export function NewPage() {
     try {
       const { data: template, error: templateError } = await supabase
         .from('pages')
-        .select('*')
+        .select('title')
         .eq('id', templateId)
         .maybeSingle();
 
@@ -186,87 +286,11 @@ export function NewPage() {
         throw new Error('Template niet gevonden');
       }
 
-      const { data: existingPages } = await supabase
-        .from('pages')
-        .select('menu_order')
-        .eq('brand_id', user.brand_id)
-        .order('menu_order', { ascending: false })
-        .limit(1);
-
-      const nextMenuOrder = existingPages && existingPages.length > 0
-        ? (existingPages[0].menu_order || 0) + 1
-        : 1;
-
-      console.log('[NewPage] Template content_json:', template.content_json);
-
-      let contentJson = template.content_json || {};
-
-      // Apply the same conversion logic as the pages-api does for the builder
-      if (contentJson && contentJson.htmlSnapshot && !contentJson.layout && !contentJson.json) {
-        console.log('[NewPage] Converting htmlSnapshot to layout for builder compatibility');
-        contentJson = {
-          ...contentJson,
-          layout: {
-            html: contentJson.htmlSnapshot,
-            css: contentJson.css || '',
-            js: contentJson.js || ''
-          }
-        };
-      }
-
-      // Double-check: If content_json doesn't have the expected builder format, log a warning
-      if (contentJson && !contentJson.html && !contentJson.layout && !contentJson.components) {
-        console.warn('[NewPage] Warning: Template content_json may not have builder-compatible structure:', contentJson);
-      }
-
-      let bodyHtml = template.body_html;
-      if (bodyHtml && !bodyHtml.includes('meta name="brand-id"')) {
-        const brandMetaTag = `\n    <meta name="brand-id" content="${user.brand_id}">`;
-        if (bodyHtml.includes('<head>')) {
-          bodyHtml = bodyHtml.replace('<head>', `<head>${brandMetaTag}`);
-        }
-      }
-      if (bodyHtml && !bodyHtml.includes('dynamic-menu.js')) {
-        const menuScript = `\n    <!-- Dynamic Menu Widget -->
-    <script src="https://www.ai-websitestudio.nl/widgets/dynamic-menu.js"></script>\n`;
-        if (bodyHtml.includes('</body>')) {
-          bodyHtml = bodyHtml.replace('</body>', `${menuScript}</body>`);
-        }
-      }
-
-      const newPage = {
-        title: template.title,
-        slug: `${template.slug}-${Date.now()}`,
-        content_json: contentJson,
-        body_html: bodyHtml,
-        brand_id: user.brand_id,
-        status: 'draft',
-        version: 1,
-        content_type: 'page',
-        is_template: false,
-        owner_user_id: user.id,
-        created_by: user.id,
-        show_in_menu: true,
-        menu_order: nextMenuOrder,
-      };
-
-      const { data: newPageData, error: createError } = await supabase
-        .from('pages')
-        .insert(newPage)
-        .select('id')
-        .maybeSingle();
-
-      if (createError || !newPageData) {
-        throw new Error('Kon geen pagina aanmaken van template');
-      }
-
-      // Now open the builder with the new page
-      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/website/pages`;
-      const deeplink = await openBuilder(user.brand_id, user.id, {
-        pageId: newPageData.id,
-        returnUrl
-      });
-      window.open(deeplink, '_blank');
+      setModalType('template');
+      setSelectedTemplateId(templateId);
+      setNewPageTitle(template.title);
+      setNewPageSlug(generateSlug(template.title));
+      setShowModal(true);
     } catch (error) {
       console.error('Error opening builder with template:', error);
       alert('Er is een fout opgetreden bij het openen van de template. Probeer het opnieuw.');
@@ -464,6 +488,64 @@ export function NewPage() {
           )}
         </div>
       </div>
+
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              {modalType === 'blank' ? 'Nieuwe Pagina' : 'Pagina van Template'}
+            </h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Pagina Titel
+                </label>
+                <input
+                  type="text"
+                  value={newPageTitle}
+                  onChange={(e) => handleTitleChange(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  placeholder="bijv. Over Ons"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  URL Slug
+                  <span className="text-xs text-gray-500 ml-2">(wordt automatisch gegenereerd)</span>
+                </label>
+                <input
+                  type="text"
+                  value={newPageSlug}
+                  onChange={(e) => setNewPageSlug(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent font-mono text-sm"
+                  placeholder="/over-ons"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Volledige URL: {window.location.origin.replace('ai-travelstudio.nl', 'uw-domein.nl')}{newPageSlug}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={() => setShowModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Annuleren
+              </button>
+              <button
+                onClick={handleConfirmCreate}
+                disabled={!newPageTitle || !newPageSlug}
+                className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {modalType === 'blank' ? 'Pagina Maken' : 'Template Gebruiken'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

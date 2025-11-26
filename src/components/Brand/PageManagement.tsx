@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard as Edit, Copy, Trash2, Eye, Plus, RefreshCw, Upload, FileX, ExternalLink } from 'lucide-react';
+import { CreditCard as Edit, Copy, Trash2, Eye, Plus, RefreshCw, Upload, FileX, ExternalLink, Wrench } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { openBuilder, generateBuilderJWT } from '../../lib/jwtHelper';
 import { useAuth } from '../../contexts/AuthContext';
@@ -30,6 +30,9 @@ export function PageManagement() {
   const { user } = useAuth();
   const [pages, setPages] = useState<Page[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingPageId, setEditingPageId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const [editingSlug, setEditingSlug] = useState('');
 
   useEffect(() => {
     if (user?.brand_id) {
@@ -196,6 +199,42 @@ export function PageManagement() {
     }
   };
 
+  const startEditPage = (page: Page) => {
+    setEditingPageId(page.id);
+    setEditingTitle(page.title);
+    setEditingSlug(page.slug);
+  };
+
+  const cancelEdit = () => {
+    setEditingPageId(null);
+    setEditingTitle('');
+    setEditingSlug('');
+  };
+
+  const saveEdit = async () => {
+    if (!user?.brand_id || !editingPageId) return;
+
+    try {
+      const { error } = await supabase
+        .from('pages')
+        .update({
+          title: editingTitle,
+          slug: editingSlug,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingPageId)
+        .eq('brand_id', user.brand_id);
+
+      if (error) throw error;
+
+      await loadPages(user.brand_id, false);
+      cancelEdit();
+    } catch (error) {
+      console.error('Error updating page:', error);
+      alert('Kon pagina niet bijwerken: ' + error);
+    }
+  };
+
   const togglePublishStatus = async (pageId: string, currentStatus: string) => {
     if (!user?.brand_id) return;
 
@@ -334,17 +373,37 @@ export function PageManagement() {
 
                 return (
                 <tr key={page.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{page.title}</div>
-                    {isVisible && (
-                      <div className="mt-1 flex items-center gap-1 text-xs text-blue-600">
-                        <ExternalLink size={12} />
-                        <span>Zichtbaar in template</span>
+                  <td className="px-6 py-4">
+                    {editingPageId === page.id ? (
+                      <input
+                        type="text"
+                        value={editingTitle}
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        className="w-full px-2 py-1 text-sm border border-orange-300 rounded focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      />
+                    ) : (
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{page.title}</div>
+                        {isVisible && (
+                          <div className="mt-1 flex items-center gap-1 text-xs text-blue-600">
+                            <ExternalLink size={12} />
+                            <span>Zichtbaar in template</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-600">{page.slug}</div>
+                  <td className="px-6 py-4">
+                    {editingPageId === page.id ? (
+                      <input
+                        type="text"
+                        value={editingSlug}
+                        onChange={(e) => setEditingSlug(e.target.value)}
+                        className="w-full px-2 py-1 text-sm border border-orange-300 rounded font-mono focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      />
+                    ) : (
+                      <div className="text-sm text-gray-600 font-mono">{page.slug}</div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPageTypeBadgeColor(pageType)}`}>
@@ -382,25 +441,53 @@ export function PageManagement() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end space-x-2">
-                      {isVisible && user?.brand_id && (
-                        <button
-                          onClick={() => {
-                            const url = generateTemplatePreviewUrl(user.brand_id!, pageType);
-                            window.open(url, '_blank');
-                          }}
-                          className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                          title="Bekijk in Template"
-                        >
-                          <ExternalLink size={18} />
-                        </button>
+                      {editingPageId === page.id ? (
+                        <>
+                          <button
+                            onClick={saveEdit}
+                            className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                            title="Opslaan"
+                          >
+                            Opslaan
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            className="px-3 py-1 text-sm bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors"
+                            title="Annuleren"
+                          >
+                            Annuleren
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => startEditPage(page)}
+                            className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                            title="Titel en Slug Bewerken"
+                          >
+                            <Edit size={18} />
+                          </button>
+                          {isVisible && user?.brand_id && (
+                            <button
+                              onClick={() => {
+                                const url = generateTemplatePreviewUrl(user.brand_id!, pageType);
+                                window.open(url, '_blank');
+                              }}
+                              className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                              title="Bekijk in Template"
+                            >
+                              <ExternalLink size={18} />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => openInBuilder(page.id)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Openen in Builder"
+                          >
+                            <Wrench size={18} />
+                          </button>
+                        </>
                       )}
-                      <button
-                        onClick={() => openInBuilder(page.id)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Openen in Builder"
-                      >
-                        <Edit size={18} />
-                      </button>
                       <button
                         onClick={() => {
                           window.open(`/preview/${page.id}`, '_blank');
