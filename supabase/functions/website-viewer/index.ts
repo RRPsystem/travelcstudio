@@ -392,14 +392,20 @@ function renderPageWithMenu(page: any, menuPages: any[]): string {
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   const menuItems = ${JSON.stringify(menuPages)};
-  const mainMenu = document.querySelector('.main-menu ul');
+  const nav = document.querySelector('.main-menu');
 
-  if (mainMenu) {
-    mainMenu.innerHTML = menuItems.map(item => {
-      const slug = item.slug.startsWith('/') ? item.slug.substring(1) : item.slug;
-      return '<li class="menu-item"><a href="/' + slug + '">' + (item.menu_label || item.title) + '</a></li>';
-    }).join('');
-    console.log('[MENU] Replaced template menu with', menuItems.length, 'items');
+  if (nav) {
+    const mainMenu = nav.querySelector(':scope > ul') || nav.querySelector('nav > ul');
+
+    if (mainMenu) {
+      const existingClasses = mainMenu.className;
+      mainMenu.innerHTML = menuItems.map(item => {
+        const slug = item.slug.startsWith('/') ? item.slug.substring(1) : item.slug;
+        return '<li class="menu-item"><a href="/' + slug + '">' + (item.menu_label || item.title) + '</a></li>';
+      }).join('');
+      mainMenu.className = existingClasses;
+      console.log('[MENU] Replaced template menu with', menuItems.length, 'items');
+    }
   }
 });
 </script>`;
