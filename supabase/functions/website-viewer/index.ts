@@ -149,100 +149,204 @@ Deno.serve(async (req: Request) => {
   }
 });
 
+const sliderDependencies = `
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick-theme.css">
+<script src="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js"></script>`;
+
 const sliderInitScript = `
 <script>
-(function() {
-    function initializeSliders() {
-        if (typeof jQuery === 'undefined' || typeof jQuery.fn.slick === 'undefined') {
-            setTimeout(initializeSliders, 200);
-            return;
+(function($) {
+    'use strict';
+
+    $(document).ready(function() {
+        console.log('[Slider Init] Starting universal slider initialization...');
+
+        try {
+            $('.slick-initialized').slick('unslick');
+            console.log('[Slider Init] Destroyed existing sliders');
+        } catch(e) {}
+
+        if ($('.destination-slider').length && !$('.destination-slider').hasClass('slick-initialized')) {
+            $('.destination-slider').slick({
+                dots: false, arrows: false, infinite: true, speed: 800, autoplay: true,
+                variableWidth: true, slidesToShow: 6, slidesToScroll: 1,
+                responsive: [
+                    { breakpoint: 1400, settings: { slidesToShow: 4 } },
+                    { breakpoint: 1024, settings: { slidesToShow: 3 } },
+                    { breakpoint: 767, settings: { slidesToShow: 1 } }
+                ]
+            });
+            console.log('[Slider Init] ✅ Tripex destination-slider');
         }
 
-        setTimeout(function() {
-            jQuery(function($) {
-                console.log('[SLIDER] Reinitializing sliders...');
-
-                $('.destination-slider, .tour-slider, .testimonial-slider, .gallery-slider, .clients-slider, .tour-gallery-slider').each(function() {
-                    if ($(this).hasClass('slick-initialized')) {
-                        $(this).slick('unslick');
-                    }
-                });
-
-                if ($('.destination-slider').length) {
-                    $('.destination-slider').slick({
-                        dots: false, arrows: false, infinite: true, speed: 800, autoplay: true,
-                        variableWidth: true, slidesToShow: 6, slidesToScroll: 1,
-                        responsive: [
-                            { breakpoint: 1400, settings: { slidesToShow: 4 } },
-                            { breakpoint: 1024, settings: { slidesToShow: 3 } },
-                            { breakpoint: 767, settings: { slidesToShow: 1 } }
-                        ]
-                    });
-                }
-
-                if ($('.tour-slider').length) {
-                    $('.tour-slider').slick({
-                        dots: true, arrows: false, infinite: true, speed: 800, autoplay: true,
-                        slidesToShow: 4, slidesToScroll: 1,
-                        responsive: [
-                            { breakpoint: 1500, settings: { slidesToShow: 3 } },
-                            { breakpoint: 1200, settings: { slidesToShow: 2 } },
-                            { breakpoint: 767, settings: { slidesToShow: 1 } }
-                        ]
-                    });
-                }
-
-                if ($('.testimonial-slider').length) {
-                    var sliderDots = $('.testimonial-dots');
-                    $('.testimonial-slider').slick({
-                        dots: true, arrows: false, infinite: true, speed: 800, appendDots: sliderDots,
-                        autoplay: true, slidesToShow: 1, slidesToScroll: 1
-                    });
-                }
-
-                if ($('.gallery-slider').length) {
-                    $('.gallery-slider').slick({
-                        dots: false, arrows: false, infinite: true, speed: 800, autoplay: true,
-                        slidesToShow: 5, slidesToScroll: 1,
-                        responsive: [
-                            { breakpoint: 1500, settings: { slidesToShow: 3 } },
-                            { breakpoint: 1200, settings: { slidesToShow: 2 } },
-                            { breakpoint: 550, settings: { slidesToShow: 1 } }
-                        ]
-                    });
-                }
-
-                if ($('.clients-slider').length) {
-                    $('.clients-slider').slick({
-                        dots: false, arrows: false, infinite: true, speed: 800, autoplay: true,
-                        slidesToShow: 6, slidesToScroll: 1,
-                        responsive: [
-                            { breakpoint: 1450, settings: { slidesToShow: 5 } },
-                            { breakpoint: 1200, settings: { slidesToShow: 3 } },
-                            { breakpoint: 767, settings: { slidesToShow: 2 } },
-                            { breakpoint: 400, settings: { slidesToShow: 1 } }
-                        ]
-                    });
-                }
-
-                if ($('.tour-gallery-slider').length) {
-                    $('.tour-gallery-slider').slick({
-                        dots: false, arrows: true, infinite: true, speed: 800, autoplay: true,
-                        slidesToShow: 1, slidesToScroll: 1
-                    });
-                }
-
-                console.log('✅ Sliders reinitialized successfully');
+        if ($('.tour-slider').length && !$('.tour-slider').hasClass('slick-initialized')) {
+            $('.tour-slider').slick({
+                dots: true, arrows: false, infinite: true, speed: 800, autoplay: true,
+                slidesToShow: 4, slidesToScroll: 1,
+                responsive: [
+                    { breakpoint: 1500, settings: { slidesToShow: 3 } },
+                    { breakpoint: 1200, settings: { slidesToShow: 2 } },
+                    { breakpoint: 767, settings: { slidesToShow: 1 } }
+                ]
             });
-        }, 500);
-    }
+            console.log('[Slider Init] ✅ Tripex tour-slider');
+        }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initializeSliders);
-    } else {
-        initializeSliders();
-    }
-})();
+        if ($('.gallery-slider').length && !$('.gallery-slider').hasClass('slick-initialized')) {
+            $('.gallery-slider').slick({
+                dots: false, arrows: false, infinite: true, speed: 800, autoplay: true,
+                slidesToShow: 5, slidesToScroll: 1,
+                responsive: [
+                    { breakpoint: 1500, settings: { slidesToShow: 3 } },
+                    { breakpoint: 1200, settings: { slidesToShow: 2 } },
+                    { breakpoint: 550, settings: { slidesToShow: 1 } }
+                ]
+            });
+            console.log('[Slider Init] ✅ Tripex gallery-slider');
+        }
+
+        if ($('.testimonial-slider').length && !$('.testimonial-slider').hasClass('slick-initialized')) {
+            $('.testimonial-slider').slick({
+                dots: true, arrows: false, infinite: true, speed: 800, autoplay: true,
+                slidesToShow: 1, slidesToScroll: 1
+            });
+            console.log('[Slider Init] ✅ Tripex testimonial-slider');
+        }
+
+        if ($('.clients-slider').length && !$('.clients-slider').hasClass('slick-initialized')) {
+            $('.clients-slider').slick({
+                dots: false, arrows: false, infinite: true, speed: 800, autoplay: true,
+                slidesToShow: 6, slidesToScroll: 1,
+                responsive: [
+                    { breakpoint: 1450, settings: { slidesToShow: 5 } },
+                    { breakpoint: 1200, settings: { slidesToShow: 3 } },
+                    { breakpoint: 767, settings: { slidesToShow: 2 } },
+                    { breakpoint: 400, settings: { slidesToShow: 1 } }
+                ]
+            });
+            console.log('[Slider Init] ✅ Tripex clients-slider');
+        }
+
+        if ($('.tour-gallery-slider').length && !$('.tour-gallery-slider').hasClass('slick-initialized')) {
+            $('.tour-gallery-slider').slick({
+                dots: false, arrows: true, infinite: true, speed: 800, autoplay: true,
+                slidesToShow: 1, slidesToScroll: 1,
+                prevArrow: '<div class="prev"><i class="far fa-angle-left"></i></div>',
+                nextArrow: '<div class="next"><i class="far fa-angle-right"></i></div>'
+            });
+            console.log('[Slider Init] ✅ Tripex tour-gallery-slider');
+        }
+
+        function initHeroSlider(selector) {
+            if ($(selector).length && !$(selector).hasClass('slick-initialized')) {
+                $(selector).slick({
+                    dots: false, arrows: true, infinite: true, speed: 800,
+                    fade: true, autoplay: true, slidesToShow: 1, slidesToScroll: 1,
+                    prevArrow: '<div class="prev"><i class="fal fa-arrow-left"></i></div>',
+                    nextArrow: '<div class="next"><i class="fal fa-arrow-right"></i></div>',
+                    responsive: [
+                        { breakpoint: 1200, settings: { arrows: false } }
+                    ]
+                });
+                console.log('[Slider Init] ✅ GoWild ' + selector);
+            }
+        }
+
+        initHeroSlider('.hero-slider-one');
+        initHeroSlider('.hero-slider-two');
+        initHeroSlider('.hero-slider-three');
+
+        if ($('.slider-active-3-item').length && !$('.slider-active-3-item').hasClass('slick-initialized')) {
+            $('.slider-active-3-item').slick({
+                dots: false, arrows: false, infinite: true, speed: 800, autoplay: true,
+                slidesToShow: 3, slidesToScroll: 1,
+                responsive: [
+                    { breakpoint: 1200, settings: { slidesToShow: 2 } },
+                    { breakpoint: 991, settings: { slidesToShow: 2 } },
+                    { breakpoint: 800, settings: { slidesToShow: 1 } }
+                ]
+            });
+            console.log('[Slider Init] ✅ GoWild slider-active-3-item');
+        }
+
+        if ($('.slider-active-4-item').length && !$('.slider-active-4-item').hasClass('slick-initialized')) {
+            $('.slider-active-4-item').slick({
+                dots: false, arrows: false, infinite: true, speed: 800, autoplay: true,
+                slidesToShow: 4, slidesToScroll: 1,
+                responsive: [
+                    { breakpoint: 1400, settings: { slidesToShow: 3 } },
+                    { breakpoint: 1200, settings: { slidesToShow: 2 } },
+                    { breakpoint: 575, settings: { slidesToShow: 1 } }
+                ]
+            });
+            console.log('[Slider Init] ✅ GoWild slider-active-4-item');
+        }
+
+        if ($('.slider-active-5-item').length && !$('.slider-active-5-item').hasClass('slick-initialized')) {
+            $('.slider-active-5-item').slick({
+                dots: false, arrows: false, infinite: true, speed: 800, autoplay: true,
+                slidesToShow: 5, slidesToScroll: 1,
+                responsive: [
+                    { breakpoint: 1400, settings: { slidesToShow: 4 } },
+                    { breakpoint: 1199, settings: { slidesToShow: 3 } },
+                    { breakpoint: 991, settings: { slidesToShow: 2 } },
+                    { breakpoint: 575, settings: { slidesToShow: 1 } }
+                ]
+            });
+            console.log('[Slider Init] ✅ GoWild slider-active-5-item');
+        }
+
+        if ($('.place-slider').length && !$('.place-slider').hasClass('slick-initialized')) {
+            $('.place-slider').slick({
+                dots: false, arrows: false, infinite: true, speed: 800, autoplay: true,
+                variableWidth: true, slidesToShow: 3, slidesToScroll: 1,
+                responsive: [
+                    { breakpoint: 767, settings: { slidesToShow: 1 } }
+                ]
+            });
+            console.log('[Slider Init] ✅ GoWild place-slider');
+        }
+
+        if ($('.recent-place-slider').length && !$('.recent-place-slider').hasClass('slick-initialized')) {
+            $('.recent-place-slider').slick({
+                dots: false, arrows: true, infinite: true, speed: 800, autoplay: true,
+                slidesToShow: 2, slidesToScroll: 1,
+                prevArrow: '<div class="prev"><i class="far fa-arrow-left"></i></div>',
+                nextArrow: '<div class="next"><i class="far fa-arrow-right"></i></div>',
+                responsive: [
+                    { breakpoint: 767, settings: { slidesToShow: 1 } }
+                ]
+            });
+            console.log('[Slider Init] ✅ GoWild recent-place-slider');
+        }
+
+        if ($('.testimonial-slider-one').length && !$('.testimonial-slider-one').hasClass('slick-initialized')) {
+            $('.testimonial-slider-one').slick({
+                dots: false, arrows: false, infinite: true, speed: 800, autoplay: true,
+                slidesToShow: 1, slidesToScroll: 1
+            });
+            console.log('[Slider Init] ✅ GoWild testimonial-slider-one');
+        }
+
+        if ($('.partner-slider-one').length && !$('.partner-slider-one').hasClass('slick-initialized')) {
+            $('.partner-slider-one').slick({
+                dots: false, arrows: false, infinite: true, speed: 800, autoplay: true,
+                slidesToShow: 5, slidesToScroll: 1,
+                responsive: [
+                    { breakpoint: 1400, settings: { slidesToShow: 4 } },
+                    { breakpoint: 991, settings: { slidesToShow: 3 } },
+                    { breakpoint: 800, settings: { slidesToShow: 2 } },
+                    { breakpoint: 575, settings: { slidesToShow: 1 } }
+                ]
+            });
+            console.log('[Slider Init] ✅ GoWild partner-slider-one');
+        }
+
+        console.log('[Slider Init] ✅ All sliders initialized!');
+    });
+})(window.jQuery);
 </script>`;
 
 function renderPage(page: any): string {
@@ -278,7 +382,9 @@ function renderPage(page: any): string {
   <link rel="stylesheet" href="${cssBaseUrl}/components.css">
 </head>
 <body>
-${html}${sliderInitScript}
+${html}
+${sliderDependencies}
+${sliderInitScript}
 </body>
 </html>`;
   } else {
@@ -295,7 +401,11 @@ ${html}${sliderInitScript}
       );
     }
 
-    html = html.replace('</body>', sliderInitScript + '\n</body>');
+    if (!html.includes('jquery') && !html.includes('slick')) {
+      html = html.replace('</body>', sliderDependencies + '\n' + sliderInitScript + '\n</body>');
+    } else {
+      html = html.replace('</body>', sliderInitScript + '\n</body>');
+    }
   }
 
   return html;
@@ -472,7 +582,9 @@ function renderWebsitePage(page: any, website: any, menuPages: any[]): string {
 </head>
 <body>
 ${menuHtml}
-${html}${sliderInitScript}
+${html}
+${sliderDependencies}
+${sliderInitScript}
 </body>
 </html>`;
   } else {
@@ -493,7 +605,11 @@ ${html}${sliderInitScript}
       html = html.replace('<body>', `<body>\n${menuHtml}`);
     }
 
-    html = html.replace('</body>', sliderInitScript + '\n</body>');
+    if (!html.includes('jquery') && !html.includes('slick')) {
+      html = html.replace('</body>', sliderDependencies + '\n' + sliderInitScript + '\n</body>');
+    } else {
+      html = html.replace('</body>', sliderInitScript + '\n</body>');
+    }
   }
 
   return html;
