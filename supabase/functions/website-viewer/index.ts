@@ -166,6 +166,40 @@ const sliderDependencies = `
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick-theme.css">
 <script src="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js"></script>`;
 
+const navigationBlockScript = `
+<script>
+console.log('[NAV BLOCK] Installing navigation interceptor...');
+
+document.addEventListener('DOMContentLoaded', function() {
+  const currentUrl = new URL(window.location.href);
+  const subdomain = currentUrl.searchParams.get('subdomain');
+
+  if (subdomain) {
+    console.log('[NAV BLOCK] Active for subdomain:', subdomain);
+
+    document.body.addEventListener('click', function(e) {
+      const link = e.target.closest('a');
+      if (link && link.href) {
+        const linkUrl = new URL(link.href, window.location.href);
+
+        if (linkUrl.searchParams.get('subdomain') !== subdomain) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+
+          linkUrl.searchParams.set('subdomain', subdomain);
+          window.location.href = linkUrl.toString();
+          console.log('[NAV BLOCK] Redirected to:', linkUrl.toString());
+          return false;
+        }
+      }
+    }, true);
+
+    console.log('[NAV BLOCK] ✅ Navigation interceptor installed!');
+  }
+});
+</script>`;
+
 const sliderInitScript = `
 <script>
 (function($) {
@@ -385,6 +419,7 @@ function renderPage(page: any): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${page.title || "Pagina"}</title>
+  ${navigationBlockScript}
   ${fontAwesomeFallback}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -399,6 +434,10 @@ ${sliderInitScript}
 </body>
 </html>`;
   } else {
+    if (!html.includes('[NAV BLOCK]')) {
+      html = html.replace('<head>', '<head>\n' + navigationBlockScript);
+    }
+
     if (!html.includes('font-awesome/5.')) {
       html = html.replace('</head>', fontAwesomeFallback + '\n</head>');
     }
@@ -584,6 +623,7 @@ function renderWebsitePage(page: any, website: any, menuPages: any[]): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${page.title || "Pagina"}</title>
+  ${navigationBlockScript}
   ${fontAwesomeFallback}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -602,6 +642,10 @@ ${sliderInitScript}
 </body>
 </html>`;
   } else {
+    if (!html.includes('[NAV BLOCK]')) {
+      html = html.replace('<head>', '<head>\n' + navigationBlockScript);
+    }
+
     if (!html.includes('font-awesome/5.')) {
       html = html.replace('</head>', fontAwesomeFallback + '\n</head>');
     }
@@ -626,8 +670,7 @@ ${sliderInitScript}
       html = html.replace('</body>', sliderDependencies + '\n' + sliderInitScript + '\n</body>');
     } else {
       html = html.replace('</body>', sliderInitScript + '\n</body>');
-    }
-  }
+    }  }
 
   return html;
 }
