@@ -5,7 +5,7 @@
       "has": [
         {
           "type": "host",
-          "value": "(?<subdomain>(?!www|app|api|ai-travelstudio)[a-z0-9-]+)\\.ai-travelstudio\\.nl"
+          "value": "(?<subdomain>(?!www|app|api|ai-websitestudio)[a-z0-9-]+)\\.ai-websitestudio\\.nl"
         }
       ],
       "destination": "/api/proxy/subdomain"
@@ -27,7 +27,7 @@
       "missing": [
         {
           "type": "host",
-          "value": "(?<subdomain>(?!www|app|api|ai-travelstudio)[a-z0-9-]+)\\.ai-travelstudio\\.nl"
+          "value": "(?<subdomain>(?!www|app|api|ai-websitestudio)[a-z0-9-]+)\\.ai-websitestudio\\.nl"
         }
       ],
       "headers": [
