@@ -12,6 +12,16 @@
     },
     {
       "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "(?<subdomain>(?!www|app|api|bolt-versiedev-nr8)[a-z0-9-]+)\\.bolt-versiedev-nr8\\.vercel\\.app"
+        }
+      ],
+      "destination": "/api/proxy/subdomain"
+    },
+    {
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
