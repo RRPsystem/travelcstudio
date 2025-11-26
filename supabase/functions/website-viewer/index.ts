@@ -112,17 +112,16 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      const { data: firstPage } = await supabase
+      const { data: rootPage } = await supabase
         .from("pages")
         .select("*")
         .eq("brand_id", brandId)
+        .eq("slug", "/")
         .eq("status", "published")
         .or("content_type.eq.page,content_type.is.null")
-        .order("created_at", { ascending: true })
-        .limit(1)
         .maybeSingle();
 
-      if (firstPage) {
+      if (rootPage) {
         const { data: menuPages } = await supabase
           .from("pages")
           .select("id, title, slug, menu_label")
@@ -131,7 +130,7 @@ Deno.serve(async (req: Request) => {
           .eq("status", "published")
           .order("menu_order", { ascending: true });
 
-        return new Response(renderPageWithMenu(firstPage, menuPages || []), {
+        return new Response(renderPageWithMenu(rootPage, menuPages || []), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "text/html" },
         });
