@@ -22,9 +22,63 @@ export default async function handler(req, res) {
       },
     });
 
-    const html = await response.text();
+    let html = await response.text();
 
     console.log('[PROXY] Response status:', response.status);
+
+    // Inject navigation fix script at the top of <head>
+    const navigationFix = `
+<script>
+console.log('[PROXY FIX] Intercepting all navigation...');
+
+// Store the original pushState and replaceState
+const originalPushState = history.pushState;
+const originalReplaceState = history.replaceState;
+
+// Override pushState
+history.pushState = function() {
+  originalPushState.apply(this, arguments);
+  console.log('[PROXY FIX] pushState intercepted');
+};
+
+// Override replaceState
+history.replaceState = function() {
+  originalReplaceState.apply(this, arguments);
+  console.log('[PROXY FIX] replaceState intercepted');
+};
+
+// Intercept ALL clicks on links VERY early
+document.addEventListener('click', function(e) {
+  const link = e.target.closest('a');
+  if (link && link.href) {
+    const linkUrl = new URL(link.href, window.location.href);
+    const currentHost = window.location.host;
+
+    // Only intercept same-domain links
+    if (linkUrl.host === currentHost) {
+      console.log('[PROXY FIX] Intercepted link:', link.href);
+
+      // Prevent default and manually navigate
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      // Navigate to the pathname only (stay on same domain)
+      window.location.href = linkUrl.pathname + linkUrl.search + linkUrl.hash;
+      return false;
+    }
+  }
+}, true); // USE CAPTURE PHASE!
+
+console.log('[PROXY FIX] ✅ Navigation interceptor installed!');
+</script>`;
+
+    // Inject at the start of <head>
+    if (html.includes('<head>')) {
+      html = html.replace('<head>', '<head>' + navigationFix);
+    } else if (html.includes('<HEAD>')) {
+      html = html.replace('<HEAD>', '<HEAD>' + navigationFix);
+    }
 
     // Send response WITHOUT any CSP header (completely disable CSP)
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
