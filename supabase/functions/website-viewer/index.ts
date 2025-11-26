@@ -150,8 +150,8 @@ Deno.serve(async (req: Request) => {
 });
 
 const fontAwesomeFallback = `
-<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css\">
-<link rel=\"stylesheet\" href=\"https://pro.fontawesome.com/releases/v5.15.4/css/all.css\">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<link rel="stylesheet" href="https://pro.fontawesome.com/releases/v5.15.4/css/all.css">
 <style>
   .main-menu ul li > a::after,
   .main-menu ul li > span::after {
@@ -161,10 +161,10 @@ const fontAwesomeFallback = `
 </style>`;
 
 const sliderDependencies = `
-<script src=\"https://code.jquery.com/jquery-3.6.0.min.js\"></script>
-<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.css\">
-<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick-theme.css\">
-<script src=\"https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js\"></script>`;
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick-theme.css">
+<script src="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js"></script>`;
 
 const sliderInitScript = `
 <script>
@@ -244,8 +244,8 @@ const sliderInitScript = `
             $('.tour-gallery-slider').slick({
                 dots: false, arrows: true, infinite: true, speed: 800, autoplay: true,
                 slidesToShow: 1, slidesToScroll: 1,
-                prevArrow: '<div class=\"prev\"><i class=\"far fa-angle-left\"></i></div>',
-                nextArrow: '<div class=\"next\"><i class=\"far fa-angle-right\"></i></div>'
+                prevArrow: '<div class="prev"><i class="far fa-angle-left"></i></div>',
+                nextArrow: '<div class="next"><i class="far fa-angle-right"></i></div>'
             });
             console.log('[Slider Init] ✅ Tripex tour-gallery-slider');
         }
@@ -255,8 +255,8 @@ const sliderInitScript = `
                 $(selector).slick({
                     dots: false, arrows: true, infinite: true, speed: 800,
                     fade: true, autoplay: true, slidesToShow: 1, slidesToScroll: 1,
-                    prevArrow: '<div class=\"prev\"><i class=\"fal fa-arrow-left\"></i></div>',
-                    nextArrow: '<div class=\"next\"><i class=\"fal fa-arrow-right\"></i></div>',
+                    prevArrow: '<div class="prev"><i class="fal fa-arrow-left"></i></div>',
+                    nextArrow: '<div class="next"><i class="fal fa-arrow-right"></i></div>',
                     responsive: [
                         { breakpoint: 1200, settings: { arrows: false } }
                     ]
@@ -324,8 +324,8 @@ const sliderInitScript = `
             $('.recent-place-slider').slick({
                 dots: false, arrows: true, infinite: true, speed: 800, autoplay: true,
                 slidesToShow: 2, slidesToScroll: 1,
-                prevArrow: '<div class=\"prev\"><i class=\"far fa-arrow-left\"></i></div>',
-                nextArrow: '<div class=\"next\"><i class=\"far fa-arrow-right\"></i></div>',
+                prevArrow: '<div class="prev"><i class="far fa-arrow-left"></i></div>',
+                nextArrow: '<div class="next"><i class="far fa-arrow-right"></i></div>',
                 responsive: [
                     { breakpoint: 767, settings: { slidesToShow: 1 } }
                 ]
@@ -361,7 +361,7 @@ const sliderInitScript = `
 </script>`;
 
 function renderPage(page: any): string {
-  let html = \"\";
+  let html = "";
 
   if (page.body_html) {
     html = page.body_html;
@@ -372,25 +372,25 @@ function renderPage(page: any): string {
   }
 
   if (!html) {
-    return renderErrorPage(\"Geen content\", \"Deze pagina heeft nog geen content.\");
+    return renderErrorPage("Geen content", "Deze pagina heeft nog geen content.");
   }
 
-  const supabaseUrl = Deno.env.get(\"SUPABASE_URL\")!;
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const cssBaseUrl = `${supabaseUrl}/storage/v1/object/public/assets/styles`;
 
-  if (!html.includes(\"<html\") && !html.includes(\"<!DOCTYPE\")) {
+  if (!html.includes("<html") && !html.includes("<!DOCTYPE")) {
     html = `<!DOCTYPE html>
-<html lang=\"nl\">
+<html lang="nl">
 <head>
-  <meta charset=\"UTF-8\">
-  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
-  <title>${page.title || \"Pagina\"}</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${page.title || "Pagina"}</title>
   ${fontAwesomeFallback}
-  <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">
-  <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>
-  <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap\" rel=\"stylesheet\">
-  <link rel=\"stylesheet\" href=\"${cssBaseUrl}/main.css\">
-  <link rel=\"stylesheet\" href=\"${cssBaseUrl}/components.css\">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="${cssBaseUrl}/main.css">
+  <link rel="stylesheet" href="${cssBaseUrl}/components.css">
 </head>
 <body>
 ${html}
@@ -399,28 +399,28 @@ ${sliderInitScript}
 </body>
 </html>`;
   } else {
-    html = html.replace(/<base\\s+href=[\"'][^\"']*[\"']\\s*\\/?>/gi, '');
+    html = html.replace(/<base\s+href=["'][^"']*["']\s*\/?>/gi, '');
 
     if (!html.includes('font-awesome/5.')) {
-      html = html.replace('</head>', fontAwesomeFallback + '\\n</head>');
+      html = html.replace('</head>', fontAwesomeFallback + '\n</head>');
     }
 
     if (!html.includes('main.css') && !html.includes('components.css')) {
       html = html.replace(
         '</head>',
-        `  <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">
-  <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>
-  <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap\" rel=\"stylesheet\">
-  <link rel=\"stylesheet\" href=\"${cssBaseUrl}/main.css\">
-  <link rel=\"stylesheet\" href=\"${cssBaseUrl}/components.css\">
+        `  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="${cssBaseUrl}/main.css">
+  <link rel="stylesheet" href="${cssBaseUrl}/components.css">
 </head>`
       );
     }
 
     if (!html.includes('jquery') && !html.includes('slick')) {
-      html = html.replace('</body>', sliderDependencies + '\\n' + sliderInitScript + '\\n</body>');
+      html = html.replace('</body>', sliderDependencies + '\n' + sliderInitScript + '\n</body>');
     } else {
-      html = html.replace('</body>', sliderInitScript + '\\n</body>');
+      html = html.replace('</body>', sliderInitScript + '\n</body>');
     }
   }
 
@@ -429,10 +429,10 @@ ${sliderInitScript}
 
 function renderErrorPage(title: string, message: string): string {
   return `<!DOCTYPE html>
-<html lang=\"nl\">
+<html lang="nl">
 <head>
-  <meta charset=\"UTF-8\">
-  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
   <style>
     body {
@@ -466,7 +466,7 @@ function renderErrorPage(title: string, message: string): string {
   </style>
 </head>
 <body>
-  <div class=\"container\">
+  <div class="container">
     <h1>${title}</h1>
     <p>${message}</p>
   </div>
@@ -477,50 +477,56 @@ function renderErrorPage(title: string, message: string): string {
 async function renderWebsite(supabase: any, websiteId: string, pathname: string): Promise<Response> {
   try {
     const { data: website, error: websiteError } = await supabase
-      .from(\"websites\")
-      .select(\"*\")
-      .eq(\"id\", websiteId)
+      .from("websites")
+      .select("*")
+      .eq("id", websiteId)
       .maybeSingle();
 
     if (websiteError || !website) {
       return new Response(
-        renderErrorPage(\"Website niet gevonden\", \"Deze website bestaat niet.\"),
-        { status: 404, headers: { \"Content-Type\": \"text/html\" } }
+        renderErrorPage("Website niet gevonden", "Deze website bestaat niet."),
+        { status: 404, headers: { "Content-Type": "text/html" } }
       );
     }
 
-    const { data: menuPages } = await supabase
-      .from(\"pages\")
-      .select(\"id, title, slug, menu_label\")
-      .eq(\"website_id\", websiteId)
-      .eq(\"show_in_menu\", true)
-      .order(\"menu_order\", { ascending: true });
+    const brandId = website.brand_id;
 
-    let slug = pathname === \"/\" || pathname === \"\" ? \"/\" : pathname;
-    if (slug !== \"/\" && slug.endsWith(\"/\")) {
+    const { data: menuPages } = await supabase
+      .from("pages")
+      .select("id, title, slug, menu_label")
+      .eq("brand_id", brandId)
+      .eq("show_in_menu", true)
+      .order("menu_order", { ascending: true });
+
+    let slug = pathname === "/" || pathname === "" ? "home" : pathname.substring(1);
+    if (slug.endsWith("/")) {
       slug = slug.substring(0, slug.length - 1);
     }
 
     const { data: page, error: pageError } = await supabase
-      .from(\"pages\")
-      .select(\"*\")
-      .eq(\"website_id\", websiteId)
-      .eq(\"slug\", slug)
+      .from("pages")
+      .select("*")
+      .eq("brand_id", brandId)
+      .eq("slug", slug)
+      .eq("status", "published")
+      .or("content_type.eq.page,content_type.is.null")
       .maybeSingle();
 
     if (!page) {
       const { data: firstPage } = await supabase
-        .from(\"pages\")
-        .select(\"*\")
-        .eq(\"website_id\", websiteId)
-        .order(\"menu_order\", { ascending: true })
+        .from("pages")
+        .select("*")
+        .eq("brand_id", brandId)
+        .eq("status", "published")
+        .or("content_type.eq.page,content_type.is.null")
+        .order("created_at", { ascending: true })
         .limit(1)
         .maybeSingle();
 
       if (firstPage) {
         return new Response(renderWebsitePage(firstPage, website, menuPages || []), {
           status: 200,
-          headers: { \"Content-Type\": \"text/html\" },
+          headers: { "Content-Type": "text/html" },
         });
       }
     }
@@ -528,28 +534,28 @@ async function renderWebsite(supabase: any, websiteId: string, pathname: string)
     if (pageError || !page) {
       return new Response(
         renderErrorPage(
-          \"Pagina niet gevonden\",
+          "Pagina niet gevonden",
           `De pagina '${slug}' bestaat niet.`
         ),
-        { status: 404, headers: { \"Content-Type\": \"text/html\" } }
+        { status: 404, headers: { "Content-Type": "text/html" } }
       );
     }
 
     return new Response(renderWebsitePage(page, website, menuPages || []), {
       status: 200,
-      headers: { \"Content-Type\": \"text/html\" },
+      headers: { "Content-Type": "text/html" },
     });
   } catch (error) {
-    console.error(\"[WEBSITE-RENDER] Error:\", error);
+    console.error("[WEBSITE-RENDER] Error:", error);
     return new Response(
-      renderErrorPage(\"Server Fout\", error?.message || \"Er is een fout opgetreden.\"),
-      { status: 500, headers: { \"Content-Type\": \"text/html\" } }
+      renderErrorPage("Server Fout", error?.message || "Er is een fout opgetreden."),
+      { status: 500, headers: { "Content-Type": "text/html" } }
     );
   }
 }
 
 function renderWebsitePage(page: any, website: any, menuPages: any[]): string {
-  let html = \"\";
+  let html = "";
 
   if (page.body_html) {
     html = page.body_html;
@@ -560,38 +566,38 @@ function renderWebsitePage(page: any, website: any, menuPages: any[]): string {
   }
 
   if (!html) {
-    return renderErrorPage(\"Geen content\", \"Deze pagina heeft nog geen content.\");
+    return renderErrorPage("Geen content", "Deze pagina heeft nog geen content.");
   }
 
-  const supabaseUrl = Deno.env.get(\"SUPABASE_URL\")!;
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const cssBaseUrl = `${supabaseUrl}/storage/v1/object/public/assets/styles`;
 
   const menuHtml = menuPages.length > 0 ? `
-    <nav style=\"background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;\">
-      <div style=\"max-width: 1200px; margin: 0 auto; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center;\">
-        <div style=\"font-size: 1.5rem; font-weight: bold; color: #667eea;\">${website.name || 'Website'}</div>
-        <ul style=\"list-style: none; display: flex; gap: 2rem; margin: 0; padding: 0;\">
+    <nav style="background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;">
+      <div style="max-width: 1200px; margin: 0 auto; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-size: 1.5rem; font-weight: bold; color: #667eea;">${website.name || 'Website'}</div>
+        <ul style="list-style: none; display: flex; gap: 2rem; margin: 0; padding: 0;">
           ${menuPages.map(p => `
-            <li><a href=\"/${p.slug}\" style=\"text-decoration: none; color: #333; font-weight: 500; transition: color 0.3s;\" onmouseover=\"this.style.color='#667eea'\" onmouseout=\"this.style.color='#333'\">${p.menu_label || p.title}</a></li>
+            <li><a href="/${p.slug}" style="text-decoration: none; color: #333; font-weight: 500; transition: color 0.3s;" onmouseover="this.style.color='#667eea'" onmouseout="this.style.color='#333'">${p.menu_label || p.title}</a></li>
           `).join('')}
         </ul>
       </div>
     </nav>
   ` : '';
 
-  if (!html.includes(\"<html\") && !html.includes(\"<!DOCTYPE\")) {
+  if (!html.includes("<html") && !html.includes("<!DOCTYPE")) {
     html = `<!DOCTYPE html>
-<html lang=\"nl\">
+<html lang="nl">
 <head>
-  <meta charset=\"UTF-8\">
-  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
-  <title>${page.title || \"Pagina\"}</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${page.title || "Pagina"}</title>
   ${fontAwesomeFallback}
-  <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">
-  <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>
-  <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap\" rel=\"stylesheet\">
-  <link rel=\"stylesheet\" href=\"${cssBaseUrl}/main.css\">
-  <link rel=\"stylesheet\" href=\"${cssBaseUrl}/components.css\">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="${cssBaseUrl}/main.css">
+  <link rel="stylesheet" href="${cssBaseUrl}/components.css">
   <style>
     body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
   </style>
@@ -604,30 +610,32 @@ ${sliderInitScript}
 </body>
 </html>`;
   } else {
+    html = html.replace(/<base\s+href=["'][^"']*["']\s*\/?>/gi, '');
+
     if (!html.includes('font-awesome/5.')) {
-      html = html.replace('</head>', fontAwesomeFallback + '\\n</head>');
+      html = html.replace('</head>', fontAwesomeFallback + '\n</head>');
     }
 
     if (!html.includes('main.css') && !html.includes('components.css')) {
       html = html.replace(
         '</head>',
-        `  <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">
-  <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>
-  <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap\" rel=\"stylesheet\">
-  <link rel=\"stylesheet\" href=\"${cssBaseUrl}/main.css\">
-  <link rel=\"stylesheet\" href=\"${cssBaseUrl}/components.css\">
+        `  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="${cssBaseUrl}/main.css">
+  <link rel="stylesheet" href="${cssBaseUrl}/components.css">
 </head>`
       );
     }
 
     if (menuHtml && !html.includes('<nav')) {
-      html = html.replace('<body>', `<body>\\n${menuHtml}`);
+      html = html.replace('<body>', `<body>\n${menuHtml}`);
     }
 
     if (!html.includes('jquery') && !html.includes('slick')) {
-      html = html.replace('</body>', sliderDependencies + '\\n' + sliderInitScript + '\\n</body>');
+      html = html.replace('</body>', sliderDependencies + '\n' + sliderInitScript + '\n</body>');
     } else {
-      html = html.replace('</body>', sliderInitScript + '\\n</body>');
+      html = html.replace('</body>', sliderInitScript + '\n</body>');
     }
   }
 
