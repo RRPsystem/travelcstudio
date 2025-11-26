@@ -308,25 +308,15 @@ function renderPageWithMenu(page: any, menuPages: any[]): string {
       const classMatch = existingNav.match(/class="([^"]*)"/i);
       const navClasses = classMatch ? classMatch[1] : "main-menu";
 
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(existingNav, "text/html");
-      const navElement = doc.querySelector("nav");
+      const ulMatch = existingNav.match(/<ul[^>]*class="([^"]*)"/i);
+      const ulClasses = ulMatch ? ulMatch[1] : "";
+      console.log("[VIEWER] Found UL with classes:", ulClasses);
 
-      if (navElement) {
-        const existingUl = navElement.querySelector(":scope > ul");
-        if (existingUl) {
-          const ulClasses = existingUl.className || "";
-          console.log("[VIEWER] Found UL with classes:", ulClasses);
+      const newMenuHtml = `<ul class="${ulClasses}">${menuHtml}</ul>`;
+      const newNav = `<nav class="${navClasses}">${newMenuHtml}</nav>`;
 
-          const newMenuHtml = `<ul class="${ulClasses}">${menuHtml}</ul>`;
-          const newNav = `<nav class="${navClasses}">${newMenuHtml}</nav>`;
-
-          html = html.replace(navRegex, newNav);
-          console.log("[VIEWER] Replaced nav with menu from database");
-        } else {
-          console.log("[VIEWER] No direct child UL found in nav");
-        }
-      }
+      html = html.replace(navRegex, newNav);
+      console.log("[VIEWER] Replaced nav with menu from database");
     } else {
       console.log("[VIEWER] No main-menu nav found in template");
     }
