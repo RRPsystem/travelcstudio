@@ -391,8 +391,17 @@ function createMenuFixScript(menuPages: any[]): string {
         for (const [key, url] of Object.entries(menuMap)) {
           if (text.includes(key)) {
             const oldHref = link.href;
-            link.href = url;
-            link.onclick = null;
+
+            link.onclick = function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              window.location.href = url;
+              return false;
+            };
+
+            link.setAttribute('data-href', url);
+            link.style.cursor = 'pointer';
+
             fixedCount++;
             console.log('[Menu Fix] ✅', text, ':', oldHref, '→', url);
             break;
