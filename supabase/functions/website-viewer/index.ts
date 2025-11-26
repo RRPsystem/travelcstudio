@@ -149,6 +149,17 @@ Deno.serve(async (req: Request) => {
   }
 });
 
+const fontAwesomeFallback = `
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<link rel="stylesheet" href="https://pro.fontawesome.com/releases/v5.15.4/css/all.css">
+<style>
+  .main-menu ul li > a::after,
+  .main-menu ul li > span::after {
+    font-family: 'Font Awesome 5 Free', 'Font Awesome 5 Pro', 'FontAwesome' !important;
+    font-weight: 900 !important;
+  }
+</style>`;
+
 const sliderDependencies = `
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.css">
@@ -374,7 +385,7 @@ function renderPage(page: any): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${page.title || "Pagina"}</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  ${fontAwesomeFallback}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -388,11 +399,14 @@ ${sliderInitScript}
 </body>
 </html>`;
   } else {
+    if (!html.includes('font-awesome/5.')) {
+      html = html.replace('</head>', fontAwesomeFallback + '\n</head>');
+    }
+
     if (!html.includes('main.css') && !html.includes('components.css')) {
       html = html.replace(
         '</head>',
-        `  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
+        `  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="${cssBaseUrl}/main.css">
@@ -570,7 +584,7 @@ function renderWebsitePage(page: any, website: any, menuPages: any[]): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${page.title || "Pagina"}</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  ${fontAwesomeFallback}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -588,11 +602,14 @@ ${sliderInitScript}
 </body>
 </html>`;
   } else {
+    if (!html.includes('font-awesome/5.')) {
+      html = html.replace('</head>', fontAwesomeFallback + '\n</head>');
+    }
+
     if (!html.includes('main.css') && !html.includes('components.css')) {
       html = html.replace(
         '</head>',
-        `  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
+        `  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="${cssBaseUrl}/main.css">
