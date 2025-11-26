@@ -360,6 +360,61 @@ const sliderInitScript = `
 })(window.jQuery);
 </script>`;
 
+function createMenuFixScript(menuPages: any[]): string {
+  const menuMap = menuPages.reduce((acc: any, page: any) => {
+    const label = (page.menu_label || page.title).toLowerCase();
+    acc[label] = page.slug === '' ? '/' : `/${page.slug}`;
+    return acc;
+  }, {});
+
+  return `
+<script>
+(function() {
+  const menuMap = ${JSON.stringify(menuMap)};
+  console.log('[Menu Fix] Starting menu link replacement...', menuMap);
+
+  function fixMenuLinks() {
+    const menuSelectors = [
+      '.main-menu a',
+      '.header-navigation a',
+      'nav a',
+      '.navigation a',
+      '.menu a',
+      '.navbar a'
+    ];
+
+    let fixedCount = 0;
+    menuSelectors.forEach(selector => {
+      document.querySelectorAll(selector).forEach(link => {
+        const text = link.textContent.trim().toLowerCase();
+
+        for (const [key, url] of Object.entries(menuMap)) {
+          if (text.includes(key)) {
+            const oldHref = link.href;
+            link.href = url;
+            link.onclick = null;
+            fixedCount++;
+            console.log('[Menu Fix] ✅', text, ':', oldHref, '→', url);
+            break;
+          }
+        }
+      });
+    });
+
+    console.log('[Menu Fix] Fixed', fixedCount, 'menu links');
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', fixMenuLinks);
+  } else {
+    fixMenuLinks();
+  }
+
+  setTimeout(fixMenuLinks, 500);
+})();
+</script>`;
+}
+
 function renderPage(page: any): string {
   let html = "";
 
@@ -570,12 +625,14 @@ function renderWebsitePage(page: any, website: any, menuPages: any[]): string {
         <div style="font-size: 1.5rem; font-weight: bold; color: #667eea;">${website.name || 'Website'}</div>
         <ul style="list-style: none; display: flex; gap: 2rem; margin: 0; padding: 0;">
           ${menuPages.map(p => `
-            <li><a href="${p.slug}" style="text-decoration: none; color: #333; font-weight: 500; transition: color 0.3s;" onmouseover="this.style.color='#667eea'" onmouseout="this.style.color='#333'">${p.menu_label || p.title}</a></li>
+            <li><a href="/${p.slug}" style="text-decoration: none; color: #333; font-weight: 500; transition: color 0.3s;" onmouseover="this.style.color='#667eea'" onmouseout="this.style.color='#333'">${p.menu_label || p.title}</a></li>
           `).join('')}
         </ul>
       </div>
     </nav>
   ` : '';
+
+  const menuFixScript = menuPages.length > 0 ? createMenuFixScript(menuPages) : '';
 
   if (!html.includes("<html") && !html.includes("<!DOCTYPE")) {
     html = `<!DOCTYPE html>
@@ -599,6 +656,7 @@ ${menuHtml}
 ${html}
 ${sliderDependencies}
 ${sliderInitScript}
+${menuFixScript}
 </body>
 </html>`;
   } else {
@@ -623,9 +681,9 @@ ${sliderInitScript}
     }
 
     if (!html.includes('jquery') && !html.includes('slick')) {
-      html = html.replace('</body>', sliderDependencies + '\n' + sliderInitScript + '\n</body>');
+      html = html.replace('</body>', sliderDependencies + '\n' + sliderInitScript + '\n' + menuFixScript + '\n</body>');
     } else {
-      html = html.replace('</body>', sliderInitScript + '\n</body>');
+      html = html.replace('</body>', sliderInitScript + '\n' + menuFixScript + '\n</body>');
     }
   }
 
