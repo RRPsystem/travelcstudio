@@ -16,7 +16,7 @@ async function signJWT(payload: any): Promise<string> {
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('15m')
+    .setExpirationTime('2h')
     .sign(secretKey);
 }
 
