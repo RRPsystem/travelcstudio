@@ -271,12 +271,13 @@ export function TripApproval() {
         token: jwtResponse.token,
         apikey: apiKey,
         content_type: 'trips',
-        return_url: returnUrl,
-        id: correctTripId
+        return_url: returnUrl
       };
 
       if (assignment.page_id) {
         params.page_id = assignment.page_id;
+      } else {
+        params.id = correctTripId;
       }
 
       const urlParams = new URLSearchParams(params);
