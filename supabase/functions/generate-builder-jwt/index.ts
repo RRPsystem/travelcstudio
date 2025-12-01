@@ -84,10 +84,39 @@ Deno.serve(async (req: Request) => {
 
     console.log('[JWT] Final brand ID:', { brandId, user_role: userData.role, forced: !!requestBody.forceBrandId });
 
+    const serviceClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 2);
+
+    const { data: session, error: sessionError } = await serviceClient
+      .from('builder_sessions')
+      .insert({
+        brand_id: brandId,
+        user_id: user.id,
+        page_id: requestBody.page_id || null,
+        expires_at: expiresAt.toISOString(),
+        initial_token_used: false
+      })
+      .select()
+      .single();
+
+    if (sessionError || !session) {
+      console.error('[JWT] Session creation error:', sessionError);
+      throw new Error('Failed to create builder session');
+    }
+
+    console.log('[JWT] Created builder session:', session.id);
+
     const payload: any = {
       brand_id: brandId,
       sub: user.id,
+      session_id: session.id,
       scope: requestedScopes,
+      token_type: 'initial'
     };
 
     if (requestBody.content_type) {
