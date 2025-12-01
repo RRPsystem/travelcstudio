@@ -462,6 +462,14 @@ export function QuickStartWebsite() {
       await editWebsite(websiteData);
     } catch (error: any) {
       console.error('Error creating external builder website:', error);
+
+      // Check for duplicate key error
+      if (error?.code === '23505' || error?.message?.includes('duplicate key') || error?.message?.includes('already exists')) {
+        alert('ℹ️ Deze website bestaat al! Je kunt deze vinden in Website Management.');
+        await loadWebsites();
+        return;
+      }
+
       const errorMsg = error?.message || JSON.stringify(error);
       alert('❌ Fout bij aanmaken website: ' + errorMsg);
     } finally {
@@ -554,6 +562,14 @@ export function QuickStartWebsite() {
       alert(`✅ Website "${selectedWPCategory}" aangemaakt met ${pages.length} pagina's! Je kunt deze nu aanpassen en publiceren.`);
     } catch (error: any) {
       console.error('Error creating WordPress website:', error);
+
+      // Check for duplicate key error
+      if (error?.code === '23505' || error?.message?.includes('duplicate key') || error?.message?.includes('already exists')) {
+        alert('ℹ️ Deze website bestaat al! Je kunt deze vinden in Website Management.');
+        await loadWebsites();
+        return;
+      }
+
       const errorMsg = error?.message || JSON.stringify(error);
       alert('❌ Fout bij aanmaken website: ' + errorMsg);
     } finally {

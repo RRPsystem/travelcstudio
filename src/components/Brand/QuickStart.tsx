@@ -321,8 +321,15 @@ export function QuickStart() {
                     alert(`✅ Website "${category.category}" aangemaakt met ${templatePages.length} pagina's!\n\n📍 Preview URL: ${previewUrl}\n\nDe website is nu beschikbaar in Website Management.`);
 
                     window.location.href = '#/brand/website/manage';
-                  } catch (error) {
+                  } catch (error: any) {
                     console.error('Error creating website:', error);
+
+                    // Check for duplicate key error
+                    if (error?.code === '23505' || error?.message?.includes('duplicate key') || error?.message?.includes('already exists')) {
+                      alert('ℹ️ Deze website bestaat al! Je kunt deze vinden in Website Management.');
+                      return;
+                    }
+
                     alert('❌ Fout bij aanmaken website: ' + (error instanceof Error ? error.message : JSON.stringify(error)));
                   }
                 }}
