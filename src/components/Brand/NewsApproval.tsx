@@ -281,17 +281,19 @@ export function NewsApproval() {
     );
   }
 
-  return (
-    <>
-      {showEditor && (
-        <NewsEditor
-          newsId={editingNewsId || undefined}
-          onSave={handleEditorClose}
-          onCancel={handleEditorClose}
-          mode="brand"
-        />
-      )}
+  if (showEditor) {
+    return (
+      <NewsEditor
+        newsId={editingNewsId || undefined}
+        onSave={handleEditorClose}
+        onCancel={handleEditorClose}
+        mode="brand"
+        inline={true}
+      />
+    );
+  }
 
+  return (
     <div className="space-y-6">
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-3">
@@ -428,6 +430,5 @@ export function NewsApproval() {
         </div>
       )}
     </div>
-    </>
   );
 }

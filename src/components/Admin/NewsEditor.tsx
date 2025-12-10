@@ -26,9 +26,10 @@ interface NewsEditorProps {
   onSave: () => void;
   onCancel?: () => void;
   mode?: 'admin' | 'brand';
+  inline?: boolean;
 }
 
-export function NewsEditor({ newsItem: propNewsItem, newsId, onClose, onSave, onCancel, mode = 'admin' }: NewsEditorProps) {
+export function NewsEditor({ newsItem: propNewsItem, newsId, onClose, onSave, onCancel, mode = 'admin', inline = false }: NewsEditorProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [newsItem, setNewsItem] = useState<NewsItem | null>(propNewsItem || null);
@@ -184,20 +185,21 @@ export function NewsEditor({ newsItem: propNewsItem, newsId, onClose, onSave, on
     if (onCancel) onCancel();
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b">
-          <h2 className="text-xl font-bold text-gray-900">
-            {newsItem || newsId ? 'Nieuwsbericht Bewerken' : 'Nieuw Nieuwsbericht'}
-          </h2>
+  const editorContent = (
+    <div className={inline ? "bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col" : "bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"}>
+      <div className="flex items-center justify-between px-6 py-4 border-b">
+        <h2 className="text-xl font-bold text-gray-900">
+          {newsItem || newsId ? 'Nieuwsbericht Bewerken' : 'Nieuw Nieuwsbericht'}
+        </h2>
+        {!inline && (
           <button
             onClick={handleClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
             <X className="w-6 h-6" />
           </button>
-        </div>
+        )}
+      </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <div className="space-y-4">
@@ -386,24 +388,33 @@ export function NewsEditor({ newsItem: propNewsItem, newsId, onClose, onSave, on
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-gray-50">
-          <button
-            onClick={handleClose}
-            className="px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
-            disabled={loading}
-          >
-            Annuleren
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={loading}
-            className="flex items-center gap-2 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Save className="w-4 h-4" />
-            {loading ? 'Opslaan...' : 'Opslaan'}
-          </button>
-        </div>
+      <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-gray-50">
+        <button
+          onClick={handleClose}
+          className="px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
+          disabled={loading}
+        >
+          Annuleren
+        </button>
+        <button
+          onClick={handleSave}
+          disabled={loading}
+          className="flex items-center gap-2 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Save className="w-4 h-4" />
+          {loading ? 'Opslaan...' : 'Opslaan'}
+        </button>
       </div>
+    </div>
+  );
+
+  if (inline) {
+    return editorContent;
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      {editorContent}
     </div>
   );
 }
