@@ -10,6 +10,7 @@ interface NewsItem {
   slug: string;
   content: any;
   excerpt: string;
+  closing_text?: string;
   featured_image: string;
   status: 'draft' | 'published';
   tags: string[];
@@ -38,6 +39,7 @@ export function NewsEditor({ newsItem: propNewsItem, newsId, onClose, onSave, on
   const [slug, setSlug] = useState('');
   const [excerpt, setExcerpt] = useState('');
   const [content, setContent] = useState('');
+  const [closingText, setClosingText] = useState('');
   const [featuredImage, setFeaturedImage] = useState('');
   const [status, setStatus] = useState<'draft' | 'published'>('draft');
   const [tags, setTags] = useState<string[]>([]);
@@ -79,6 +81,7 @@ export function NewsEditor({ newsItem: propNewsItem, newsId, onClose, onSave, on
       setSlug(newsItem.slug || '');
       setExcerpt(newsItem.excerpt || '');
       setContent(typeof newsItem.content === 'string' ? newsItem.content : newsItem.content?.html || '');
+      setClosingText(newsItem.closing_text || '');
       setFeaturedImage(newsItem.featured_image || '');
       setStatus(newsItem.status || 'draft');
       setTags(newsItem.tags || []);
@@ -141,6 +144,7 @@ export function NewsEditor({ newsItem: propNewsItem, newsId, onClose, onSave, on
         slug: slug.trim(),
         excerpt: excerpt.trim(),
         content: { html: content.trim() },
+        closing_text: closingText.trim(),
         featured_image: featuredImage.trim(),
         status,
         tags,
@@ -262,6 +266,19 @@ export function NewsEditor({ newsItem: propNewsItem, newsId, onClose, onSave, on
                 rows={10}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent font-mono text-sm"
                 placeholder="Artikel inhoud (HTML wordt ondersteund)"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Slottekst
+              </label>
+              <textarea
+                value={closingText}
+                onChange={(e) => setClosingText(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                placeholder="Afsluitende tekst voor het artikel"
               />
             </div>
 
