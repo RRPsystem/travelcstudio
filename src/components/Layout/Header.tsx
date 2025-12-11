@@ -95,7 +95,7 @@ export function Header() {
           </button>
 
           <div className="relative pl-3 border-l border-gray-200" ref={menuRef}>
-            {isOperator ? (
+            {user?.role === 'operator' ? (
               <button
                 onClick={() => setShowContextMenu(!showContextMenu)}
                 className="flex items-center space-x-3 hover:bg-gray-50 rounded-lg px-3 py-2 transition-colors"
@@ -130,7 +130,7 @@ export function Header() {
               </div>
             )}
 
-            {showContextMenu && isOperator && (
+            {showContextMenu && user?.role === 'operator' && (
               <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 max-h-96 overflow-y-auto">
                 <div className="px-4 py-2 border-b border-gray-200">
                   <div className="text-xs font-semibold text-gray-500 uppercase">Switch Context</div>
