@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { GPTManagement } from './GPTManagement';
 import { SystemHealth } from './SystemHealth';
@@ -24,7 +24,12 @@ import {
   Zap,
   Download,
   Mic,
-  Users
+  Users,
+  User,
+  ChevronDown,
+  Building2,
+  UserCircle,
+  Wrench
 } from 'lucide-react';
 import RoadmapManagement from './RoadmapManagement';
 import TestManagement from './TestManagement';
@@ -36,8 +41,21 @@ import PodcastManagement from '../Podcast/PodcastManagement';
 import TravelJournal from '../TravelJournal/TravelJournal';
 
 export function OperatorDashboard() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, impersonationContext, availableContexts, switchContext } = useAuth();
   const [activeSection, setActiveSection] = useState('test-management');
+  const [showContextMenu, setShowContextMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowContextMenu(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const sidebarItems = [
     { id: 'user-management', label: 'Gebruikersbeheer', icon: Users },
@@ -165,6 +183,120 @@ export function OperatorDashboard() {
               </div>
               <div className="text-sm text-gray-500">
                 Last updated: {new Date().toLocaleTimeString()}
+              </div>
+
+              <div className="relative pl-3 border-l border-gray-200" ref={menuRef}>
+                <button
+                  onClick={() => setShowContextMenu(!showContextMenu)}
+                  className="flex items-center space-x-3 hover:bg-gray-50 rounded-lg px-3 py-2 transition-colors"
+                >
+                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                    {user?.avatar ? (
+                      <img src={user.avatar} alt={user.email} className="w-8 h-8 rounded-full" />
+                    ) : (
+                      <User size={16} className="text-white" />
+                    )}
+                  </div>
+                  <div className="text-sm text-left">
+                    <div className="font-medium text-gray-900">
+                      {impersonationContext ?
+                        (impersonationContext.role === 'operator' ? '⚙️ Operator View' :
+                         impersonationContext.role === 'admin' ? '🛡️ Admin View' :
+                         impersonationContext.role === 'brand' ? `🏢 ${impersonationContext.brandName}` :
+                         `👤 ${impersonationContext.agentName}`)
+                        : user?.email || 'User'
+                      }
+                    </div>
+                    {impersonationContext && (
+                      <div className="text-xs text-gray-500">{user?.email}</div>
+                    )}
+                  </div>
+                  <ChevronDown size={16} className="text-gray-500" />
+                </button>
+
+                {showContextMenu && (
+                  <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 max-h-96 overflow-y-auto">
+                    <div className="px-4 py-2 border-b border-gray-200">
+                      <div className="text-xs font-semibold text-gray-500 uppercase">Switch Context</div>
+                    </div>
+
+                    {availableContexts.length === 0 ? (
+                      <div className="px-4 py-3 text-sm text-gray-500">Loading...</div>
+                    ) : (
+                      <>
+                        <div className="px-2 py-1">
+                          <div className="text-xs font-semibold text-gray-500 uppercase px-2 py-1">System</div>
+                          {availableContexts.filter(ctx => ctx.type === 'operator' || ctx.type === 'admin').map((ctx) => (
+                            <button
+                              key={ctx.type}
+                              onClick={() => {
+                                switchContext({ role: ctx.type as any });
+                                setShowContextMenu(false);
+                              }}
+                              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors ${
+                                impersonationContext?.role === ctx.type ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                              }`}
+                            >
+                              {ctx.type === 'operator' ? <Wrench size={16} /> : <Shield size={16} />}
+                              <span className="text-sm font-medium">{ctx.name}</span>
+                            </button>
+                          ))}
+                        </div>
+
+                        {availableContexts.filter(ctx => ctx.type === 'brand').length > 0 && (
+                          <div className="px-2 py-1 border-t border-gray-100">
+                            <div className="text-xs font-semibold text-gray-500 uppercase px-2 py-1">Brands</div>
+                            {availableContexts.filter(ctx => ctx.type === 'brand').map((ctx) => (
+                              <button
+                                key={ctx.id}
+                                onClick={() => {
+                                  switchContext({
+                                    role: 'brand',
+                                    brandId: ctx.brandId,
+                                    brandName: ctx.name
+                                  });
+                                  setShowContextMenu(false);
+                                }}
+                                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors ${
+                                  impersonationContext?.brandId === ctx.id ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                                }`}
+                              >
+                                <Building2 size={16} />
+                                <span className="text-sm">{ctx.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {availableContexts.filter(ctx => ctx.type === 'agent').length > 0 && (
+                          <div className="px-2 py-1 border-t border-gray-100">
+                            <div className="text-xs font-semibold text-gray-500 uppercase px-2 py-1">Agents</div>
+                            {availableContexts.filter(ctx => ctx.type === 'agent').map((ctx) => (
+                              <button
+                                key={ctx.id}
+                                onClick={() => {
+                                  switchContext({
+                                    role: 'agent',
+                                    agentId: ctx.id,
+                                    agentName: ctx.name,
+                                    brandId: ctx.brandId
+                                  });
+                                  setShowContextMenu(false);
+                                }}
+                                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors ${
+                                  impersonationContext?.agentId === ctx.id ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                                }`}
+                              >
+                                <UserCircle size={16} />
+                                <span className="text-sm">{ctx.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
