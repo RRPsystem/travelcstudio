@@ -126,6 +126,7 @@ class AI_News_Plugin {
                 <li><code>[ai-news-title id="xxx"]</code> - Toon alleen titel</li>
                 <li><code>[ai-news-excerpt id="xxx"]</code> - Toon alleen excerpt</li>
                 <li><code>[ai-news-content id="xxx"]</code> - Toon alleen content</li>
+                <li><code>[ai-news-closing id="xxx"]</code> - Toon alleen closing text (slot)</li>
                 <li><code>[ai-news-image id="xxx"]</code> - Toon alleen featured image</li>
                 <li><code>[ai-news-date id="xxx"]</code> - Toon publicatiedatum</li>
                 <li><code>[ai-news-tags id="xxx"]</code> - Toon tags</li>
@@ -141,6 +142,7 @@ class AI_News_Plugin {
         add_shortcode('ai-news-title', [$this, 'shortcode_news_title']);
         add_shortcode('ai-news-excerpt', [$this, 'shortcode_news_excerpt']);
         add_shortcode('ai-news-content', [$this, 'shortcode_news_content']);
+        add_shortcode('ai-news-closing', [$this, 'shortcode_news_closing']);
         add_shortcode('ai-news-image', [$this, 'shortcode_news_image']);
         add_shortcode('ai-news-date', [$this, 'shortcode_news_date']);
         add_shortcode('ai-news-tags', [$this, 'shortcode_news_tags']);
@@ -372,6 +374,12 @@ class AI_News_Plugin {
                 }
                 ?>
             </div>
+
+            <?php if (!empty($news['closing_text'])): ?>
+                <div class="ai-news-closing">
+                    <?php echo wp_kses_post($news['closing_text']); ?>
+                </div>
+            <?php endif; ?>
         </article>
         <?php
         return ob_get_clean();
@@ -403,6 +411,12 @@ class AI_News_Plugin {
         }
 
         return '<div class="ai-news-content">' . wp_kses_post($content) . '</div>';
+    }
+
+    public function shortcode_news_closing($atts) {
+        $news = $this->get_news_by_id_or_slug($atts);
+        if (is_string($news)) return $news;
+        return '<div class="ai-news-closing">' . wp_kses_post($news['closing_text'] ?? '') . '</div>';
     }
 
     public function shortcode_news_image($atts) {
@@ -595,6 +609,14 @@ add_action('wp_enqueue_scripts', function() {
             border: 1px solid #e5e7eb;
             border-radius: 4px;
             color: #6b7280;
+        }
+
+        .ai-news-closing {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #e5e7eb;
+            font-style: italic;
+            color: #4b5563;
         }
     ');
 });
