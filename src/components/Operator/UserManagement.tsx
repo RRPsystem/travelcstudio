@@ -6,7 +6,6 @@ interface UserData {
   id: string;
   email: string;
   role: string;
-  name: string;
   brand_id: string | null;
   created_at: string;
   brand_name?: string;
@@ -31,7 +30,6 @@ export function UserManagement() {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    name: '',
     role: 'brand',
     brand_id: ''
   });
@@ -150,7 +148,6 @@ export function UserManagement() {
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
-          name: formData.name,
           role: formData.role,
           brand_id: formData.role === 'brand' ? formData.brand_id : null
         })
@@ -168,8 +165,9 @@ export function UserManagement() {
 
       alert('Gebruiker succesvol aangemaakt!');
       setShowNewUserForm(false);
-      setFormData({ email: '', password: '', name: '', role: 'brand', brand_id: '' });
+      setFormData({ email: '', password: '', role: 'brand', brand_id: '' });
       loadUsers();
+      checkOrphanedUsers();
     } catch (error: any) {
       console.error('Error creating user:', error);
       alert('Fout bij aanmaken gebruiker: ' + error.message);
@@ -188,6 +186,7 @@ export function UserManagement() {
       alert('Gebruiker bijgewerkt!');
       setEditingUser(null);
       loadUsers();
+      checkOrphanedUsers();
     }
   };
 
@@ -206,6 +205,7 @@ export function UserManagement() {
     } else {
       alert('Gebruiker verwijderd!');
       loadUsers();
+      checkOrphanedUsers();
     }
   };
 
@@ -354,18 +354,6 @@ export function UserManagement() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Naam
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Wachtwoord *
                 </label>
                 <input
@@ -428,7 +416,7 @@ export function UserManagement() {
                 type="button"
                 onClick={() => {
                   setShowNewUserForm(false);
-                  setFormData({ email: '', password: '', name: '', role: 'brand', brand_id: '' });
+                  setFormData({ email: '', password: '', role: 'brand', brand_id: '' });
                 }}
                 className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
               >
@@ -470,7 +458,7 @@ export function UserManagement() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-3">
                       {getRoleIcon(user.role)}
-                      <span className="font-medium text-gray-900">{user.name}</span>
+                      <span className="font-medium text-gray-900">{user.email.split('@')[0]}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-600">
@@ -526,18 +514,6 @@ export function UserManagement() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Naam
-                </label>
-                <input
-                  type="text"
-                  value={editingUser.name}
-                  onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Rol
                 </label>
                 <select
@@ -575,7 +551,6 @@ export function UserManagement() {
               <div className="flex gap-3 pt-4">
                 <button
                   onClick={() => handleUpdateUser(editingUser.id, {
-                    name: editingUser.name,
                     role: editingUser.role,
                     brand_id: editingUser.role === 'brand' ? editingUser.brand_id : null
                   })}

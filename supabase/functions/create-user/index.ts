@@ -93,8 +93,7 @@ Deno.serve(async (req: Request) => {
         id: newUser.user.id,
         email: email,
         role: role,
-        brand_id: role === 'brand' ? brand_id : null,
-        name: name || email.split('@')[0]
+        brand_id: role === 'brand' ? brand_id : null
       });
 
     if (insertError) {
@@ -111,8 +110,7 @@ Deno.serve(async (req: Request) => {
         user: {
           id: newUser.user.id,
           email: email,
-          role: role,
-          name: name || email.split('@')[0]
+          role: role
         }
       }),
       {
