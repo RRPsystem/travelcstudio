@@ -43,9 +43,14 @@ export function UserManagement() {
   const checkOrphanedUsers = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) {
+        console.log('No session found for orphaned users check');
+        return;
+      }
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      console.log('Checking for orphaned users...');
+
       const response = await fetch(`${supabaseUrl}/functions/v1/check-orphaned-users`, {
         method: 'GET',
         headers: {
@@ -55,7 +60,11 @@ export function UserManagement() {
 
       if (response.ok) {
         const result = await response.json();
+        console.log('Orphaned users found:', result.orphanedUsers);
         setOrphanedUsers(result.orphanedUsers || []);
+      } else {
+        const error = await response.json();
+        console.error('Failed to check orphaned users:', error);
       }
     } catch (error) {
       console.error('Error checking orphaned users:', error);
