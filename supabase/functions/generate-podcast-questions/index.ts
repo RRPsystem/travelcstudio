@@ -58,13 +58,21 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const prompt = `Genereer 10 interessante, diepgaande vragen voor een reispodcast over het onderwerp: "${topic}".
+    const topics = topic.split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0);
+    const topicsText = topics.length > 1
+      ? `de volgende onderwerpen: ${topics.join(', ')}`
+      : `het onderwerp: "${topics[0]}"`;
+
+    const prompt = `Genereer 10 interessante, diepgaande vragen voor een reispodcast over ${topicsText}.
+
+${topics.length > 1 ? 'Verdeel de vragen gelijkmatig over alle genoemde onderwerpen.' : ''}
 
 De vragen moeten:
 - Open en inspirerend zijn
 - Praktische waarde hebben voor luisteraars
 - Variëren van algemeen naar specifiek
 - Aanmoedigen tot storytelling
+- Bij elkaar passen qua thema
 
 Geef alleen de vragen, genummerd 1-10.`;
 

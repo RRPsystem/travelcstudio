@@ -66,10 +66,6 @@ export default function TravelJournal() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Travel Podcast</h1>
-          <p className="text-gray-600">Ontdek inspirerende reisverhalen en podcasts</p>
-        </div>
 
         {selectedEpisode && (
           <div className="mb-8 bg-white rounded-xl shadow-lg overflow-hidden">

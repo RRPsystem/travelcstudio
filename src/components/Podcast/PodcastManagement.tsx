@@ -193,12 +193,7 @@ export default function PodcastManagement() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Podcast Management</h1>
-            <p className="text-gray-600">Plan, voorbereid en beheer podcast episodes</p>
-          </div>
-
+        <div className="flex justify-end mb-6">
           <button
             onClick={() => setShowNewEpisodeForm(true)}
             className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -299,7 +294,7 @@ export default function PodcastManagement() {
                       episodeId={selectedEpisode.id}
                       topic={selectedEpisode.topic}
                       onUpdateStatus={updateQuestionStatus}
-                      onGenerateAI={() => generateAIQuestions(selectedEpisode.id, selectedEpisode.topic)}
+                      onGenerateAI={(topics: string) => generateAIQuestions(selectedEpisode.id, topics)}
                       onRefresh={() => loadQuestions(selectedEpisode.id)}
                     />
                   )}
@@ -469,6 +464,8 @@ function NewEpisodeForm({ hosts, onClose, onSuccess }: any) {
 function QuestionsTab({ questions, episodeId, topic, onUpdateStatus, onGenerateAI, onRefresh }: any) {
   const { user } = useAuth();
   const [newQuestion, setNewQuestion] = useState('');
+  const [additionalTopics, setAdditionalTopics] = useState('');
+  const [showTopicInput, setShowTopicInput] = useState(false);
 
   const handleAddQuestion = async () => {
     if (!newQuestion.trim()) return;
@@ -486,6 +483,15 @@ function QuestionsTab({ questions, episodeId, topic, onUpdateStatus, onGenerateA
     onRefresh();
   };
 
+  const handleGenerateAI = () => {
+    const allTopics = additionalTopics.trim()
+      ? `${topic}, ${additionalTopics}`
+      : topic;
+    onGenerateAI(allTopics);
+    setShowTopicInput(false);
+    setAdditionalTopics('');
+  };
+
   const questionsByStatus = {
     suggested: questions.filter((q: Question) => q.status === 'suggested'),
     approved: questions.filter((q: Question) => q.status === 'approved'),
@@ -494,14 +500,59 @@ function QuestionsTab({ questions, episodeId, topic, onUpdateStatus, onGenerateA
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-4">
-        <button
-          onClick={onGenerateAI}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-        >
-          <Sparkles className="w-5 h-5" />
-          Genereer vragen met AI
-        </button>
+      <div className="space-y-3">
+        <div className="flex gap-4">
+          <button
+            onClick={() => setShowTopicInput(!showTopicInput)}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            <Sparkles className="w-5 h-5" />
+            Genereer vragen met AI
+          </button>
+        </div>
+
+        {showTopicInput && (
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <h4 className="font-semibold text-gray-900 mb-2">AI Vraag Generatie</h4>
+            <p className="text-sm text-gray-600 mb-3">
+              Hoofdonderwerp: <span className="font-medium">{topic}</span>
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Extra onderwerpen (optioneel)
+                </label>
+                <input
+                  type="text"
+                  value={additionalTopics}
+                  onChange={(e) => setAdditionalTopics(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                  placeholder="Bijv: cultuur, eten, budget reizen"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Voeg meerdere onderwerpen toe gescheiden door komma's
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleGenerateAI}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  10 Vragen Genereren
+                </button>
+                <button
+                  onClick={() => {
+                    setShowTopicInput(false);
+                    setAdditionalTopics('');
+                  }}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Annuleren
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div>
