@@ -139,26 +139,42 @@ export function WordPressDownloads() {
 
         <div className="p-6 border-t border-gray-200">
           <h4 className="text-sm font-semibold text-gray-900 mb-3">Beschikbare shortcodes:</h4>
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="bg-gray-50 p-3 rounded border border-gray-200">
-              <code className="text-sm text-purple-600">[ai-news-list limit="10"]</code>
+              <code className="text-sm text-purple-600">[ai-news-list limit="10" offset="0"]</code>
               <p className="text-xs text-gray-600 mt-1">Toon lijst van nieuwsberichten</p>
             </div>
             <div className="bg-gray-50 p-3 rounded border border-gray-200">
               <code className="text-sm text-purple-600">[ai-news-grid limit="6" columns="3"]</code>
-              <p className="text-xs text-gray-600 mt-1">Toon nieuws in grid layout</p>
+              <p className="text-xs text-gray-600 mt-1">Toon nieuws in grid layout (columns: 2, 3 of 4)</p>
             </div>
             <div className="bg-gray-50 p-3 rounded border border-gray-200">
               <code className="text-sm text-purple-600">[ai-news id="xxx"]</code>
-              <p className="text-xs text-gray-600 mt-1">Toon specifiek nieuwsbericht (volledig)</p>
+              <p className="text-xs text-gray-600 mt-1">Toon specifiek nieuwsbericht (volledig artikel)</p>
             </div>
             <div className="bg-gray-50 p-3 rounded border border-gray-200">
               <code className="text-sm text-purple-600">[ai-news-title id="xxx"]</code>
               <p className="text-xs text-gray-600 mt-1">Toon alleen titel van een nieuwsbericht</p>
             </div>
             <div className="bg-gray-50 p-3 rounded border border-gray-200">
+              <code className="text-sm text-purple-600">[ai-news-excerpt id="xxx"]</code>
+              <p className="text-xs text-gray-600 mt-1">Toon alleen excerpt (korte samenvatting)</p>
+            </div>
+            <div className="bg-gray-50 p-3 rounded border border-gray-200">
+              <code className="text-sm text-purple-600">[ai-news-content id="xxx"]</code>
+              <p className="text-xs text-gray-600 mt-1">Toon alleen content (volledige tekst)</p>
+            </div>
+            <div className="bg-gray-50 p-3 rounded border border-gray-200">
               <code className="text-sm text-purple-600">[ai-news-image id="xxx"]</code>
               <p className="text-xs text-gray-600 mt-1">Toon alleen featured image</p>
+            </div>
+            <div className="bg-gray-50 p-3 rounded border border-gray-200">
+              <code className="text-sm text-purple-600">[ai-news-date id="xxx" format="d-m-Y"]</code>
+              <p className="text-xs text-gray-600 mt-1">Toon publicatiedatum (format optioneel: d-m-Y, Y-m-d, etc.)</p>
+            </div>
+            <div className="bg-gray-50 p-3 rounded border border-gray-200">
+              <code className="text-sm text-purple-600">[ai-news-tags id="xxx"]</code>
+              <p className="text-xs text-gray-600 mt-1">Toon tags van een nieuwsbericht</p>
             </div>
           </div>
         </div>
