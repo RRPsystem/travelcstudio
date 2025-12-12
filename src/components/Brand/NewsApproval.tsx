@@ -3,6 +3,7 @@ import { Newspaper, Eye, Plus, Pencil, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { NewsEditor } from '../Admin/NewsEditor';
+import { generateBuilderJWT, generateBuilderDeeplink } from '../../lib/jwtHelper';
 
 interface NewsAssignment {
   id: string;
@@ -31,14 +32,41 @@ export function NewsApproval() {
   const [showEditor, setShowEditor] = useState(false);
   const [editingNewsId, setEditingNewsId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'assigned' | 'own'>('assigned');
+  const [hasExternalBuilder, setHasExternalBuilder] = useState(false);
+  const [websiteId, setWebsiteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.brand_id && !isLoadingData) {
+      loadWebsiteInfo();
       loadAssignments();
     } else if (!user?.brand_id) {
       setLoading(false);
     }
   }, [user?.brand_id]);
+
+  const loadWebsiteInfo = async () => {
+    if (!user?.brand_id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('websites')
+        .select('id, external_builder_id, template_source_type')
+        .eq('brand_id', user.brand_id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error loading website info:', error);
+        return;
+      }
+
+      if (data) {
+        setWebsiteId(data.id);
+        setHasExternalBuilder(!!data.external_builder_id || data.template_source_type === 'quickstart');
+      }
+    } catch (error) {
+      console.error('Error loading website info:', error);
+    }
+  };
 
   const loadAssignments = async () => {
     if (!user?.brand_id || isLoadingData) {
@@ -185,9 +213,51 @@ export function NewsApproval() {
     window.open(`${previewUrl}/preview/news/${slug}`, '_blank');
   };
 
-  const handleEdit = (assignment: NewsAssignment) => {
-    setEditingNewsId(assignment.news_item.id);
-    setShowEditor(true);
+  const handleEdit = async (assignment: NewsAssignment) => {
+    if (!user || !user.brand_id) return;
+
+    if (hasExternalBuilder) {
+      try {
+        const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/content/news`;
+
+        const scopes = [
+          'pages:read',
+          'pages:write',
+          'content:read',
+          'content:write',
+          'news:read',
+          'news:write'
+        ];
+
+        const jwtResponse = await generateBuilderJWT(
+          user.brand_id,
+          user.id,
+          scopes,
+          {
+            contentType: 'news',
+            newsSlug: assignment.news_item.slug,
+            returnUrl,
+            mode: 'edit'
+          }
+        );
+
+        const deeplink = generateBuilderDeeplink({
+          jwtResponse,
+          returnUrl,
+          contentType: 'news',
+          newsSlug: assignment.news_item.slug,
+          mode: 'edit'
+        });
+
+        window.open(deeplink, '_blank');
+      } catch (error) {
+        console.error('Error opening builder:', error);
+        alert('Kon builder niet openen. Probeer het opnieuw.');
+      }
+    } else {
+      setEditingNewsId(assignment.news_item.id);
+      setShowEditor(true);
+    }
   };
 
   const handleDelete = async (assignment: NewsAssignment) => {
@@ -263,9 +333,49 @@ export function NewsApproval() {
     }
   };
 
-  const createNewArticle = () => {
-    setEditingNewsId(null);
-    setShowEditor(true);
+  const createNewArticle = async () => {
+    if (!user || !user.brand_id) return;
+
+    if (hasExternalBuilder) {
+      try {
+        const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/content/news`;
+
+        const scopes = [
+          'pages:read',
+          'pages:write',
+          'content:read',
+          'content:write',
+          'news:read',
+          'news:write'
+        ];
+
+        const jwtResponse = await generateBuilderJWT(
+          user.brand_id,
+          user.id,
+          scopes,
+          {
+            contentType: 'news',
+            returnUrl,
+            mode: 'create'
+          }
+        );
+
+        const deeplink = generateBuilderDeeplink({
+          jwtResponse,
+          returnUrl,
+          contentType: 'news',
+          mode: 'create'
+        });
+
+        window.open(deeplink, '_blank');
+      } catch (error) {
+        console.error('Error opening builder:', error);
+        alert('Kon builder niet openen. Probeer het opnieuw.');
+      }
+    } else {
+      setEditingNewsId(null);
+      setShowEditor(true);
+    }
   };
 
   const handleEditorClose = () => {
