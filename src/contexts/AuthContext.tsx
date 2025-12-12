@@ -147,8 +147,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     setUser(null);
+    setImpersonationContext(null);
     if (!supabase) return;
-    
+
     const { error } = await supabase.auth.signOut();
     if (error) console.error('Signout error:', error);
   };

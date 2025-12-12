@@ -12,7 +12,7 @@ import { Users, Building2, FileText, Settings, Plus, Search, Filter, CreditCard 
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 export function AdminDashboard() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, impersonationContext, resetContext } = useAuth();
   const [activeSection, setActiveSection] = useState('dashboard');
   const [showWebsiteSubmenu, setShowWebsiteSubmenu] = useState(false);
   const [showContentSubmenu, setShowContentSubmenu] = useState(false);
@@ -434,6 +434,15 @@ export function AdminDashboard() {
         </nav>
 
         <div className="p-4 border-t border-slate-700 space-y-2">
+          {impersonationContext?.role === 'admin' && user?.role === 'operator' && (
+            <button
+              onClick={resetContext}
+              className="w-full flex items-center space-x-3 px-3 py-2 bg-orange-600 text-white hover:bg-orange-700 rounded-lg transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+              <span>Terug naar Operator</span>
+            </button>
+          )}
           <button
             onClick={() => setActiveSection('settings')}
             className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
