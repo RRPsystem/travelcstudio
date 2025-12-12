@@ -88,13 +88,11 @@ export function BrandManagement() {
 
   const websiteTypeOptions = [
     { value: '', label: 'Geen type ingesteld' },
-    { value: 'travel_agency', label: 'Reisbureau (Travel Agency)' },
-    { value: 'destination_marketing', label: 'Destination Marketing' },
-    { value: 'tour_operator', label: 'Tour Operator' },
-    { value: 'hotel_chain', label: 'Hotel Chain' },
-    { value: 'travel_blog', label: 'Travel Blog' },
-    { value: 'activity_provider', label: 'Activity Provider' },
-    { value: 'transport_company', label: 'Transport Company' },
+    { value: 'travel_agency', label: 'Reisbureau' },
+    { value: 'zto', label: 'ZTO' },
+    { value: 'united_travel', label: 'United Travel' },
+    { value: 'eigen_merk', label: 'Eigen Merk' },
+    { value: 'tour_operator', label: 'Touroperator' },
   ];
 
   return (
@@ -254,19 +252,6 @@ export function BrandManagement() {
             </table>
           </div>
         )}
-      </div>
-
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="font-medium text-blue-900 mb-2">Website Types</h3>
-        <div className="text-sm text-blue-800 space-y-1">
-          <p><strong>Travel Agency:</strong> Traditioneel reisbureau met reisadvies en boekingsservice</p>
-          <p><strong>Destination Marketing:</strong> Marketing organisatie voor een specifieke bestemming</p>
-          <p><strong>Tour Operator:</strong> Organiseert en verkoopt reispakketten</p>
-          <p><strong>Hotel Chain:</strong> Hotelketen of accommodatie aanbieder</p>
-          <p><strong>Travel Blog:</strong> Content-gedreven reisblog of magazine</p>
-          <p><strong>Activity Provider:</strong> Aanbieder van activiteiten en excursies</p>
-          <p><strong>Transport Company:</strong> Vervoerder (vliegtuig, trein, bus, ferry)</p>
-        </div>
       </div>
 
       <div className="flex items-center justify-between text-sm text-gray-600">
