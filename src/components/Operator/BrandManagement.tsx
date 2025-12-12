@@ -6,7 +6,7 @@ interface Brand {
   id: string;
   name: string;
   website_type: string | null;
-  domain?: string;
+  website_url?: string;
   slug?: string;
   created_at: string;
 }
@@ -29,7 +29,7 @@ export function BrandManagement() {
       setLoading(true);
       const { data, error } = await supabase
         .from('brands')
-        .select('id, name, website_type, domain, slug, created_at')
+        .select('id, name, website_type, website_url, slug, created_at')
         .order('name');
 
       if (error) throw error;
@@ -82,7 +82,7 @@ export function BrandManagement() {
   const filteredBrands = brands.filter(brand =>
     brand.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (brand.slug?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (brand.domain?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (brand.website_url?.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (brand.website_type?.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
@@ -131,7 +131,7 @@ export function BrandManagement() {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Zoek op naam, slug, domain of website type..."
+              placeholder="Zoek op naam, slug, website URL of website type..."
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             />
           </div>
@@ -159,7 +159,7 @@ export function BrandManagement() {
                     Slug
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Domain
+                    Website URL
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Website Type
@@ -187,7 +187,7 @@ export function BrandManagement() {
                       <div className="text-sm text-gray-600">{brand.slug || '-'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600">{brand.domain || '-'}</div>
+                      <div className="text-sm text-gray-600">{brand.website_url || '-'}</div>
                     </td>
                     <td className="px-6 py-4">
                       {editingBrand === brand.id ? (
