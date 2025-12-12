@@ -291,10 +291,6 @@ export default function TestManagement() {
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Test Management</h1>
-            <p className="text-gray-600 mt-1">Overzicht van alle test rondes en feedback</p>
-          </div>
           <button
             onClick={loadTestData}
             className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"

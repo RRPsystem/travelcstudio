@@ -569,10 +569,6 @@ export function APISettings() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">API Instellingen</h2>
-          <p className="text-gray-600 mt-1">Beheer externe API keys en configuraties</p>
-        </div>
         <button
           onClick={loadSettings}
           className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg flex items-center gap-2 transition-colors"
