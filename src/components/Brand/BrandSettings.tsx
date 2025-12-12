@@ -35,7 +35,8 @@ export function BrandSettings() {
     postal_code: '',
     country: 'Netherlands',
     website_url: '',
-    logo_url: ''
+    logo_url: '',
+    website_type: 'internal'
   });
 
   const [websiteInfo, setWebsiteInfo] = useState<{
@@ -95,7 +96,8 @@ export function BrandSettings() {
           postal_code: data.postal_code || '',
           country: data.country || 'Netherlands',
           website_url: data.website_url || '',
-          logo_url: data.logo_url || ''
+          logo_url: data.logo_url || '',
+          website_type: data.website_type || 'internal'
         });
       }
 
@@ -204,6 +206,7 @@ export function BrandSettings() {
           country: formData.country,
           website_url: formData.website_url,
           logo_url: formData.logo_url,
+          website_type: formData.website_type,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.brand_id);
@@ -439,11 +442,30 @@ export function BrandSettings() {
             <div className="border-t border-gray-200 pt-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Website Informatie</h3>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Website Type / Builder
+                </label>
+                <select
+                  value={formData.website_type}
+                  onChange={(e) => handleInputChange('website_type', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                >
+                  <option value="internal">Interne Builder (Legacy)</option>
+                  <option value="wordpress">WordPress Website</option>
+                  <option value="external_builder">External Builder (AI Website Studio / Gowild)</option>
+                  <option value="quickstart">QuickStart Website</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Selecteer het type website/builder dat je gebruikt. Dit bepaalt welke editor wordt geopend bij het bewerken van content.
+                </p>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-start">
                   <Globe className="w-5 h-5 text-blue-600 mr-3 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-blue-900">Website Type</p>
+                    <p className="text-sm font-medium text-blue-900">Huidig Website Type</p>
                     <p className="text-sm text-blue-700 mt-1">
                       {websiteInfo.hasWebsite ? (
                         <>

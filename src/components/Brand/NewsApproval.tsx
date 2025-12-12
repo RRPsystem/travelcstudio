@@ -32,7 +32,7 @@ export function NewsApproval() {
   const [showEditor, setShowEditor] = useState(false);
   const [editingNewsId, setEditingNewsId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'assigned' | 'own'>('assigned');
-  const [hasExternalBuilder, setHasExternalBuilder] = useState(false);
+  const [websiteType, setWebsiteType] = useState<string>('internal');
   const [websiteId, setWebsiteId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,20 +48,24 @@ export function NewsApproval() {
     if (!user?.brand_id) return;
 
     try {
-      const { data, error } = await supabase
+      const { data: brandData, error: brandError } = await supabase
+        .from('brands')
+        .select('website_type')
+        .eq('id', user.brand_id)
+        .maybeSingle();
+
+      if (!brandError && brandData) {
+        setWebsiteType(brandData.website_type || 'internal');
+      }
+
+      const { data: websiteData, error: websiteError } = await supabase
         .from('websites')
-        .select('id, external_builder_id, template_source_type')
+        .select('id')
         .eq('brand_id', user.brand_id)
         .maybeSingle();
 
-      if (error) {
-        console.error('Error loading website info:', error);
-        return;
-      }
-
-      if (data) {
-        setWebsiteId(data.id);
-        setHasExternalBuilder(!!data.external_builder_id || data.template_source_type === 'quickstart');
+      if (!websiteError && websiteData) {
+        setWebsiteId(websiteData.id);
       }
     } catch (error) {
       console.error('Error loading website info:', error);
@@ -216,7 +220,9 @@ export function NewsApproval() {
   const handleEdit = async (assignment: NewsAssignment) => {
     if (!user || !user.brand_id) return;
 
-    if (hasExternalBuilder) {
+    const usesExternalEditor = websiteType === 'wordpress' || websiteType === 'external_builder' || websiteType === 'quickstart';
+
+    if (usesExternalEditor) {
       try {
         const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/content/news`;
 
@@ -336,7 +342,9 @@ export function NewsApproval() {
   const createNewArticle = async () => {
     if (!user || !user.brand_id) return;
 
-    if (hasExternalBuilder) {
+    const usesExternalEditor = websiteType === 'wordpress' || websiteType === 'external_builder' || websiteType === 'quickstart';
+
+    if (usesExternalEditor) {
       try {
         const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/content/news`;
 
