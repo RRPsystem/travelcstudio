@@ -19,7 +19,7 @@ import RoadmapBoard from './RoadmapBoard';
 import TestDashboard from '../Testing/TestDashboard';
 
 export function BrandDashboard() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isOperator, impersonationContext, resetContext } = useAuth();
 
   const getInitialSection = () => {
     const hash = window.location.hash;
@@ -485,6 +485,15 @@ export function BrandDashboard() {
             <BookOpen size={20} />
             <span>Travel Journaal</span>
           </button>
+          {isOperator && impersonationContext?.role === 'brand' && (
+            <button
+              onClick={() => resetContext()}
+              className="w-full flex items-center space-x-3 px-3 py-2 text-orange-400 hover:text-white hover:bg-orange-600 rounded-lg transition-colors font-medium"
+            >
+              <ArrowRight size={20} className="rotate-180" />
+              <span>Terug naar Operator</span>
+            </button>
+          )}
           <button
             onClick={signOut}
             className="w-full flex items-center space-x-3 px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
