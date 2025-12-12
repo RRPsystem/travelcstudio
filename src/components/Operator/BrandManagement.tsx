@@ -6,6 +6,7 @@ interface Brand {
   id: string;
   name: string;
   website_type: string | null;
+  business_type: string | null;
   website_url?: string;
   slug?: string;
   created_at: string;
@@ -16,7 +17,7 @@ export function BrandManagement() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingBrand, setEditingBrand] = useState<string | null>(null);
-  const [editedWebsiteType, setEditedWebsiteType] = useState<string>('');
+  const [editedBusinessType, setEditedBusinessType] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -29,7 +30,7 @@ export function BrandManagement() {
       setLoading(true);
       const { data, error } = await supabase
         .from('brands')
-        .select('id, name, website_type, website_url, slug, created_at')
+        .select('id, name, website_type, business_type, website_url, slug, created_at')
         .order('name');
 
       if (error) throw error;
@@ -43,26 +44,26 @@ export function BrandManagement() {
     }
   }
 
-  async function handleSaveWebsiteType(brandId: string) {
+  async function handleSaveBusinessType(brandId: string) {
     try {
       setSaving(true);
       const { error } = await supabase
         .from('brands')
-        .update({ website_type: editedWebsiteType || null })
+        .update({ business_type: editedBusinessType || null })
         .eq('id', brandId);
 
       if (error) throw error;
 
       setBrands(brands.map(b =>
-        b.id === brandId ? { ...b, website_type: editedWebsiteType || null } : b
+        b.id === brandId ? { ...b, business_type: editedBusinessType || null } : b
       ));
 
-      setMessage({ type: 'success', text: 'Website type opgeslagen!' });
+      setMessage({ type: 'success', text: 'Business type opgeslagen!' });
       setEditingBrand(null);
 
       setTimeout(() => setMessage(null), 3000);
     } catch (error: any) {
-      console.error('Error saving website type:', error);
+      console.error('Error saving business type:', error);
       setMessage({ type: 'error', text: 'Fout bij opslaan: ' + error.message });
     } finally {
       setSaving(false);
@@ -71,22 +72,22 @@ export function BrandManagement() {
 
   function startEditing(brand: Brand) {
     setEditingBrand(brand.id);
-    setEditedWebsiteType(brand.website_type || '');
+    setEditedBusinessType(brand.business_type || '');
   }
 
   function cancelEditing() {
     setEditingBrand(null);
-    setEditedWebsiteType('');
+    setEditedBusinessType('');
   }
 
   const filteredBrands = brands.filter(brand =>
     brand.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (brand.slug?.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (brand.website_url?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (brand.website_type?.toLowerCase().includes(searchTerm.toLowerCase()))
+    (brand.business_type?.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const websiteTypeOptions = [
+  const businessTypeOptions = [
     { value: '', label: 'Geen type ingesteld' },
     { value: 'travel_agency', label: 'Reisbureau' },
     { value: 'zto', label: 'ZTO' },
@@ -160,7 +161,7 @@ export function BrandManagement() {
                     Website URL
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Website Type
+                    Bedrijfstype
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Aangemaakt
@@ -190,11 +191,11 @@ export function BrandManagement() {
                     <td className="px-6 py-4">
                       {editingBrand === brand.id ? (
                         <select
-                          value={editedWebsiteType}
-                          onChange={(e) => setEditedWebsiteType(e.target.value)}
+                          value={editedBusinessType}
+                          onChange={(e) => setEditedBusinessType(e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
                         >
-                          {websiteTypeOptions.map(option => (
+                          {businessTypeOptions.map(option => (
                             <option key={option.value} value={option.value}>
                               {option.label}
                             </option>
@@ -202,9 +203,9 @@ export function BrandManagement() {
                         </select>
                       ) : (
                         <div className="text-sm">
-                          {brand.website_type ? (
+                          {brand.business_type ? (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              {websiteTypeOptions.find(opt => opt.value === brand.website_type)?.label || brand.website_type}
+                              {businessTypeOptions.find(opt => opt.value === brand.business_type)?.label || brand.business_type}
                             </span>
                           ) : (
                             <span className="text-gray-400 italic">Niet ingesteld</span>
@@ -221,7 +222,7 @@ export function BrandManagement() {
                       {editingBrand === brand.id ? (
                         <div className="flex items-center justify-end space-x-2">
                           <button
-                            onClick={() => handleSaveWebsiteType(brand.id)}
+                            onClick={() => handleSaveBusinessType(brand.id)}
                             disabled={saving}
                             className="inline-flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 text-sm"
                           >
@@ -259,7 +260,7 @@ export function BrandManagement() {
           Totaal {filteredBrands.length} van {brands.length} brands
         </div>
         <div>
-          {brands.filter(b => b.website_type).length} brands hebben een website type ingesteld
+          {brands.filter(b => b.business_type).length} brands hebben een bedrijfstype ingesteld
         </div>
       </div>
     </div>
