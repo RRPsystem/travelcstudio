@@ -5,9 +5,9 @@ import { Building2, Save, X, RefreshCw, Search, AlertCircle, CheckCircle } from 
 interface Brand {
   id: string;
   name: string;
-  email: string;
   website_type: string | null;
   domain?: string;
+  slug?: string;
   created_at: string;
 }
 
@@ -29,7 +29,7 @@ export function BrandManagement() {
       setLoading(true);
       const { data, error } = await supabase
         .from('brands')
-        .select('id, name, email, website_type, domain, created_at')
+        .select('id, name, website_type, domain, slug, created_at')
         .order('name');
 
       if (error) throw error;
@@ -81,7 +81,8 @@ export function BrandManagement() {
 
   const filteredBrands = brands.filter(brand =>
     brand.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    brand.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (brand.slug?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (brand.domain?.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (brand.website_type?.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
@@ -98,16 +99,7 @@ export function BrandManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-            <Building2 className="w-5 h-5 text-orange-600" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">Brand Management</h2>
-            <p className="text-sm text-gray-600">Beheer website types voor alle brands</p>
-          </div>
-        </div>
+      <div className="flex items-center justify-end">
         <button
           onClick={loadBrands}
           disabled={loading}
@@ -139,7 +131,7 @@ export function BrandManagement() {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Zoek op naam, email of website type..."
+              placeholder="Zoek op naam, slug, domain of website type..."
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             />
           </div>
@@ -164,7 +156,7 @@ export function BrandManagement() {
                     Brand
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
+                    Slug
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Domain
@@ -192,7 +184,7 @@ export function BrandManagement() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600">{brand.email}</div>
+                      <div className="text-sm text-gray-600">{brand.slug || '-'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-600">{brand.domain || '-'}</div>
