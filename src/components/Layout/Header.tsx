@@ -136,6 +136,21 @@ export function Header() {
                   <div className="text-xs font-semibold text-gray-500 uppercase">Switch Context</div>
                 </div>
 
+                {impersonationContext && (
+                  <div className="px-2 py-2 border-b border-gray-200">
+                    <button
+                      onClick={() => {
+                        resetContext();
+                        setShowContextMenu(false);
+                      }}
+                      className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-700 transition-colors border border-orange-200"
+                    >
+                      <Wrench size={18} />
+                      <span className="text-sm font-semibold">← Terug naar Operator</span>
+                    </button>
+                  </div>
+                )}
+
                 {availableContexts.length === 0 ? (
                   <div className="px-4 py-3 text-sm text-gray-500">Loading...</div>
                 ) : (
