@@ -140,7 +140,21 @@ export function generateBuilderDeeplink({
   newsSlug?: string;
   destinationSlug?: string;
 }): string {
-  const builderBaseUrl = baseUrl || 'https://www.ai-websitestudio.nl/simple-template-editor.html';
+  // Determine the correct base URL and hash routing based on content type
+  let builderBaseUrl = baseUrl || 'https://www.ai-websitestudio.nl/simple-template-editor.html';
+  let hashRoute = '';
+
+  if (contentType === 'news' || contentType === 'news_items') {
+    builderBaseUrl = 'https://www.ai-websitestudio.nl/';
+    hashRoute = '#/mode/news';
+  } else if (contentType === 'destinations') {
+    builderBaseUrl = 'https://www.ai-websitestudio.nl/';
+    hashRoute = '#/mode/destinations';
+  } else if (contentType === 'trips') {
+    builderBaseUrl = 'https://www.ai-websitestudio.nl/';
+    hashRoute = '#/mode/trips';
+  }
+
   const apiBaseUrl = jwtResponse.api_url || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
   const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
@@ -160,13 +174,19 @@ export function generateBuilderDeeplink({
   if (mode) params.append('mode', mode);
   if (authorType) params.append('author_type', authorType);
   if (authorId) params.append('author_id', authorId);
-  if (contentType) params.append('content_type', contentType);
+
+  // Use 'news_items' as content_type for news (as per API spec)
+  if (contentType === 'news') {
+    params.append('content_type', 'news_items');
+  } else if (contentType) {
+    params.append('content_type', contentType);
+  }
 
   // Use 'slug' for both news and destinations (builder expects 'slug' parameter)
   if (newsSlug) params.append('slug', newsSlug);
   if (destinationSlug) params.append('slug', destinationSlug);
 
-  return `${builderBaseUrl}?${params.toString()}`;
+  return `${builderBaseUrl}?${params.toString()}${hashRoute}`;
 }
 
 /**
