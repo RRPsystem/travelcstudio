@@ -723,7 +723,6 @@ export function BrandDashboard() {
           {activeSection === 'ai-content' && <AIContentGenerator />}
           {activeSection === 'ai-travelbro' && <TravelBroSetup />}
           {activeSection === 'social-media' && <SocialMediaManager />}
-          {activeSection === 'settings' && <BrandSettings />}
           {activeSection === 'agents' && <AgentManagement />}
           {activeSection === 'testing' && <TestDashboard />}
           {activeSection === 'roadmap' && <RoadmapBoard />}
