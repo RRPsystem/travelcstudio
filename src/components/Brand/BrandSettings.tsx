@@ -430,7 +430,7 @@ export function BrandSettings() {
                   onChange={(e) => handleInputChange('website_type', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 >
-                  <option value="internal">Option A - Interne Content Systeem</option>
+                  <option value="internal">Option A - AI Websitebuilder</option>
                   <option value="wordpress">Option B - WordPress</option>
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
