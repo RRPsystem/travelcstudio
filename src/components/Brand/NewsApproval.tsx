@@ -7,7 +7,7 @@ import { InternalNewsManager } from './News/InternalNewsManager';
 
 export function NewsApproval() {
   const { effectiveBrandId } = useAuth();
-  const [websiteType, setWebsiteType] = useState<string>('internal');
+  const [newsManager, setNewsManager] = useState<'wordpress' | 'external' | 'internal'>('internal');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,11 +28,32 @@ export function NewsApproval() {
         .eq('id', effectiveBrandId)
         .maybeSingle();
 
-      if (!brandError && brandData) {
-        setWebsiteType(brandData.website_type || 'internal');
+      if (brandError) throw brandError;
+
+      if (brandData?.website_type === 'wordpress') {
+        setNewsManager('wordpress');
+        setLoading(false);
+        return;
+      }
+
+      const { data: websiteData, error: websiteError } = await supabase
+        .from('websites')
+        .select('external_builder_id, template_source_type')
+        .eq('brand_id', effectiveBrandId)
+        .maybeSingle();
+
+      if (!websiteError && websiteData) {
+        if (websiteData.external_builder_id || websiteData.template_source_type === 'quickstart') {
+          setNewsManager('external');
+        } else {
+          setNewsManager('internal');
+        }
+      } else {
+        setNewsManager('internal');
       }
     } catch (error) {
       console.error('Error loading website info:', error);
+      setNewsManager('internal');
     } finally {
       setLoading(false);
     }
@@ -46,11 +67,11 @@ export function NewsApproval() {
     );
   }
 
-  if (websiteType === 'wordpress') {
+  if (newsManager === 'wordpress') {
     return <WordPressNewsManager />;
   }
 
-  if (websiteType === 'external_builder' || websiteType === 'quickstart') {
+  if (newsManager === 'external') {
     return <ExternalBuilderNews />;
   }
 
