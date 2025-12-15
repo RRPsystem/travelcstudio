@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { deductCredits } from '../_shared/credits.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -191,6 +192,25 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
 
+    const authHeader = req.headers.get('Authorization');
+    let userId: string | null = null;
+
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      const { data: { user } } = await supabase.auth.getUser(token);
+      userId = user?.id || null;
+    }
+
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: "Authentication required" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     const { data: apiSettings, error: apiError } = await supabase
       .from("api_settings")
       .select("api_key")
@@ -209,6 +229,24 @@ Deno.serve(async (req: Request) => {
     }
 
     const openaiApiKey = apiSettings.api_key;
+
+    const creditResult = await deductCredits(
+      supabase,
+      userId,
+      'ai_travel_import',
+      `AI PDF parsing: ${pdfUrl.substring(pdfUrl.lastIndexOf('/') + 1, pdfUrl.lastIndexOf('/') + 30)}`,
+      { pdfUrl }
+    );
+
+    if (!creditResult.success) {
+      return new Response(
+        JSON.stringify({ error: creditResult.error || 'Failed to deduct credits' }),
+        {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
 
     console.log('Downloading PDF from:', pdfUrl);
     const pdfResponse = await fetch(pdfUrl);
