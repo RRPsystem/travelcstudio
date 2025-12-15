@@ -9,6 +9,7 @@ import { TemplateManager } from './TemplateManager';
 import { TripCatalogManager } from './TripCatalogManager';
 import DeeplinkTester from './DeeplinkTester';
 import { HelpBot } from '../shared/HelpBot';
+import { WordPressCatalogSync } from '../Operator/WordPressCatalogSync';
 import { Users, Building2, FileText, Settings, Plus, Search, Filter, CreditCard as Edit, Trash2, LayoutGrid as Layout, Menu, Globe, Newspaper, MapPin, Plane, Link, Key, X, Lock, BookOpen } from 'lucide-react'
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
@@ -38,7 +39,7 @@ export function AdminDashboard() {
     if (['template-manager'].includes(activeSection)) {
       setShowWebsiteSubmenu(true);
     }
-    if (['admin-news', 'destinations', 'trips'].includes(activeSection)) {
+    if (['admin-news', 'destinations', 'trips', 'trip-catalog', 'wordpress-catalog'].includes(activeSection)) {
       setShowContentSubmenu(true);
     }
   }, [activeSection]);
@@ -184,6 +185,7 @@ export function AdminDashboard() {
     { id: 'destinations', label: 'Bestemmingen', icon: MapPin },
     { id: 'trips', label: 'Reizen', icon: Plane },
     { id: 'trip-catalog', label: 'Reizen Catalogus', icon: BookOpen },
+    { id: 'wordpress-catalog', label: 'WordPress Catalogus', icon: Globe },
   ];
 
   const handleTravelStudioClick = () => {
@@ -386,7 +388,7 @@ export function AdminDashboard() {
               <button
                 onClick={() => setShowContentSubmenu(!showContentSubmenu)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                  ['admin-news', 'destinations', 'trips'].includes(activeSection)
+                  ['admin-news', 'destinations', 'trips', 'trip-catalog', 'wordpress-catalog'].includes(activeSection)
                     ? 'bg-slate-700 text-white'
                     : 'text-slate-300 hover:text-white hover:bg-slate-700'
                 }`}
@@ -489,6 +491,7 @@ export function AdminDashboard() {
                 {activeSection === 'admin-news' && 'Admin News Management'}
                 {activeSection === 'destinations' && 'Bestemmingen Beheer'}
                 {activeSection === 'trip-catalog' && 'Reizen Catalogus'}
+                {activeSection === 'wordpress-catalog' && 'WordPress Catalogus'}
                 {activeSection === 'deeplink-tester' && 'Deeplink Tester'}
                 {activeSection === 'template-manager' && 'Template Manager'}
                 {activeSection === 'settings' && 'Settings'}
@@ -500,6 +503,7 @@ export function AdminDashboard() {
                 {activeSection === 'admin-news' && 'Create and manage news items for all brands'}
                 {activeSection === 'destinations' && 'Beheer bestemmingen voor alle brands'}
                 {activeSection === 'trip-catalog' && 'Beoordeel tour operator reizen en wijs ze toe aan brands'}
+                {activeSection === 'wordpress-catalog' && 'Import reizen vanuit WordPress RBS Travel catalogus'}
                 {activeSection === 'deeplink-tester' && 'Test external builder integration'}
                 {activeSection === 'template-manager' && 'Maak en beheer pagina templates voor brands'}
                 {activeSection === 'settings' && 'Systeeminstellingen en configuratie'}
@@ -526,6 +530,7 @@ export function AdminDashboard() {
           {activeSection === 'admin-news' && <NewsManagement />}
           {activeSection === 'destinations' && <DestinationManagement />}
           {activeSection === 'trip-catalog' && <TripCatalogManager />}
+          {activeSection === 'wordpress-catalog' && <WordPressCatalogSync />}
           {activeSection === 'deeplink-tester' && <DeeplinkTester />}
           {activeSection === 'template-manager' && <TemplateManager />}
           {activeSection === 'settings' && (
