@@ -131,7 +131,7 @@ Deno.serve(async (req: Request) => {
           tc_idea_id: travel.travel_id,
           source: "wordpress_catalog",
           status: "draft",
-          author_type: "operator",
+          author_type: "admin",
           author_id: user.id,
           is_mandatory: false,
           enabled_for_brands: true,
