@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
+import { deductCredits } from '../_shared/credits.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -107,6 +108,24 @@ Deno.serve(async (req: Request) => {
     const messagesWithSystemPrompt = messages.filter(m => m.role !== 'system');
     if (systemPrompt) {
       messagesWithSystemPrompt.unshift({ role: 'system', content: systemPrompt });
+    }
+
+    const creditResult = await deductCredits(
+      supabase,
+      user.id,
+      'ai_chat_message',
+      'HelpBot chat bericht',
+      { messageCount: messages.length }
+    );
+
+    if (!creditResult.success) {
+      return new Response(
+        JSON.stringify({ error: creditResult.error || 'Insufficient credits' }),
+        {
+          status: 402,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {

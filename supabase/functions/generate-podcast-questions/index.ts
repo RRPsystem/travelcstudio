@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { deductCredits } from '../_shared/credits.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -75,6 +76,21 @@ De vragen moeten:
 - Bij elkaar passen qua thema
 
 Geef alleen de vragen, genummerd 1-10.`;
+
+    const creditResult = await deductCredits(
+      supabase,
+      user.id,
+      'ai_podcast_questions',
+      'Podcast vragen genereren',
+      { episode_id, topic }
+    );
+
+    if (!creditResult.success) {
+      return new Response(JSON.stringify({ error: creditResult.error || 'Insufficient credits' }), {
+        status: 402,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',

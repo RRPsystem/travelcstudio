@@ -7,9 +7,10 @@ import { SocialMediaManager } from '../Brand/SocialMediaManager';
 import { TravelBroSetup } from '../TravelBro/TravelBroSetup';
 import AgentProfileEdit from './AgentProfileEdit';
 import { HelpBot } from '../shared/HelpBot';
-import { Bot, User, ChevronDown, ChevronRight, Share2, Plane, Sparkles, Import as FileImport, Map, ArrowRight, Bell, ClipboardCheck, Video, BookOpen } from 'lucide-react';
+import { Bot, User, ChevronDown, ChevronRight, Share2, Plane, Sparkles, Import as FileImport, Map, ArrowRight, Bell, ClipboardCheck, Video, BookOpen, Wallet } from 'lucide-react';
 import RoadmapBoard from '../Brand/RoadmapBoard';
 import TestDashboard from '../Testing/TestDashboard';
+import CreditWallet from '../shared/CreditWallet';
 
 export function AgentDashboard() {
   const { user, signOut, isOperator, impersonationContext, resetContext } = useAuth();
@@ -71,6 +72,7 @@ export function AgentDashboard() {
 
   const sidebarItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Sparkles },
+    { id: 'credits', label: 'Mijn Credits', icon: Wallet },
     { id: 'profile', label: 'Profiel', icon: User },
     { id: 'social-media', label: 'Social Media', icon: Share2 },
     { id: 'testing', label: 'Test Dashboard', icon: ClipboardCheck },
@@ -300,6 +302,7 @@ export function AgentDashboard() {
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
                 {activeSection === 'dashboard' && 'Dashboard'}
+                {activeSection === 'credits' && 'Mijn Credits'}
                 {activeSection === 'profile' && 'Profiel'}
                 {activeSection === 'social-media' && 'Social Media'}
                 {activeSection === 'testing' && 'Test Dashboard'}
@@ -312,6 +315,7 @@ export function AgentDashboard() {
               </h1>
               <p className="text-gray-600 mt-1">
                 {activeSection === 'dashboard' && 'Welkom terug bij je agent dashboard'}
+                {activeSection === 'credits' && 'Beheer je credits en koop nieuwe credits'}
                 {activeSection === 'profile' && 'Beheer je profiel en instellingen'}
                 {activeSection === 'social-media' && 'Beheer je social media accounts en posts'}
                 {activeSection === 'testing' && 'Test features and provide feedback'}
@@ -424,6 +428,7 @@ export function AgentDashboard() {
             </div>
           )}
 
+          {activeSection === 'credits' && <div className="p-6"><CreditWallet /></div>}
           {activeSection === 'profile' && <AgentProfileEdit />}
           {activeSection === 'social-media' && <SocialMediaManager />}
           {activeSection === 'testing' && <TestDashboard />}

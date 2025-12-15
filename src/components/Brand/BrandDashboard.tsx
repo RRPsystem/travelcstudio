@@ -14,9 +14,10 @@ import { AgentManagement } from './AgentManagement';
 import { SocialMediaConnector } from './SocialMediaConnector';
 import { SocialMediaManager } from './SocialMediaManager';
 import { TravelBroSetup } from '../TravelBro/TravelBroSetup';
-import { Users, Settings, Plus, Bot, Sparkles, Import as FileImport, ChevronDown, ChevronRight, LayoutGrid as Layout, FileText, Globe, Newspaper, MapPin, Plane, Share2, Map, ArrowRight, Menu, ClipboardCheck, Video, BookOpen, Rocket } from 'lucide-react';
+import { Users, Settings, Plus, Bot, Sparkles, Import as FileImport, ChevronDown, ChevronRight, LayoutGrid as Layout, FileText, Globe, Newspaper, MapPin, Plane, Share2, Map, ArrowRight, Menu, ClipboardCheck, Video, BookOpen, Rocket, Wallet } from 'lucide-react';
 import RoadmapBoard from './RoadmapBoard';
 import TestDashboard from '../Testing/TestDashboard';
+import CreditWallet from '../shared/CreditWallet';
 
 export function BrandDashboard() {
   const { user, signOut, isOperator, impersonationContext, resetContext, effectiveBrandId } = useAuth();
@@ -181,6 +182,7 @@ export function BrandDashboard() {
 
   const sidebarItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Sparkles },
+    { id: 'credits', label: 'Mijn Credits', icon: Wallet },
     { id: 'agents', label: 'Agents', icon: Users },
     { id: 'social-media', label: 'Social Media', icon: Share2 },
     { id: 'testing', label: 'Test Dashboard', icon: ClipboardCheck },
@@ -527,6 +529,7 @@ export function BrandDashboard() {
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
                   {activeSection === 'dashboard' && 'Brand Dashboard'}
+                  {activeSection === 'credits' && 'Mijn Credits'}
                   {activeSection === 'websites' && 'My Websites'}
                   {activeSection === 'agents' && 'Agents'}
                   {activeSection === 'new-page' && 'Quick Start'}
@@ -720,6 +723,7 @@ export function BrandDashboard() {
               <TripApproval />
             </div>
           )}
+          {activeSection === 'credits' && <div className="p-6"><CreditWallet /></div>}
           {activeSection === 'ai-content' && <AIContentGenerator />}
           {activeSection === 'ai-travelbro' && <TravelBroSetup />}
           {activeSection === 'social-media' && <SocialMediaManager />}

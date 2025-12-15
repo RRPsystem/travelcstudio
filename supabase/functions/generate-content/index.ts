@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { deductCredits } from '../_shared/credits.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -600,6 +601,20 @@ Output ALLEEN het JSON object, geen extra tekst, geen markdown formatting.`;
       }
 
       console.log('🤖 Generating new content with OpenAI');
+
+      if (userId) {
+        const creditResult = await deductCredits(
+          supabase,
+          userId,
+          'ai_content_generation',
+          `AI content generatie voor ${name}`,
+          { destination: name, contentType }
+        );
+
+        if (!creditResult.success) {
+          throw new Error(creditResult.error || 'Failed to deduct credits');
+        }
+      }
 
       const { data: settings } = await supabase
         .from('api_settings')
