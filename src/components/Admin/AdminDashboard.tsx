@@ -40,7 +40,7 @@ export function AdminDashboard() {
     if (['template-manager'].includes(activeSection)) {
       setShowWebsiteSubmenu(true);
     }
-    if (['admin-news', 'destinations', 'trips', 'trip-catalog', 'wordpress-catalog', 'podcast'].includes(activeSection)) {
+    if (['admin-news', 'destinations', 'trips', 'trip-catalog', 'wordpress-catalog'].includes(activeSection)) {
       setShowContentSubmenu(true);
     }
   }, [activeSection]);
@@ -175,6 +175,7 @@ export function AdminDashboard() {
     { id: 'brands', label: 'Brand Management', icon: Building2 },
     { id: 'agents', label: 'Agent Management', icon: Users },
     { id: 'deeplink-tester', label: 'Deeplink Tester', icon: Link },
+    { id: 'podcast', label: 'Podcast Beheer', icon: Mic },
   ];
 
   const websiteItems = [
@@ -187,7 +188,6 @@ export function AdminDashboard() {
     { id: 'trips', label: 'Reizen', icon: Plane },
     { id: 'trip-catalog', label: 'Reizen Catalogus', icon: BookOpen },
     { id: 'wordpress-catalog', label: 'WordPress Catalogus', icon: Globe },
-    { id: 'podcast', label: 'Podcast Beheer', icon: Mic },
   ];
 
   const handleTravelStudioClick = () => {
@@ -390,7 +390,7 @@ export function AdminDashboard() {
               <button
                 onClick={() => setShowContentSubmenu(!showContentSubmenu)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                  ['admin-news', 'destinations', 'trips', 'trip-catalog', 'wordpress-catalog', 'podcast'].includes(activeSection)
+                  ['admin-news', 'destinations', 'trips', 'trip-catalog', 'wordpress-catalog'].includes(activeSection)
                     ? 'bg-slate-700 text-white'
                     : 'text-slate-300 hover:text-white hover:bg-slate-700'
                 }`}
