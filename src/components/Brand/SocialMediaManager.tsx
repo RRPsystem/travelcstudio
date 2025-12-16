@@ -186,6 +186,33 @@ export function SocialMediaManager() {
     setError('');
 
     try {
+      const { data: { session } } = await db.supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Niet ingelogd');
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const creditCheckResponse = await fetch(`${supabaseUrl}/functions/v1/deduct-credits`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          actionType: 'social_media_post',
+          description: `Social media post naar ${formData.platforms.join(', ')}`,
+          metadata: {
+            platforms: formData.platforms,
+            contentLength: formData.content.length
+          }
+        })
+      });
+
+      if (!creditCheckResponse.ok) {
+        const errorData = await creditCheckResponse.json();
+        throw new Error(errorData.error || 'Onvoldoende credits');
+      }
+
       const postData = {
         brand_id: effectiveBrandId,
         created_by: user?.id,
@@ -203,7 +230,7 @@ export function SocialMediaManager() {
 
       if (error) throw error;
 
-      setSuccess('Post gepubliceerd!');
+      setSuccess('Post gepubliceerd! (10 credits gebruikt)');
       resetForm();
       await loadPosts();
     } catch (err: any) {

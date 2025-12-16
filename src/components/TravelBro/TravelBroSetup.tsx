@@ -327,6 +327,37 @@ export function TravelBroSetup() {
 
       console.log('✅ Validation passed, starting creation...');
       setCreating(true);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Niet ingelogd');
+      }
+
+      console.log('💳 Checking credits...');
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const creditCheckResponse = await fetch(`${supabaseUrl}/functions/v1/deduct-credits`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          actionType: 'travelbro_setup',
+          description: `TravelBro aanmaken: ${newTripName}`,
+          metadata: {
+            tripName: newTripName,
+            hasPdf: !!pdfFile,
+            hasUrls: sourceUrls.filter(u => u.trim()).length > 0
+          }
+        })
+      });
+
+      if (!creditCheckResponse.ok) {
+        const errorData = await creditCheckResponse.json();
+        throw new Error(errorData.error || 'Onvoldoende credits');
+      }
+
+      console.log('✅ Credits deducted, continuing with creation...');
       console.log('📤 Uploading PDF...');
       let pdfUrl = null;
       let parsedData = null;
@@ -507,15 +538,15 @@ export function TravelBroSetup() {
         }
 
         if (successCount > 0) {
-          alert(`✅ TravelBRO aangemaakt en ${successCount} welkomstbericht(en) gepland!\n\n${failCount > 0 ? `⚠️ ${failCount} bericht(en) mislukt.` : ''}\n\nDruk op "Verwerk Geplande Berichten Nu" om de berichten direct te versturen.`);
+          alert(`✅ TravelBRO aangemaakt en ${successCount} welkomstbericht(en) gepland! (100 credits gebruikt)\n\n${failCount > 0 ? `⚠️ ${failCount} bericht(en) mislukt.` : ''}\n\nDruk op "Verwerk Geplande Berichten Nu" om de berichten direct te versturen.`);
         } else {
-          alert('⚠️ TravelBRO aangemaakt, maar geen WhatsApp berichten konden worden gepland. Check de logs.');
+          alert('⚠️ TravelBRO aangemaakt (100 credits gebruikt), maar geen WhatsApp berichten konden worden gepland. Check de logs.');
         }
       } else if (intakeTemplate) {
         console.log('📋 TravelBRO heeft intake formulier - klant moet eerst formulier invullen');
-        alert('✅ TravelBRO aangemaakt! Deel de client link met je klant zodat ze het intake formulier kunnen invullen.');
+        alert('✅ TravelBRO aangemaakt! (100 credits gebruikt) Deel de client link met je klant zodat ze het intake formulier kunnen invullen.');
       } else {
-        alert('✅ TravelBRO aangemaakt! (Geen telefoonnummers opgegeven)');
+        alert('✅ TravelBRO aangemaakt! (100 credits gebruikt, geen telefoonnummers opgegeven)');
       }
 
       console.log('✅ TravelBRO created successfully!');
