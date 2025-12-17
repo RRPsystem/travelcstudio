@@ -47,6 +47,7 @@ export default function PodcastManagement() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [hostNotes, setHostNotes] = useState<HostNote[]>([]);
   const [hosts, setHosts] = useState<any[]>([]);
+  const [topics, setTopics] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'episodes' | 'planning' | 'questions' | 'notes'>('episodes');
   const [showNewEpisodeForm, setShowNewEpisodeForm] = useState(false);
@@ -60,6 +61,7 @@ export default function PodcastManagement() {
     if (selectedEpisode) {
       loadQuestions(selectedEpisode.id);
       loadHostNotes(selectedEpisode.id);
+      loadTopics(selectedEpisode.id);
     }
   }, [selectedEpisode]);
 
@@ -87,6 +89,18 @@ export default function PodcastManagement() {
 
     if (data) {
       setHosts(data);
+    }
+  };
+
+  const loadTopics = async (episodeId: string) => {
+    const { data } = await supabase
+      .from('podcast_topics')
+      .select('*')
+      .eq('episode_planning_id', episodeId)
+      .order('order_index');
+
+    if (data) {
+      setTopics(data);
     }
   };
 
@@ -326,6 +340,7 @@ export default function PodcastManagement() {
                       questions={questions}
                       episodeId={selectedEpisode.id}
                       topic={selectedEpisode.topic}
+                      topics={topics}
                       onUpdateStatus={updateQuestionStatus}
                       onGenerateAI={(topics: string) => generateAIQuestions(selectedEpisode.id, topics)}
                       onRefresh={() => loadQuestions(selectedEpisode.id)}
@@ -494,9 +509,10 @@ function NewEpisodeForm({ hosts, onClose, onSuccess }: any) {
   );
 }
 
-function QuestionsTab({ questions, episodeId, topic, onUpdateStatus, onGenerateAI, onRefresh }: any) {
+function QuestionsTab({ questions, episodeId, topic, topics, onUpdateStatus, onGenerateAI, onRefresh }: any) {
   const { user } = useAuth();
   const [newQuestion, setNewQuestion] = useState('');
+  const [selectedTopicId, setSelectedTopicId] = useState<string>('');
   const [additionalTopics, setAdditionalTopics] = useState('');
   const [showTopicInput, setShowTopicInput] = useState(false);
 
@@ -509,10 +525,12 @@ function QuestionsTab({ questions, episodeId, topic, onUpdateStatus, onGenerateA
       source_type: 'host',
       submitted_by: user?.id,
       status: 'approved',
-      order_index: questions.length
+      order_index: questions.length,
+      topic_id: selectedTopicId || null
     });
 
     setNewQuestion('');
+    setSelectedTopicId('');
     onRefresh();
   };
 
@@ -535,21 +553,38 @@ function QuestionsTab({ questions, episodeId, topic, onUpdateStatus, onGenerateA
     <div className="space-y-6">
       <div>
         <h3 className="font-semibold mb-3">Snel vraag toevoegen</h3>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newQuestion}
-            onChange={(e) => setNewQuestion(e.target.value)}
-            className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-            placeholder="Type je vraag hier..."
-            onKeyPress={(e) => e.key === 'Enter' && handleAddQuestion()}
-          />
-          <button
-            onClick={handleAddQuestion}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
+        <div className="space-y-2">
+          {topics && topics.length > 0 && (
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">Onderwerp (optioneel)</label>
+              <select
+                value={selectedTopicId}
+                onChange={(e) => setSelectedTopicId(e.target.value)}
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Geen specifiek onderwerp</option>
+                {topics.map((t: any) => (
+                  <option key={t.id} value={t.id}>{t.title}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newQuestion}
+              onChange={(e) => setNewQuestion(e.target.value)}
+              className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              placeholder="Type je vraag hier..."
+              onKeyPress={(e) => e.key === 'Enter' && handleAddQuestion()}
+            />
+            <button
+              onClick={handleAddQuestion}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
 
