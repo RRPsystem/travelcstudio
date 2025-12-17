@@ -52,6 +52,7 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
   const [newQuestion, setNewQuestion] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [showTopicForm, setShowTopicForm] = useState(false);
+  const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
   const [newTopicTitle, setNewTopicTitle] = useState('');
   const [newTopicDescription, setNewTopicDescription] = useState('');
   const [newTopicInterviewer, setNewTopicInterviewer] = useState<string | null>(null);
@@ -168,22 +169,38 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
     if (!newTopicTitle.trim()) return;
 
     try {
-      const maxOrder = Math.max(...topics.map(t => t.order_index), 0);
+      if (editingTopicId) {
+        const { error } = await supabase
+          .from('podcast_topics')
+          .update({
+            title: newTopicTitle.trim(),
+            description: newTopicDescription.trim() || null,
+            interviewer_id: newTopicInterviewer || null,
+            leading_id: newTopicLeading || null,
+            sidekick_id: newTopicSidekick || null,
+            show_visuals: newTopicShowVisuals
+          })
+          .eq('id', editingTopicId);
 
-      const { error } = await supabase
-        .from('podcast_topics')
-        .insert({
-          episode_planning_id: episodeId,
-          title: newTopicTitle.trim(),
-          description: newTopicDescription.trim() || null,
-          order_index: maxOrder + 1,
-          interviewer_id: newTopicInterviewer || null,
-          leading_id: newTopicLeading || null,
-          sidekick_id: newTopicSidekick || null,
-          show_visuals: newTopicShowVisuals
-        });
+        if (error) throw error;
+      } else {
+        const maxOrder = Math.max(...topics.map(t => t.order_index), 0);
 
-      if (error) throw error;
+        const { error } = await supabase
+          .from('podcast_topics')
+          .insert({
+            episode_planning_id: episodeId,
+            title: newTopicTitle.trim(),
+            description: newTopicDescription.trim() || null,
+            order_index: maxOrder + 1,
+            interviewer_id: newTopicInterviewer || null,
+            leading_id: newTopicLeading || null,
+            sidekick_id: newTopicSidekick || null,
+            show_visuals: newTopicShowVisuals
+          });
+
+        if (error) throw error;
+      }
 
       setNewTopicTitle('');
       setNewTopicDescription('');
@@ -192,11 +209,34 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
       setNewTopicSidekick(null);
       setNewTopicShowVisuals(false);
       setShowTopicForm(false);
+      setEditingTopicId(null);
       loadTopics();
     } catch (error) {
-      console.error('Error adding topic:', error);
-      alert('Fout bij toevoegen onderwerp');
+      console.error('Error saving topic:', error);
+      alert('Fout bij opslaan onderwerp');
     }
+  };
+
+  const editTopic = (topic: Topic) => {
+    setNewTopicTitle(topic.title);
+    setNewTopicDescription(topic.description || '');
+    setNewTopicInterviewer(topic.interviewer_id);
+    setNewTopicLeading(topic.leading_id);
+    setNewTopicSidekick(topic.sidekick_id);
+    setNewTopicShowVisuals(topic.show_visuals);
+    setEditingTopicId(topic.id);
+    setShowTopicForm(true);
+  };
+
+  const cancelTopicForm = () => {
+    setShowTopicForm(false);
+    setNewTopicTitle('');
+    setNewTopicDescription('');
+    setNewTopicInterviewer(null);
+    setNewTopicLeading(null);
+    setNewTopicSidekick(null);
+    setNewTopicShowVisuals(false);
+    setEditingTopicId(null);
   };
 
   const addQuestion = async () => {
@@ -385,7 +425,7 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
   };
 
   // Group questions by topic for 'by_topic' view
-  const questionsByTopic = topics.map(topic => ({
+  let questionsByTopic = topics.map(topic => ({
     topic,
     questions: questions.filter(q => q.topic_id === topic.id)
   }));
@@ -409,6 +449,11 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
     });
   }
 
+  // Apply topic filter if selected
+  if (selectedTopic) {
+    questionsByTopic = questionsByTopic.filter(({ topic }) => topic.id === selectedTopic);
+  }
+
   return (
     <div className="max-w-7xl mx-auto">
       {/* Topic Management */}
@@ -429,6 +474,9 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
 
         {showTopicForm && (
           <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <h4 className="font-semibold text-gray-900 mb-3">
+              {editingTopicId ? 'Onderwerp Bewerken' : 'Nieuw Onderwerp'}
+            </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
               <div className="md:col-span-2">
                 <input
@@ -512,18 +560,10 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
                 onClick={addTopic}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                Onderwerp Toevoegen
+                {editingTopicId ? 'Opslaan' : 'Onderwerp Toevoegen'}
               </button>
               <button
-                onClick={() => {
-                  setShowTopicForm(false);
-                  setNewTopicTitle('');
-                  setNewTopicDescription('');
-                  setNewTopicInterviewer(null);
-                  setNewTopicLeading(null);
-                  setNewTopicSidekick(null);
-                  setNewTopicShowVisuals(false);
-                }}
+                onClick={cancelTopicForm}
                 className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
               >
                 Annuleren
@@ -544,6 +584,13 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
                 <span className="text-blue-600">
                   ({questions.filter(q => q.topic_id === topic.id).length})
                 </span>
+                <button
+                  onClick={() => editTopic(topic)}
+                  className="p-1 hover:bg-blue-200 rounded transition-colors"
+                  title="Bewerk onderwerp"
+                >
+                  <Edit2 size={14} />
+                </button>
               </div>
             ))}
           </div>
@@ -552,7 +599,7 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
 
       {/* Filters */}
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setViewMode('by_topic')}
@@ -571,6 +618,27 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
               Per Status
             </button>
           </div>
+
+          {viewMode === 'by_topic' && topics.length > 0 && (
+            <div className="flex items-center space-x-2">
+              <label className="text-sm font-medium text-gray-700">Filter onderwerp:</label>
+              <select
+                value={selectedTopic || ''}
+                onChange={(e) => setSelectedTopic(e.target.value || null)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+              >
+                <option value="">Alle onderwerpen</option>
+                {topics.map(topic => (
+                  <option key={topic.id} value={topic.id}>
+                    {topic.title} ({questions.filter(q => q.topic_id === topic.id).length})
+                  </option>
+                ))}
+                <option value="no-topic">
+                  Zonder onderwerp ({questions.filter(q => !q.topic_id).length})
+                </option>
+              </select>
+            </div>
+          )}
         </div>
 
         {viewMode === 'by_status' && (
