@@ -8,6 +8,10 @@ interface Topic {
   description: string | null;
   order_index: number;
   duration_minutes: number | null;
+  interviewer_id: string | null;
+  leading_id: string | null;
+  sidekick_id: string | null;
+  show_visuals: boolean;
 }
 
 interface Guest {
@@ -50,6 +54,10 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
   const [showTopicForm, setShowTopicForm] = useState(false);
   const [newTopicTitle, setNewTopicTitle] = useState('');
   const [newTopicDescription, setNewTopicDescription] = useState('');
+  const [newTopicInterviewer, setNewTopicInterviewer] = useState<string | null>(null);
+  const [newTopicLeading, setNewTopicLeading] = useState<string | null>(null);
+  const [newTopicSidekick, setNewTopicSidekick] = useState<string | null>(null);
+  const [newTopicShowVisuals, setNewTopicShowVisuals] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [selectedGuest, setSelectedGuest] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'concept' | 'under_discussion' | 'approved' | 'in_schedule'>('all');
@@ -168,14 +176,23 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
           episode_planning_id: episodeId,
           title: newTopicTitle.trim(),
           description: newTopicDescription.trim() || null,
-          order_index: maxOrder + 1
+          order_index: maxOrder + 1,
+          interviewer_id: newTopicInterviewer || null,
+          leading_id: newTopicLeading || null,
+          sidekick_id: newTopicSidekick || null,
+          show_visuals: newTopicShowVisuals
         });
 
       if (error) throw error;
 
       setNewTopicTitle('');
       setNewTopicDescription('');
+      setNewTopicInterviewer(null);
+      setNewTopicLeading(null);
+      setNewTopicSidekick(null);
+      setNewTopicShowVisuals(false);
       setShowTopicForm(false);
+      loadTopics();
     } catch (error) {
       console.error('Error adding topic:', error);
       alert('Fout bij toevoegen onderwerp');
@@ -377,7 +394,17 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
   const questionsWithoutTopic = questions.filter(q => !q.topic_id);
   if (questionsWithoutTopic.length > 0) {
     questionsByTopic.push({
-      topic: { id: 'no-topic', title: 'Geen onderwerp toegewezen', description: null, order_index: 999, duration_minutes: null },
+      topic: {
+        id: 'no-topic',
+        title: 'Geen onderwerp toegewezen',
+        description: null,
+        order_index: 999,
+        duration_minutes: null,
+        interviewer_id: null,
+        leading_id: null,
+        sidekick_id: null,
+        show_visuals: false
+      },
       questions: questionsWithoutTopic
     });
   }
@@ -402,20 +429,84 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
 
         {showTopicForm && (
           <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <input
-              type="text"
-              value={newTopicTitle}
-              onChange={(e) => setNewTopicTitle(e.target.value)}
-              placeholder="Titel van onderwerp..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-2"
-            />
-            <textarea
-              value={newTopicDescription}
-              onChange={(e) => setNewTopicDescription(e.target.value)}
-              placeholder="Beschrijving (optioneel)..."
-              rows={2}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-3"
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+              <div className="md:col-span-2">
+                <input
+                  type="text"
+                  value={newTopicTitle}
+                  onChange={(e) => setNewTopicTitle(e.target.value)}
+                  placeholder="Titel van onderwerp..."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <textarea
+                  value={newTopicDescription}
+                  onChange={(e) => setNewTopicDescription(e.target.value)}
+                  placeholder="Beschrijving (optioneel)..."
+                  rows={2}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Interviewer
+                </label>
+                <select
+                  value={newTopicInterviewer || ''}
+                  onChange={(e) => setNewTopicInterviewer(e.target.value || null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Geen interviewer</option>
+                  {guests.map(guest => (
+                    <option key={guest.id} value={guest.id}>{guest.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Leading
+                </label>
+                <select
+                  value={newTopicLeading || ''}
+                  onChange={(e) => setNewTopicLeading(e.target.value || null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Geen leading</option>
+                  {guests.map(guest => (
+                    <option key={guest.id} value={guest.id}>{guest.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Sidekick
+                </label>
+                <select
+                  value={newTopicSidekick || ''}
+                  onChange={(e) => setNewTopicSidekick(e.target.value || null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Geen sidekick</option>
+                  {guests.map(guest => (
+                    <option key={guest.id} value={guest.id}>{guest.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newTopicShowVisuals}
+                    onChange={(e) => setNewTopicShowVisuals(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Beeldmateriaal tonen
+                  </span>
+                </label>
+              </div>
+            </div>
             <div className="flex items-center space-x-2">
               <button
                 onClick={addTopic}
@@ -428,6 +519,10 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
                   setShowTopicForm(false);
                   setNewTopicTitle('');
                   setNewTopicDescription('');
+                  setNewTopicInterviewer(null);
+                  setNewTopicLeading(null);
+                  setNewTopicSidekick(null);
+                  setNewTopicShowVisuals(false);
                 }}
                 className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
               >
@@ -646,6 +741,33 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
                   </div>
                   {topic.description && (
                     <p className="text-sm text-gray-600 mt-1">{topic.description}</p>
+                  )}
+                  {topic.id !== 'no-topic' && (topic.interviewer_id || topic.leading_id || topic.sidekick_id || topic.show_visuals) && (
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                      {topic.interviewer_id && (
+                        <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded flex items-center gap-1">
+                          <User size={12} />
+                          Interviewer: {getGuestName(topic.interviewer_id)}
+                        </span>
+                      )}
+                      {topic.leading_id && (
+                        <span className="px-2 py-1 bg-green-100 text-green-800 rounded flex items-center gap-1">
+                          <User size={12} />
+                          Leading: {getGuestName(topic.leading_id)}
+                        </span>
+                      )}
+                      {topic.sidekick_id && (
+                        <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded flex items-center gap-1">
+                          <UsersIcon size={12} />
+                          Sidekick: {getGuestName(topic.sidekick_id)}
+                        </span>
+                      )}
+                      {topic.show_visuals && (
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded flex items-center gap-1">
+                          📺 Beeldmateriaal
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
 
