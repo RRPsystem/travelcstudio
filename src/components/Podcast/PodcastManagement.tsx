@@ -72,6 +72,9 @@ export default function PodcastManagement() {
 
     if (!error && data) {
       setEpisodes(data);
+      if (data.length > 0 && !selectedEpisode) {
+        setSelectedEpisode(data[0]);
+      }
     }
     setLoading(false);
   };
@@ -530,6 +533,26 @@ function QuestionsTab({ questions, episodeId, topic, onUpdateStatus, onGenerateA
 
   return (
     <div className="space-y-6">
+      <div>
+        <h3 className="font-semibold mb-3">Snel vraag toevoegen</h3>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newQuestion}
+            onChange={(e) => setNewQuestion(e.target.value)}
+            className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            placeholder="Type je vraag hier..."
+            onKeyPress={(e) => e.key === 'Enter' && handleAddQuestion()}
+          />
+          <button
+            onClick={handleAddQuestion}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
       <div className="space-y-3">
         <div className="flex gap-4">
           <button
@@ -583,26 +606,6 @@ function QuestionsTab({ questions, episodeId, topic, onUpdateStatus, onGenerateA
             </div>
           </div>
         )}
-      </div>
-
-      <div>
-        <h3 className="font-semibold mb-3">Nieuwe vraag toevoegen</h3>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newQuestion}
-            onChange={(e) => setNewQuestion(e.target.value)}
-            className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-            placeholder="Type je vraag hier..."
-            onKeyPress={(e) => e.key === 'Enter' && handleAddQuestion()}
-          />
-          <button
-            onClick={handleAddQuestion}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
-        </div>
       </div>
 
       {['suggested', 'approved', 'asked'].map((status) => {
