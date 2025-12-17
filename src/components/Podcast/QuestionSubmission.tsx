@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Send, Calendar, Users, CheckCircle } from 'lucide-react';
+import { Send, Calendar, Users, CheckCircle, FolderOpen } from 'lucide-react';
 
 interface UpcomingEpisode {
   id: string;
@@ -12,18 +12,45 @@ interface UpcomingEpisode {
   announcement_text: string;
 }
 
+interface Topic {
+  id: string;
+  title: string;
+  description: string | null;
+}
+
 export default function QuestionSubmission() {
   const { user } = useAuth();
   const [upcomingEpisodes, setUpcomingEpisodes] = useState<UpcomingEpisode[]>([]);
   const [selectedEpisode, setSelectedEpisode] = useState<UpcomingEpisode | null>(null);
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
   const [submitterName, setSubmitterName] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
     loadUpcomingEpisodes();
+    loadCurrentUser();
   }, []);
+
+  useEffect(() => {
+    if (selectedEpisode) {
+      loadTopics();
+    }
+  }, [selectedEpisode]);
+
+  const loadCurrentUser = async () => {
+    if (user) {
+      const { data } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      setCurrentUser(data);
+    }
+  };
 
   const loadUpcomingEpisodes = async () => {
     setLoading(true);
@@ -43,18 +70,38 @@ export default function QuestionSubmission() {
     setLoading(false);
   };
 
+  const loadTopics = async () => {
+    if (!selectedEpisode) return;
+
+    const { data, error } = await supabase
+      .from('podcast_topics')
+      .select('*')
+      .eq('episode_planning_id', selectedEpisode.id)
+      .order('order_index', { ascending: true });
+
+    if (!error && data) {
+      setTopics(data);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!question.trim() || !selectedEpisode) return;
 
+    const sourceType = currentUser?.role === 'brand' ? 'brand' :
+                       currentUser?.role === 'agent' ? 'agent' : 'public';
+
     const { error } = await supabase.from('podcast_questions').insert({
       episode_planning_id: selectedEpisode.id,
       question: question.trim(),
-      source_type: user ? (user.email?.includes('@') ? 'brand' : 'public') : 'public',
+      source_type: sourceType,
       submitted_by: user?.id || null,
-      submitter_name: submitterName.trim() || (user?.email || 'Anoniem'),
-      status: 'suggested'
+      submitter_name: submitterName.trim() || currentUser?.full_name || (user?.email || 'Anoniem'),
+      status: 'suggested',
+      phase: (sourceType === 'brand' || sourceType === 'agent') ? 'pre_submitted' : 'preparation',
+      topic_id: selectedTopic,
+      visible_to_submitter: true
     });
 
     if (error) {
@@ -62,6 +109,7 @@ export default function QuestionSubmission() {
     } else {
       setSubmitted(true);
       setQuestion('');
+      setSelectedTopic(null);
       setTimeout(() => setSubmitted(false), 3000);
     }
   };
@@ -148,6 +196,43 @@ export default function QuestionSubmission() {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-6">
+                  {topics.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Onderwerp (optioneel)
+                      </label>
+                      <div className="grid grid-cols-1 gap-3">
+                        {topics.map((topic) => (
+                          <button
+                            key={topic.id}
+                            type="button"
+                            onClick={() => setSelectedTopic(selectedTopic === topic.id ? null : topic.id)}
+                            className={`p-4 rounded-lg border-2 transition-all text-left ${
+                              selectedTopic === topic.id
+                                ? 'border-blue-500 bg-blue-50'
+                                : 'border-gray-200 hover:border-blue-300 bg-white'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <FolderOpen size={16} className={selectedTopic === topic.id ? 'text-blue-600' : 'text-gray-600'} />
+                              <span className={`font-medium ${selectedTopic === topic.id ? 'text-blue-900' : 'text-gray-900'}`}>
+                                {topic.title}
+                              </span>
+                            </div>
+                            {topic.description && (
+                              <p className={`text-sm ${selectedTopic === topic.id ? 'text-blue-700' : 'text-gray-600'}`}>
+                                {topic.description}
+                              </p>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-sm text-gray-500 mt-2">
+                        Kies een onderwerp waar je vraag het beste bij past (optioneel)
+                      </p>
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Jouw vraag *

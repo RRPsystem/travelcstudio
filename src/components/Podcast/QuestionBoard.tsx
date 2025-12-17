@@ -1,6 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { MessageSquare, Plus, CheckCircle, Clock, AlertCircle, Trash2, ArrowUp, ArrowDown, Brain, User, Building2, Users as UsersIcon } from 'lucide-react';
+import { MessageSquare, Plus, CheckCircle, Clock, AlertCircle, Trash2, ArrowUp, ArrowDown, Brain, User, Building2, Users as UsersIcon, FolderOpen, Edit2 } from 'lucide-react';
+
+interface Topic {
+  id: string;
+  title: string;
+  description: string | null;
+  order_index: number;
+  duration_minutes: number | null;
+}
+
+interface Guest {
+  id: string;
+  name: string;
+}
 
 interface Question {
   id: string;
@@ -14,6 +27,9 @@ interface Question {
   discussion_count: number;
   ai_generated: boolean;
   priority: number;
+  topic_id: string | null;
+  guest_id: string | null;
+  phase: string;
   created_at: string;
   updated_at: string;
 }
@@ -26,17 +42,27 @@ interface QuestionBoardProps {
 
 export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpdate }: QuestionBoardProps) {
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [guests, setGuests] = useState<Guest[]>([]);
   const [loading, setLoading] = useState(true);
   const [newQuestion, setNewQuestion] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showTopicForm, setShowTopicForm] = useState(false);
+  const [newTopicTitle, setNewTopicTitle] = useState('');
+  const [newTopicDescription, setNewTopicDescription] = useState('');
+  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
+  const [selectedGuest, setSelectedGuest] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'concept' | 'under_discussion' | 'approved' | 'in_schedule'>('all');
+  const [viewMode, setViewMode] = useState<'by_topic' | 'by_status'>('by_topic');
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
     loadQuestions();
+    loadTopics();
+    loadGuests();
     loadCurrentUser();
 
-    const subscription = supabase
+    const questionsSubscription = supabase
       .channel(`questions_${episodeId}`)
       .on('postgres_changes', {
         event: '*',
@@ -49,8 +75,21 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
       })
       .subscribe();
 
+    const topicsSubscription = supabase
+      .channel(`topics_${episodeId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'podcast_topics',
+        filter: `episode_planning_id=eq.${episodeId}`
+      }, () => {
+        loadTopics();
+      })
+      .subscribe();
+
     return () => {
-      subscription.unsubscribe();
+      questionsSubscription.unsubscribe();
+      topicsSubscription.unsubscribe();
     };
   }, [episodeId, filter]);
 
@@ -63,6 +102,35 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
         .eq('id', user.id)
         .single();
       setCurrentUser(data);
+    }
+  };
+
+  const loadTopics = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('podcast_topics')
+        .select('*')
+        .eq('episode_planning_id', episodeId)
+        .order('order_index', { ascending: true });
+
+      if (error) throw error;
+      setTopics(data || []);
+    } catch (error) {
+      console.error('Error loading topics:', error);
+    }
+  };
+
+  const loadGuests = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('podcast_guests')
+        .select('id, name')
+        .eq('episode_planning_id', episodeId);
+
+      if (error) throw error;
+      setGuests(data || []);
+    } catch (error) {
+      console.error('Error loading guests:', error);
     }
   };
 
@@ -88,6 +156,32 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
     }
   };
 
+  const addTopic = async () => {
+    if (!newTopicTitle.trim()) return;
+
+    try {
+      const maxOrder = Math.max(...topics.map(t => t.order_index), 0);
+
+      const { error } = await supabase
+        .from('podcast_topics')
+        .insert({
+          episode_planning_id: episodeId,
+          title: newTopicTitle.trim(),
+          description: newTopicDescription.trim() || null,
+          order_index: maxOrder + 1
+        });
+
+      if (error) throw error;
+
+      setNewTopicTitle('');
+      setNewTopicDescription('');
+      setShowTopicForm(false);
+    } catch (error) {
+      console.error('Error adding topic:', error);
+      alert('Fout bij toevoegen onderwerp');
+    }
+  };
+
   const addQuestion = async () => {
     if (!newQuestion.trim() || !currentUser) return;
 
@@ -103,6 +197,9 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
           submitted_by: currentUser.id,
           submitter_name: currentUser.full_name || currentUser.email,
           status: 'concept',
+          phase: 'preparation',
+          topic_id: selectedTopic,
+          guest_id: selectedGuest,
           order_index: maxOrder + 1,
           discussion_count: 0,
           ai_generated: false,
@@ -112,6 +209,8 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
       if (error) throw error;
 
       setNewQuestion('');
+      setSelectedTopic(null);
+      setSelectedGuest(null);
       setShowAddForm(false);
       onStatsUpdate();
     } catch (error) {
@@ -216,20 +315,140 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
     );
   }
 
+  const getGuestName = (guestId: string | null) => {
+    if (!guestId) return null;
+    const guest = guests.find(g => g.id === guestId);
+    return guest?.name || null;
+  };
+
+  const getTopicTitle = (topicId: string | null) => {
+    if (!topicId) return 'Geen onderwerp';
+    const topic = topics.find(t => t.id === topicId);
+    return topic?.title || 'Onbekend onderwerp';
+  };
+
+  // Group questions by topic for 'by_topic' view
+  const questionsByTopic = topics.map(topic => ({
+    topic,
+    questions: questions.filter(q => q.topic_id === topic.id)
+  }));
+
+  // Add questions without topic
+  const questionsWithoutTopic = questions.filter(q => !q.topic_id);
+  if (questionsWithoutTopic.length > 0) {
+    questionsByTopic.push({
+      topic: { id: 'no-topic', title: 'Geen onderwerp toegewezen', description: null, order_index: 999, duration_minutes: null },
+      questions: questionsWithoutTopic
+    });
+  }
+
   return (
     <div className="max-w-7xl mx-auto">
+      {/* Topic Management */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <FolderOpen size={20} />
+            Onderwerpen ({topics.length})
+          </h3>
+          <button
+            onClick={() => setShowTopicForm(!showTopicForm)}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+          >
+            <Plus size={16} />
+            <span>Onderwerp</span>
+          </button>
+        </div>
+
+        {showTopicForm && (
+          <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <input
+              type="text"
+              value={newTopicTitle}
+              onChange={(e) => setNewTopicTitle(e.target.value)}
+              placeholder="Titel van onderwerp..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-2"
+            />
+            <textarea
+              value={newTopicDescription}
+              onChange={(e) => setNewTopicDescription(e.target.value)}
+              placeholder="Beschrijving (optioneel)..."
+              rows={2}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-3"
+            />
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={addTopic}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Onderwerp Toevoegen
+              </button>
+              <button
+                onClick={() => {
+                  setShowTopicForm(false);
+                  setNewTopicTitle('');
+                  setNewTopicDescription('');
+                }}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Annuleren
+              </button>
+            </div>
+          </div>
+        )}
+
+        {topics.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {topics.map((topic) => (
+              <div
+                key={topic.id}
+                className="px-3 py-2 bg-blue-100 text-blue-800 rounded-lg text-sm flex items-center gap-2"
+              >
+                <FolderOpen size={14} />
+                <span className="font-medium">{topic.title}</span>
+                <span className="text-blue-600">
+                  ({questions.filter(q => q.topic_id === topic.id).length})
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Filters */}
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => setFilter('all')}
+              onClick={() => setViewMode('by_topic')}
               className={`px-4 py-2 rounded-lg transition-colors ${
-                filter === 'all' ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                viewMode === 'by_topic' ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              Alle ({questions.length})
+              Per Onderwerp
             </button>
+            <button
+              onClick={() => setViewMode('by_status')}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                viewMode === 'by_status' ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Per Status
+            </button>
+          </div>
+        </div>
+
+        {viewMode === 'by_status' && (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setFilter('all')}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  filter === 'all' ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Alle ({questions.length})
+              </button>
             <button
               onClick={() => setFilter('concept')}
               className={`px-4 py-2 rounded-lg transition-colors ${
@@ -262,16 +481,29 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
             >
               In Schema ({questions.filter(q => q.status === 'in_schedule').length})
             </button>
-          </div>
+            </div>
 
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="flex items-center space-x-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
-          >
-            <Plus size={18} />
-            <span>Nieuwe Vraag</span>
-          </button>
-        </div>
+            <button
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="flex items-center space-x-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+            >
+              <Plus size={18} />
+              <span>Nieuwe Vraag</span>
+            </button>
+          </div>
+        )}
+
+        {viewMode === 'by_topic' && (
+          <div className="flex justify-end">
+            <button
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="flex items-center space-x-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+            >
+              <Plus size={18} />
+              <span>Nieuwe Vraag</span>
+            </button>
+          </div>
+        )}
 
         {showAddForm && (
           <div className="mt-4 pt-4 border-t border-gray-200">
@@ -282,6 +514,37 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
               rows={3}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent mb-3"
             />
+
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Onderwerp</label>
+                <select
+                  value={selectedTopic || ''}
+                  onChange={(e) => setSelectedTopic(e.target.value || null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                >
+                  <option value="">Geen onderwerp</option>
+                  {topics.map(topic => (
+                    <option key={topic.id} value={topic.id}>{topic.title}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Gast (optioneel)</label>
+                <select
+                  value={selectedGuest || ''}
+                  onChange={(e) => setSelectedGuest(e.target.value || null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                >
+                  <option value="">Geen specifieke gast</option>
+                  {guests.map(guest => (
+                    <option key={guest.id} value={guest.id}>{guest.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div className="flex items-center space-x-2">
               <button
                 onClick={addQuestion}
@@ -293,6 +556,8 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
                 onClick={() => {
                   setShowAddForm(false);
                   setNewQuestion('');
+                  setSelectedTopic(null);
+                  setSelectedGuest(null);
                 }}
                 className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
               >
@@ -305,52 +570,181 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
 
       {/* Questions List */}
       <div className="space-y-3">
-        {filteredQuestions.length === 0 ? (
-          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-            <MessageSquare className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Geen vragen</h3>
-            <p className="text-gray-600 mb-4">Voeg de eerste vraag toe voor deze episode</p>
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
-            >
-              <Plus size={18} />
-              <span>Nieuwe Vraag</span>
-            </button>
-          </div>
+        {viewMode === 'by_topic' ? (
+          questionsByTopic.length === 0 ? (
+            <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+              <MessageSquare className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Geen onderwerpen</h3>
+              <p className="text-gray-600 mb-4">Voeg eerst onderwerpen toe voor deze episode</p>
+              <button
+                onClick={() => setShowTopicForm(true)}
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Plus size={18} />
+                <span>Onderwerp Toevoegen</span>
+              </button>
+            </div>
+          ) : (
+            questionsByTopic.map(({ topic, questions: topicQuestions }) => (
+              <div key={topic.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="bg-blue-50 border-b border-blue-200 px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FolderOpen size={18} className="text-blue-600" />
+                      <h3 className="font-semibold text-gray-900">{topic.title}</h3>
+                      <span className="text-sm text-gray-600">({topicQuestions.length} vragen)</span>
+                    </div>
+                  </div>
+                  {topic.description && (
+                    <p className="text-sm text-gray-600 mt-1">{topic.description}</p>
+                  )}
+                </div>
+
+                {topicQuestions.length === 0 ? (
+                  <div className="p-6 text-center text-gray-500">
+                    Nog geen vragen voor dit onderwerp
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {topicQuestions.map((question, index) => {
+                      const statusInfo = getStatusInfo(question.status);
+                      const StatusIcon = statusInfo.icon;
+                      const guestName = getGuestName(question.guest_id);
+
+                      return (
+                        <div key={question.id} className="p-4 hover:bg-gray-50 transition-colors">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <span className="text-sm font-medium text-gray-500">#{index + 1}</span>
+                                {getSourceIcon(question.source_type)}
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo.color} flex items-center space-x-1`}>
+                                  <StatusIcon size={12} />
+                                  <span>{statusInfo.label}</span>
+                                </span>
+                                {guestName && (
+                                  <span className="px-2 py-1 bg-green-50 text-green-700 text-xs rounded-full">
+                                    Voor: {guestName}
+                                  </span>
+                                )}
+                                {question.phase !== 'preparation' && (
+                                  <span className="px-2 py-1 bg-purple-50 text-purple-700 text-xs rounded-full">
+                                    {question.phase === 'pre_submitted' ? 'Vooraf ingestuurd' :
+                                     question.phase === 'live' ? 'Live' : 'Follow-up'}
+                                  </span>
+                                )}
+                              </div>
+
+                              <p className="text-gray-900 text-lg mb-2">{question.question}</p>
+
+                              {question.notes && (
+                                <p className="text-sm text-gray-600 italic mb-2">Notitie: {question.notes}</p>
+                              )}
+
+                              <div className="flex items-center space-x-4 text-xs text-gray-500">
+                                <span>Door: {question.submitter_name || 'Onbekend'}</span>
+                                <span>{new Date(question.created_at).toLocaleDateString('nl-NL')}</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-2 ml-4">
+                              <select
+                                value={question.status}
+                                onChange={(e) => updateQuestionStatus(question.id, e.target.value)}
+                                className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                              >
+                                <option value="concept">Concept</option>
+                                <option value="under_discussion">In Discussie</option>
+                                <option value="approved">Goedgekeurd</option>
+                                <option value="in_schedule">In Schema</option>
+                                <option value="asked">Gesteld</option>
+                                <option value="skipped">Overgeslagen</option>
+                                <option value="rejected">Afgewezen</option>
+                              </select>
+
+                              <button
+                                onClick={() => onOpenDiscussion(question.id)}
+                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors relative"
+                                title="Open discussie"
+                              >
+                                <MessageSquare size={18} />
+                                {question.discussion_count > 0 && (
+                                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 text-white text-xs rounded-full flex items-center justify-center">
+                                    {question.discussion_count}
+                                  </span>
+                                )}
+                              </button>
+
+                              <button
+                                onClick={() => deleteQuestion(question.id)}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Verwijder vraag"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))
+          )
         ) : (
-          filteredQuestions.map((question, index) => {
+          filteredQuestions.length === 0 ? (
+            <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+              <MessageSquare className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Geen vragen</h3>
+              <p className="text-gray-600 mb-4">Voeg de eerste vraag toe voor deze episode</p>
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+              >
+                <Plus size={18} />
+                <span>Nieuwe Vraag</span>
+              </button>
+            </div>
+          ) : (
+            filteredQuestions.map((question, index) => {
             const statusInfo = getStatusInfo(question.status);
             const StatusIcon = statusInfo.icon;
 
-            return (
-              <div
-                key={question.id}
-                className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <span className="text-sm font-medium text-gray-500">#{index + 1}</span>
-                      {getSourceIcon(question.source_type)}
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo.color} flex items-center space-x-1`}>
-                        <StatusIcon size={12} />
-                        <span>{statusInfo.label}</span>
-                      </span>
-                      {question.discussion_count > 0 && (
-                        <span className="flex items-center space-x-1 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
-                          <MessageSquare size={12} />
-                          <span>{question.discussion_count}</span>
-                        </span>
-                      )}
-                      {question.ai_generated && (
-                        <span className="px-2 py-1 bg-purple-50 text-purple-600 text-xs rounded-full">
-                          AI
-                        </span>
-                      )}
-                    </div>
+              const guestName = getGuestName(question.guest_id);
+              const topicTitle = getTopicTitle(question.topic_id);
 
-                    <p className="text-gray-900 text-lg mb-2">{question.question}</p>
+              return (
+                <div
+                  key={question.id}
+                  className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="text-sm font-medium text-gray-500">#{index + 1}</span>
+                        {getSourceIcon(question.source_type)}
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo.color} flex items-center space-x-1`}>
+                          <StatusIcon size={12} />
+                          <span>{statusInfo.label}</span>
+                        </span>
+                        <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full">
+                          {topicTitle}
+                        </span>
+                        {guestName && (
+                          <span className="px-2 py-1 bg-green-50 text-green-700 text-xs rounded-full">
+                            Voor: {guestName}
+                          </span>
+                        )}
+                        {question.discussion_count > 0 && (
+                          <span className="flex items-center space-x-1 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                            <MessageSquare size={12} />
+                            <span>{question.discussion_count}</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-gray-900 text-lg mb-2">{question.question}</p>
 
                     {question.notes && (
                       <p className="text-sm text-gray-600 italic mb-2">Notitie: {question.notes}</p>
@@ -424,7 +818,7 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
                 </div>
               </div>
             );
-          })
+          }))
         )}
       </div>
     </div>
