@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { MessageSquare, Plus, CheckCircle, Clock, AlertCircle, Trash2, ArrowUp, ArrowDown, Brain, User, Building2, Users as UsersIcon, FolderOpen, Edit2, Upload, Video } from 'lucide-react';
+import { MessageSquare, Plus, CheckCircle, Clock, AlertCircle, Trash2, ArrowUp, ArrowDown, Brain, User, Building2, Users as UsersIcon, FolderOpen, Edit2, Upload, Video, X } from 'lucide-react';
 import { SlidingMediaSelector } from '../shared/SlidingMediaSelector';
 
 interface Topic {
@@ -174,7 +174,6 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
 
   const addHost = async () => {
     if (!newHostName.trim()) {
-      alert('Voer een naam in voor de host');
       return;
     }
 
@@ -189,7 +188,6 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
       if (error) throw error;
 
       setNewHostName('');
-      setShowAddHostForm(false);
       loadHosts();
     } catch (error) {
       console.error('Error adding host:', error);
@@ -528,60 +526,77 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
             <FolderOpen size={20} />
             Onderwerpen ({topics.length})
           </h3>
-          <button
-            onClick={() => setShowTopicForm(!showTopicForm)}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-          >
-            <Plus size={16} />
-            <span>Onderwerp</span>
-          </button>
-        </div>
-
-        {showTopicForm && hosts.length === 0 && !showAddHostForm && (
-          <div className="mb-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-1">Geen hosts beschikbaar</h4>
-                <p className="text-sm text-gray-600">Voeg eerst podcast hosts toe om ze toe te wijzen aan onderwerpen.</p>
-              </div>
-              <button
-                onClick={() => setShowAddHostForm(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-              >
-                <Plus size={16} />
-                <span>Host Toevoegen</span>
-              </button>
-            </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowAddHostForm(!showAddHostForm)}
+              className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+            >
+              <User size={16} />
+              <span>Host</span>
+            </button>
+            <button
+              onClick={() => setShowTopicForm(!showTopicForm)}
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+            >
+              <Plus size={16} />
+              <span>Onderwerp</span>
+            </button>
           </div>
-        )}
+        </div>
 
         {showAddHostForm && (
           <div className="mb-4 p-4 bg-green-50 rounded-lg border border-green-200">
-            <h4 className="font-semibold text-gray-900 mb-3">Nieuwe Host Toevoegen</h4>
-            <div className="flex gap-3">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-semibold text-gray-900">Host Beheer</h4>
+              <button
+                onClick={() => {
+                  setShowAddHostForm(false);
+                  setNewHostName('');
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex gap-3 mb-4">
               <input
                 type="text"
                 value={newHostName}
                 onChange={(e) => setNewHostName(e.target.value)}
                 placeholder="Naam van host..."
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    addHost();
+                  }
+                }}
               />
               <button
                 onClick={addHost}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
               >
+                <Plus size={16} />
                 Toevoegen
               </button>
-              <button
-                onClick={() => {
-                  setShowAddHostForm(false);
-                  setNewHostName('');
-                }}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-              >
-                Annuleren
-              </button>
             </div>
+
+            {hosts.length > 0 && (
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-2">Beschikbare hosts ({hosts.length}):</p>
+                <div className="flex flex-wrap gap-2">
+                  {hosts.map(host => (
+                    <div
+                      key={host.id}
+                      className="px-3 py-1 bg-white border border-green-300 text-green-800 rounded-lg text-sm flex items-center gap-2"
+                    >
+                      <User size={14} />
+                      <span>{host.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
