@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { MessageSquare, Plus, CheckCircle, Clock, AlertCircle, Trash2, ArrowUp, ArrowDown, Brain, User, Building2, Users as UsersIcon, FolderOpen, Edit2 } from 'lucide-react';
+import { MessageSquare, Plus, CheckCircle, Clock, AlertCircle, Trash2, ArrowUp, ArrowDown, Brain, User, Building2, Users as UsersIcon, FolderOpen, Edit2, Image as ImageIcon } from 'lucide-react';
+import FlickrPhotoPicker from '../shared/FlickrPhotoPicker';
 
 interface Topic {
   id: string;
@@ -73,6 +74,7 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
   const [filter, setFilter] = useState<'all' | 'concept' | 'under_discussion' | 'approved' | 'in_schedule'>('all');
   const [viewMode, setViewMode] = useState<'by_topic' | 'by_status'>('by_topic');
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showFlickrPicker, setShowFlickrPicker] = useState(false);
 
   useEffect(() => {
     loadQuestions();
@@ -581,14 +583,25 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Beeldmateriaal URL (optioneel)
                 </label>
-                <input
-                  type="url"
-                  value={newTopicVisualsUrl}
-                  onChange={(e) => setNewTopicVisualsUrl(e.target.value)}
-                  placeholder="https://example.com/image.jpg of video link"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <p className="text-xs text-gray-500 mt-1">Link naar afbeelding, video of ander visueel materiaal</p>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={newTopicVisualsUrl}
+                    onChange={(e) => setNewTopicVisualsUrl(e.target.value)}
+                    placeholder="https://example.com/image.jpg of video link"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowFlickrPicker(true)}
+                    className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors flex items-center gap-2"
+                    title="Selecteer foto van Flickr Pro"
+                  >
+                    <ImageIcon size={20} />
+                    <span>Flickr</span>
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Link naar afbeelding, video of ander visueel materiaal. Of gebruik Flickr Pro om foto's te selecteren.</p>
               </div>
               <div className="flex items-center">
                 <label className="flex items-center space-x-2 cursor-pointer">
@@ -1109,6 +1122,16 @@ export default function QuestionBoard({ episodeId, onOpenDiscussion, onStatsUpda
           }))
         )}
       </div>
+
+      <FlickrPhotoPicker
+        isOpen={showFlickrPicker}
+        onClose={() => setShowFlickrPicker(false)}
+        onSelect={(url) => {
+          setNewTopicVisualsUrl(url);
+          setShowFlickrPicker(false);
+        }}
+        title="Selecteer Foto van Flickr Pro"
+      />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { APISettings } from './APISettings';
 import { ChatbotManagement } from './ChatbotManagement';
 import { MonitoringDashboard } from './MonitoringDashboard';
 import { UserManagement } from './UserManagement';
+import FlickrAPISettings from './FlickrAPISettings';
 import { HelpBot } from '../shared/HelpBot';
 import {
   Settings,
@@ -28,6 +29,7 @@ import {
   ChevronDown,
   Building2,
   UserCircle,
+  Image as ImageIcon,
   Wrench,
   Database,
   Wallet
@@ -76,6 +78,7 @@ export function OperatorDashboard() {
     { id: 'system-health', label: 'System Health', icon: Activity },
     { id: 'google-api-debug', label: 'Google API Debug', icon: Wrench },
     { id: 'api-settings', label: 'API Settings', icon: Key },
+    { id: 'flickr-api', label: 'Flickr Pro API', icon: ImageIcon },
     { id: 'gpt-management', label: 'GPT Management', icon: Bot },
     { id: 'oauth-management', label: 'OAuth Apps', icon: Settings },
     { id: 'chatbot-management', label: 'Chatbot Logs', icon: MessageCircle },
@@ -162,6 +165,7 @@ export function OperatorDashboard() {
                 {activeSection === 'system-health' && 'System Health'}
                 {activeSection === 'google-api-debug' && 'Google API Debugger'}
                 {activeSection === 'api-settings' && 'API Settings'}
+                {activeSection === 'flickr-api' && 'Flickr Pro API'}
                 {activeSection === 'gpt-management' && 'GPT Management'}
                 {activeSection === 'oauth-management' && 'OAuth App Management'}
                 {activeSection === 'chatbot-management' && 'Chatbot Management'}
@@ -182,6 +186,7 @@ export function OperatorDashboard() {
                 {activeSection === 'system-health' && 'Real-time browser metrics and service status'}
                 {activeSection === 'google-api-debug' && 'Test alle Google APIs: Places Autocomplete, Routes, Places Search'}
                 {activeSection === 'api-settings' && 'Configure API keys and external service credentials'}
+                {activeSection === 'flickr-api' && 'Configureer Flickr Pro voor foto selectie in podcast onderwerpen'}
                 {activeSection === 'gpt-management' && 'Configure custom GPTs and content generation'}
                 {activeSection === 'oauth-management' && 'Manage social media OAuth apps and credentials'}
                 {activeSection === 'chatbot-management' && 'View helpbot conversations and improve responses'}
@@ -335,6 +340,7 @@ export function OperatorDashboard() {
           {activeSection === 'system-health' && <div className="p-6"><SystemHealth /></div>}
           {activeSection === 'google-api-debug' && <div className="p-6"><GoogleAPIDebugger /></div>}
           {activeSection === 'api-settings' && <div className="p-6"><APISettings /></div>}
+          {activeSection === 'flickr-api' && <div className="p-6"><FlickrAPISettings /></div>}
           {activeSection === 'gpt-management' && <div className="p-6"><GPTManagement /></div>}
           {activeSection === 'oauth-management' && <div className="p-6"><OAuthManagement /></div>}
           {activeSection === 'chatbot-management' && <div className="p-6"><ChatbotManagement /></div>}
