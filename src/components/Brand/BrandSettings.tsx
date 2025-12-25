@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Save, AlertCircle, Settings, Globe } from 'lucide-react';
+import { Upload, Save, AlertCircle, Settings, Globe, Copy, Check } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { DomainSettings } from './DomainSettings';
@@ -19,6 +19,7 @@ export function BrandSettings() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [copiedSetup, setCopiedSetup] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -152,6 +153,30 @@ export function BrandSettings() {
     }));
     setError('');
     setSuccess('');
+  };
+
+  const copySetupCode = async () => {
+    const setupCode = `=== WordPress AI News Setup Code ===
+
+Supabase Function URL:
+${import.meta.env.VITE_SUPABASE_URL}/functions/v1/wordpress-news
+
+Brand ID:
+${effectiveBrandId}
+
+OpenAI API Key:
+[Vraag aan Bolt support, of gebruik je eigen OpenAI key]
+
+---
+Plak deze gegevens in WordPress > Instellingen > AI News Plugin`;
+
+    try {
+      await navigator.clipboard.writeText(setupCode);
+      setCopiedSetup(true);
+      setTimeout(() => setCopiedSetup(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
   };
 
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -654,6 +679,66 @@ export function BrandSettings() {
                     />
                     <p className="text-xs text-gray-500 mt-1">
                       Het WordPress Application Password (inclusief spaties is OK)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-200 pt-6 mt-6">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-2">WordPress Plugin Setup Instructies</h4>
+                  <p className="text-xs text-gray-600 mb-4">
+                    Kopieer onderstaande setup code en plak deze in je WordPress AI News plugin instellingen
+                  </p>
+
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-gray-700 mb-1">Supabase Function URL</p>
+                        <code className="text-xs text-gray-900 bg-white px-2 py-1 rounded border border-gray-300 block break-all">
+                          {import.meta.env.VITE_SUPABASE_URL}/functions/v1/wordpress-news
+                        </code>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-gray-700 mb-1">Brand ID</p>
+                        <code className="text-xs text-gray-900 bg-white px-2 py-1 rounded border border-gray-300 block break-all">
+                          {effectiveBrandId}
+                        </code>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-gray-700 mb-1">OpenAI API Key</p>
+                        <p className="text-xs text-gray-600 bg-white px-2 py-1 rounded border border-gray-300">
+                          Vraag aan Bolt support, of gebruik je eigen OpenAI API key
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={copySetupCode}
+                    className="mt-4 w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                  >
+                    {copiedSetup ? (
+                      <>
+                        <Check size={16} />
+                        <span>Gekopieerd!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={16} />
+                        <span>Kopieer Setup Code</span>
+                      </>
+                    )}
+                  </button>
+
+                  <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-xs text-blue-800">
+                      <strong>Let op:</strong> Download eerst de WordPress AI News plugin en installeer deze op je WordPress site voordat je de setup code gebruikt.
                     </p>
                   </div>
                 </div>
