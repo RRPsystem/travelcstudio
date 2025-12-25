@@ -36,7 +36,7 @@ import {
 } from 'lucide-react';
 import RoadmapManagement from './RoadmapManagement';
 import TestManagement from './TestManagement';
-import TemplateManager from './TemplateManager';
+import WordPressTemplateSetup from './WordPressTemplateSetup';
 import ExternalBuilderManager from './ExternalBuilderManager';
 import QuickStartManager from './QuickStartManager';
 import { WordPressDownloads } from './WordPressDownloads';
@@ -332,7 +332,7 @@ export function OperatorDashboard() {
           {activeSection === 'test-management' && <div className="p-6"><TestManagement /></div>}
           {activeSection === 'external-builders' && <div className="p-6"><ExternalBuilderManager /></div>}
           {activeSection === 'quickstart' && <div className="p-6"><QuickStartManager /></div>}
-          {activeSection === 'templates' && <div className="p-6"><TemplateManager /></div>}
+          {activeSection === 'templates' && <WordPressTemplateSetup />}
           {activeSection === 'wordpress-downloads' && <div className="p-6"><WordPressDownloads /></div>}
           {activeSection === 'roadmap' && <div className="p-6"><RoadmapManagement /></div>}
           {activeSection === 'db-performance' && <div className="p-6"><DatabasePerformanceMonitor /></div>}

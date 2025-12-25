@@ -14,7 +14,9 @@ import { AgentManagement } from './AgentManagement';
 import { SocialMediaConnector } from './SocialMediaConnector';
 import { SocialMediaManager } from './SocialMediaManager';
 import { TravelBroSetup } from '../TravelBro/TravelBroSetup';
-import { Users, Settings, Plus, Bot, Sparkles, Import as FileImport, ChevronDown, ChevronRight, LayoutGrid as Layout, FileText, Globe, Newspaper, MapPin, Plane, Share2, Map, ArrowRight, Menu, ClipboardCheck, Video, BookOpen, Rocket, Wallet } from 'lucide-react';
+import WordPressTemplateChooser from './WordPressTemplateChooser';
+import WordPressPageManager from './WordPressPageManager';
+import { Users, Settings, Plus, Bot, Sparkles, Import as FileImport, ChevronDown, ChevronRight, LayoutGrid as Layout, FileText, Globe, Newspaper, MapPin, Plane, Share2, Map, ArrowRight, Menu, ClipboardCheck, Video, BookOpen, Rocket, Wallet, Download } from 'lucide-react';
 import RoadmapBoard from './RoadmapBoard';
 import TestDashboard from '../Testing/TestDashboard';
 import CreditWallet from '../shared/CreditWallet';
@@ -166,7 +168,7 @@ export function BrandDashboard() {
   };
 
   React.useEffect(() => {
-    if (['new-page', 'pages'].includes(activeSection)) {
+    if (['new-page', 'pages', 'wordpress-template-chooser', 'wordpress-page-manager', 'wordpress-settings', 'wordpress-plugin'].includes(activeSection)) {
       setShowWebsiteSubmenu(true);
     }
     if (['ai-content', 'ai-travelbro', 'ai-import'].includes(activeSection)) {
@@ -189,9 +191,10 @@ export function BrandDashboard() {
   ];
 
   const websiteManagementItems = isWordPressMode ? [
-    { id: 'wordpress-settings', label: 'WordPress Instellingen', icon: Globe },
-    { id: 'wordpress-api', label: 'API Configuratie', icon: Settings },
-    { id: 'wordpress-plugin', label: 'Plugin Download', icon: FileText },
+    { id: 'wordpress-template-chooser', label: 'Template Kiezer', icon: Layout },
+    { id: 'wordpress-page-manager', label: 'Pagina Beheer', icon: FileText },
+    { id: 'wordpress-settings', label: 'WordPress Instellingen', icon: Settings },
+    { id: 'wordpress-plugin', label: 'Plugin Download', icon: Download },
   ] : [
     { id: 'new-page', label: 'Quick Start', icon: Rocket },
     { id: 'pages', label: 'Pagina Beheer', icon: FileText },
@@ -654,6 +657,8 @@ export function BrandDashboard() {
 
           {activeSection === 'new-page' && <QuickStart />}
           {activeSection === 'pages' && <PageManagement />}
+          {activeSection === 'wordpress-template-chooser' && <WordPressTemplateChooser />}
+          {activeSection === 'wordpress-page-manager' && <WordPressPageManager />}
           {activeSection === 'wordpress-settings' && <BrandSettings />}
           {activeSection === 'wordpress-api' && (
             <div className="p-6">
