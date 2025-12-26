@@ -26,10 +26,18 @@ interface TemplateSelection {
   operator_notes: string | null;
   brand: {
     name: string;
+    wordpress_url: string | null;
+    wordpress_username: string | null;
   };
   template: {
     name: string;
   };
+}
+
+interface SetupFormData {
+  wordpress_url: string;
+  wordpress_username: string;
+  wordpress_app_password: string;
 }
 
 export default function WordPressTemplateSetup() {
@@ -39,6 +47,8 @@ export default function WordPressTemplateSetup() {
   const [activeTab, setActiveTab] = useState<'templates' | 'requests'>('templates');
   const [editingTemplate, setEditingTemplate] = useState<Partial<WordPressTemplate> | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [setupFormData, setSetupFormData] = useState<Record<string, SetupFormData>>({});
+  const [setupInProgress, setSetupInProgress] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     loadData();
@@ -69,7 +79,7 @@ export default function WordPressTemplateSetup() {
       .from('wordpress_template_selections')
       .select(`
         *,
-        brand:brands(name),
+        brand:brands(name, wordpress_url, wordpress_username),
         template:wordpress_site_templates(name)
       `)
       .order('selected_at', { ascending: false });
@@ -80,6 +90,16 @@ export default function WordPressTemplateSetup() {
     }
 
     setSelections(data || []);
+
+    const formData: Record<string, SetupFormData> = {};
+    data?.forEach((selection: any) => {
+      formData[selection.id] = {
+        wordpress_url: selection.brand.wordpress_url || '',
+        wordpress_username: selection.brand.wordpress_username || '',
+        wordpress_app_password: '',
+      };
+    });
+    setSetupFormData(formData);
   };
 
   const saveTemplate = async () => {
@@ -215,6 +235,120 @@ export default function WordPressTemplateSetup() {
     }
 
     loadSelections();
+  };
+
+  const setupWordPressForBrand = async (selectionId: string) => {
+    const selection = selections.find(s => s.id === selectionId);
+    if (!selection) return;
+
+    const formData = setupFormData[selectionId];
+    if (!formData?.wordpress_url || !formData?.wordpress_username || !formData?.wordpress_app_password) {
+      alert('Vul alle WordPress gegevens in');
+      return;
+    }
+
+    setSetupInProgress({ ...setupInProgress, [selectionId]: true });
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Niet ingelogd');
+      }
+
+      await updateSelectionStatus(selectionId, 'in_progress');
+
+      const { error: brandError } = await supabase
+        .from('brands')
+        .update({
+          wordpress_url: formData.wordpress_url,
+          wordpress_username: formData.wordpress_username,
+          wordpress_app_password: formData.wordpress_app_password,
+          content_system: 'wordpress',
+        })
+        .eq('id', selection.brand_id);
+
+      if (brandError) {
+        throw new Error(`Fout bij opslaan WordPress credentials: ${brandError.message}`);
+      }
+
+      const { data: existingWebsite } = await supabase
+        .from('websites')
+        .select('id')
+        .eq('brand_id', selection.brand_id)
+        .maybeSingle();
+
+      let websiteId = existingWebsite?.id;
+
+      if (!websiteId) {
+        const { data: newWebsite, error: websiteError } = await supabase
+          .from('websites')
+          .insert({
+            brand_id: selection.brand_id,
+            name: `${selection.brand.name} Website`,
+            slug: selection.brand.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            status: 'published',
+            is_published: true,
+            created_by: user.id,
+          })
+          .select()
+          .single();
+
+        if (websiteError) {
+          throw new Error(`Fout bij aanmaken website: ${websiteError.message}`);
+        }
+
+        websiteId = newWebsite.id;
+      }
+
+      const wpUrl = formData.wordpress_url.replace(/\/$/, '');
+      const wpApiUrl = `${wpUrl}/wp-json/wp/v2/pages?per_page=100&_fields=id,title,slug,link,status`;
+
+      const authString = btoa(`${formData.wordpress_username}:${formData.wordpress_app_password}`);
+      const wpResponse = await fetch(wpApiUrl, {
+        headers: {
+          'Authorization': `Basic ${authString}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!wpResponse.ok) {
+        console.warn('Kon WordPress paginas niet ophalen, maar setup is wel voltooid');
+      } else {
+        const wpPages = await wpResponse.json();
+
+        const pagesToInsert = wpPages.map((page: any, index: number) => ({
+          website_id: websiteId,
+          name: page.title.rendered || page.title,
+          slug: page.slug,
+          content: JSON.stringify({
+            type: 'wordpress',
+            wordpress_id: page.id,
+            url: page.link,
+            edit_url: `${wpUrl}/wp-admin/post.php?post=${page.id}&action=edit`,
+          }),
+          sort_order: index,
+        }));
+
+        const { error: pagesError } = await supabase
+          .from('website_pages')
+          .insert(pagesToInsert);
+
+        if (pagesError) {
+          console.error('Fout bij importeren paginas:', pagesError);
+        }
+      }
+
+      await updateSelectionStatus(selectionId, 'active', 'WordPress setup succesvol afgerond');
+
+      alert('WordPress setup succesvol afgerond! De brand kan nu aan de slag in Pagina Beheer.');
+
+    } catch (error: any) {
+      console.error('Setup error:', error);
+      alert(`Fout bij setup: ${error.message}`);
+      await updateSelectionStatus(selectionId, 'pending_setup', error.message);
+    } finally {
+      setSetupInProgress({ ...setupInProgress, [selectionId]: false });
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -464,80 +598,161 @@ export default function WordPressTemplateSetup() {
       )}
 
       {activeTab === 'requests' && (
-        <div>
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Brand</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Template</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aangevraagd</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Notities</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acties</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {selections.map((selection) => (
-                  <tr key={selection.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm">{selection.brand.name}</td>
-                    <td className="px-6 py-4 text-sm">{selection.template.name}</td>
-                    <td className="px-6 py-4">{getStatusBadge(selection.status)}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {new Date(selection.selected_at).toLocaleDateString('nl-NL')}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {selection.operator_notes || '-'}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        {selection.status === 'pending_setup' && (
-                          <button
-                            onClick={() => updateSelectionStatus(selection.id, 'in_progress')}
-                            className="text-sm text-blue-600 hover:text-blue-700"
-                          >
-                            Start Setup
-                          </button>
-                        )}
-                        {selection.status === 'in_progress' && (
-                          <>
-                            <button
-                              onClick={() => {
-                                const notes = prompt('Notities (optioneel):', selection.operator_notes || '');
-                                if (notes !== null) {
-                                  updateSelectionStatus(selection.id, 'active', notes);
-                                }
-                              }}
-                              className="text-sm text-green-600 hover:text-green-700"
-                            >
-                              Afronden
-                            </button>
-                            <button
-                              onClick={() => {
-                                const notes = prompt('Reden van annulering:', selection.operator_notes || '');
-                                if (notes !== null) {
-                                  updateSelectionStatus(selection.id, 'cancelled', notes);
-                                }
-                              }}
-                              className="text-sm text-red-600 hover:text-red-700"
-                            >
-                              Annuleren
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {selections.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-gray-600">Geen template verzoeken</p>
+        <div className="space-y-6">
+          {selections.map((selection) => (
+            <div key={selection.id} className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold">{selection.brand.name}</h3>
+                  <p className="text-sm text-gray-600">Template: {selection.template.name}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Aangevraagd: {new Date(selection.selected_at).toLocaleDateString('nl-NL')}
+                  </p>
+                </div>
+                {getStatusBadge(selection.status)}
               </div>
-            )}
-          </div>
+
+              {selection.operator_notes && (
+                <div className="mb-4 p-3 bg-gray-50 rounded">
+                  <p className="text-sm text-gray-700">{selection.operator_notes}</p>
+                </div>
+              )}
+
+              {(selection.status === 'pending_setup' || selection.status === 'in_progress') && (
+                <div className="space-y-4 border-t pt-4">
+                  <h4 className="font-medium">WordPress Credentials</h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        WordPress URL *
+                      </label>
+                      <input
+                        type="url"
+                        value={setupFormData[selection.id]?.wordpress_url || ''}
+                        onChange={(e) => setSetupFormData({
+                          ...setupFormData,
+                          [selection.id]: {
+                            ...setupFormData[selection.id],
+                            wordpress_url: e.target.value,
+                          }
+                        })}
+                        placeholder="https://voorbeeld.com"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        disabled={setupInProgress[selection.id]}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        WordPress Username *
+                      </label>
+                      <input
+                        type="text"
+                        value={setupFormData[selection.id]?.wordpress_username || ''}
+                        onChange={(e) => setSetupFormData({
+                          ...setupFormData,
+                          [selection.id]: {
+                            ...setupFormData[selection.id],
+                            wordpress_username: e.target.value,
+                          }
+                        })}
+                        placeholder="admin"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        disabled={setupInProgress[selection.id]}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Application Password *
+                      </label>
+                      <input
+                        type="password"
+                        value={setupFormData[selection.id]?.wordpress_app_password || ''}
+                        onChange={(e) => setSetupFormData({
+                          ...setupFormData,
+                          [selection.id]: {
+                            ...setupFormData[selection.id],
+                            wordpress_app_password: e.target.value,
+                          }
+                        })}
+                        placeholder="xxxx xxxx xxxx xxxx"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        disabled={setupInProgress[selection.id]}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2">
+                    <button
+                      onClick={() => setupWordPressForBrand(selection.id)}
+                      disabled={setupInProgress[selection.id] ||
+                        !setupFormData[selection.id]?.wordpress_url ||
+                        !setupFormData[selection.id]?.wordpress_username ||
+                        !setupFormData[selection.id]?.wordpress_app_password}
+                      className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
+                    >
+                      {setupInProgress[selection.id] ? (
+                        <>
+                          <Clock className="w-4 h-4 animate-spin" />
+                          Bezig met setup...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-4 h-4" />
+                          Setup & Activeer
+                        </>
+                      )}
+                    </button>
+
+                    {selection.status === 'in_progress' && !setupInProgress[selection.id] && (
+                      <button
+                        onClick={() => {
+                          const notes = prompt('Reden van annulering:', selection.operator_notes || '');
+                          if (notes !== null) {
+                            updateSelectionStatus(selection.id, 'cancelled', notes);
+                          }
+                        }}
+                        className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50"
+                      >
+                        Annuleren
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {selection.status === 'active' && (
+                <div className="border-t pt-4">
+                  <div className="flex items-center gap-2 text-green-600">
+                    <CheckCircle className="w-5 h-5" />
+                    <span className="font-medium">Setup voltooid</span>
+                  </div>
+                  {selection.setup_completed_at && (
+                    <p className="text-sm text-gray-600 mt-1">
+                      Afgerond op: {new Date(selection.setup_completed_at).toLocaleString('nl-NL')}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {selection.status === 'cancelled' && (
+                <div className="border-t pt-4">
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <XCircle className="w-5 h-5" />
+                    <span className="font-medium">Geannuleerd</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {selections.length === 0 && (
+            <div className="text-center py-12 bg-gray-50 rounded-lg">
+              <p className="text-gray-600">Geen template verzoeken</p>
+            </div>
+          )}
         </div>
       )}
     </div>
