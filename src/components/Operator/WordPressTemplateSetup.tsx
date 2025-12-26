@@ -100,7 +100,7 @@ export default function WordPressTemplateSetup() {
 
       if (error) {
         console.error('Error updating template:', error);
-        alert('Fout bij updaten template');
+        alert(`Fout bij updaten template: ${error.message}`);
         return;
       }
     } else {
@@ -118,7 +118,7 @@ export default function WordPressTemplateSetup() {
 
       if (error) {
         console.error('Error creating template:', error);
-        alert('Fout bij aanmaken template');
+        alert(`Fout bij aanmaken template: ${error.message}`);
         return;
       }
     }
