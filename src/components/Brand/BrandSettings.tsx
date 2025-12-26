@@ -237,6 +237,7 @@ Plak deze gegevens in WordPress > Instellingen > AI News Plugin`;
           website_url: formData.website_url,
           logo_url: formData.logo_url,
           website_type: formData.website_type,
+          content_system: formData.website_type,
           wordpress_url: formData.wordpress_url,
           wordpress_username: formData.wordpress_username,
           wordpress_app_password: formData.wordpress_app_password,
