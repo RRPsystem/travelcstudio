@@ -37,11 +37,15 @@ export default function WordPressTemplateChooser() {
 
   const loadData = async () => {
     setLoading(true);
+    console.log('Loading data for brandId:', brandId);
     await Promise.all([loadTemplates(), loadCurrentSelection()]);
     setLoading(false);
   };
 
   const loadTemplates = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    console.log('Current user:', user);
+
     const { data, error } = await supabase
       .from('wordpress_site_templates')
       .select('*')
@@ -50,9 +54,11 @@ export default function WordPressTemplateChooser() {
 
     if (error) {
       console.error('Error loading templates:', error);
+      alert(`Fout bij laden templates: ${error.message}`);
       return;
     }
 
+    console.log('Loaded templates:', data);
     setTemplates(data || []);
   };
 
