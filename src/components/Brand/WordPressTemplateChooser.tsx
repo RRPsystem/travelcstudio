@@ -23,27 +23,27 @@ interface TemplateSelection {
 }
 
 export default function WordPressTemplateChooser() {
-  const { brandId } = useAuth();
+  const { effectiveBrandId } = useAuth();
   const [templates, setTemplates] = useState<WordPressTemplate[]>([]);
   const [currentSelection, setCurrentSelection] = useState<TemplateSelection | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  console.log('🎯 WordPressTemplateChooser - brandId:', brandId);
+  console.log('🎯 WordPressTemplateChooser - effectiveBrandId:', effectiveBrandId);
 
   useEffect(() => {
-    console.log('🎯 useEffect triggered - brandId:', brandId);
-    if (brandId) {
+    console.log('🎯 useEffect triggered - effectiveBrandId:', effectiveBrandId);
+    if (effectiveBrandId) {
       loadData();
     } else {
-      console.log('⚠️ No brandId available');
+      console.log('⚠️ No effectiveBrandId available');
       setLoading(false);
     }
-  }, [brandId]);
+  }, [effectiveBrandId]);
 
   const loadData = async () => {
     setLoading(true);
-    console.log('Loading data for brandId:', brandId);
+    console.log('Loading data for effectiveBrandId:', effectiveBrandId);
     await Promise.all([loadTemplates(), loadCurrentSelection()]);
     setLoading(false);
   };
@@ -69,7 +69,7 @@ export default function WordPressTemplateChooser() {
   };
 
   const loadCurrentSelection = async () => {
-    if (!brandId) return;
+    if (!effectiveBrandId) return;
 
     const { data, error } = await supabase
       .from('wordpress_template_selections')
@@ -77,7 +77,7 @@ export default function WordPressTemplateChooser() {
         *,
         template:wordpress_site_templates(name)
       `)
-      .eq('brand_id', brandId)
+      .eq('brand_id', effectiveBrandId)
       .maybeSingle();
 
     if (error) {
@@ -89,7 +89,7 @@ export default function WordPressTemplateChooser() {
   };
 
   const selectTemplate = async (templateId: string) => {
-    if (!brandId) return;
+    if (!effectiveBrandId) return;
 
     setSaving(true);
 
@@ -118,7 +118,7 @@ export default function WordPressTemplateChooser() {
       const { error } = await supabase
         .from('wordpress_template_selections')
         .insert({
-          brand_id: brandId,
+          brand_id: effectiveBrandId,
           template_id: templateId,
           status: 'pending_setup',
         });
