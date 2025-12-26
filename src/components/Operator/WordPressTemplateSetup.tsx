@@ -316,7 +316,7 @@ export default function WordPressTemplateSetup() {
       } else {
         const wpPages = await wpResponse.json();
 
-        const pagesToInsert = wpPages.map((page: any, index: number) => ({
+        const websitePages = wpPages.map((page: any, index: number) => ({
           website_id: websiteId,
           name: page.title.rendered || page.title,
           slug: page.slug,
@@ -331,10 +331,34 @@ export default function WordPressTemplateSetup() {
 
         const { error: pagesError } = await supabase
           .from('website_pages')
-          .insert(pagesToInsert);
+          .insert(websitePages);
 
         if (pagesError) {
-          console.error('Fout bij importeren paginas:', pagesError);
+          console.error('Fout bij importeren paginas naar website_pages:', pagesError);
+        }
+
+        const cachePages = wpPages.map((page: any) => ({
+          brand_id: selection.brand_id,
+          wordpress_page_id: page.id,
+          title: page.title.rendered || page.title,
+          slug: page.slug,
+          page_url: page.link,
+          edit_url: `${wpUrl}/wp-admin/post.php?post=${page.id}&action=edit`,
+          status: page.status,
+          last_synced_at: new Date().toISOString(),
+        }));
+
+        await supabase
+          .from('wordpress_pages_cache')
+          .delete()
+          .eq('brand_id', selection.brand_id);
+
+        const { error: cacheError } = await supabase
+          .from('wordpress_pages_cache')
+          .insert(cachePages);
+
+        if (cacheError) {
+          console.error('Fout bij importeren paginas naar cache:', cacheError);
         }
       }
 

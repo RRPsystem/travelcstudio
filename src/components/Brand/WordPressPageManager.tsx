@@ -28,29 +28,34 @@ export default function WordPressPageManager() {
   }, [brandId]);
 
   const loadPages = async () => {
-    if (!brandId) return;
-
-    setLoading(true);
-
-    const { data, error } = await supabase
-      .from('wordpress_pages_cache')
-      .select('*')
-      .eq('brand_id', brandId)
-      .order('title', { ascending: true });
-
-    if (error) {
-      console.error('Error loading pages:', error);
+    if (!brandId) {
       setLoading(false);
       return;
     }
 
-    setPages(data || []);
+    setLoading(true);
 
-    if (data && data.length > 0) {
-      setLastSyncTime(data[0].last_synced_at);
+    try {
+      const { data, error } = await supabase
+        .from('wordpress_pages_cache')
+        .select('*')
+        .eq('brand_id', brandId)
+        .order('title', { ascending: true });
+
+      if (error) {
+        console.error('Error loading pages:', error);
+      } else {
+        setPages(data || []);
+
+        if (data && data.length > 0) {
+          setLastSyncTime(data[0].last_synced_at);
+        }
+      }
+    } catch (err) {
+      console.error('Error loading pages:', err);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const syncPages = async () => {
