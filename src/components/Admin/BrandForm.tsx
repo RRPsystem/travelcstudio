@@ -190,7 +190,7 @@ export function BrandForm({ onBack, onSuccess, editingBrand }: BrandFormProps) {
   };
 
   return (
-    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
+    <div className="flex-1 bg-gray-50 flex flex-col h-screen overflow-hidden">
       {/* Header */}
       <div className="bg-white border-b px-6 py-4 flex-shrink-0">
         <div className="flex items-center space-x-4">
@@ -215,8 +215,8 @@ export function BrandForm({ onBack, onSuccess, editingBrand }: BrandFormProps) {
       </div>
 
       {/* Form */}
-      <div className="flex-1 overflow-y-auto p-6 max-w-4xl">
-        <form onSubmit={handleSubmit} className="space-y-8">
+      <div className="flex-1 overflow-y-auto p-6">
+        <form onSubmit={handleSubmit} className="space-y-8 max-w-4xl mx-auto pb-8">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
               {error}
