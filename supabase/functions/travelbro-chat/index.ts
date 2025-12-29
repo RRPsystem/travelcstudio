@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { formatTripDataForAI } from "./format-trip-data.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -510,7 +511,7 @@ Deno.serve(async (req: Request) => {
     if (!hasValidTripData) {
       tripDataText = "Geen gedetailleerde reis informatie beschikbaar. Je kunt algemene tips geven over reizen en helpen waar mogelijk.";
     } else if (!tripDataText) {
-      tripDataText = JSON.stringify(trip.parsed_data, null, 2);
+      tripDataText = formatTripDataForAI(trip.parsed_data, trip.name);
     }
 
     const systemPrompt = `Je bent TravelBRO, een vriendelijke en behulpzame Nederlandse reisassistent voor de reis "${trip.name}".
@@ -524,6 +525,9 @@ ${trip.custom_context ? `\n🎯 SPECIFIEKE REIS CONTEXT & INSTRUCTIES:\n${trip.c
 
 👥 REIZIGER INFORMATIE:
 ${intake ? JSON.stringify(intake.intake_data, null, 2) : "Geen intake data beschikbaar"}
+
+⚠️ KRITIEKE REGEL:
+De reis informatie hierboven bevat ALLE details die je nodig hebt! Als er gevraagd wordt naar hotels, accommodaties, activiteiten of specifieke locaties: GEBRUIK DE EXACTE NAMEN uit de reis informatie hierboven. Zeg NOOIT "die informatie staat niet in de beschikbare gegevens" als het wel hierboven staat!
 
 ⚡ BELANGRIJKE INSTRUCTIES voor het gebruik van reiziger informatie:
 
@@ -615,7 +619,7 @@ ${searchResults}${locationData}`;
       body: JSON.stringify({
         model: trip.gpt_model || "gpt-4o",
         messages,
-        max_tokens: 1000,
+        max_tokens: 2000,
         temperature: trip.gpt_temperature ?? 0.7,
       }),
     });
