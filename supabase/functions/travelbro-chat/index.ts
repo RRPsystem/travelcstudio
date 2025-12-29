@@ -138,7 +138,87 @@ Deno.serve(async (req: Request) => {
         const distanceKeywords = ['ver', 'afstand', 'dichtbij', 'loopafstand', 'hoe ver', 'hoelang', 'kunnen we', 'lopen'];
         const isDistanceQuery = distanceKeywords.some(kw => message.toLowerCase().includes(kw));
         
-        if (isDistanceQuery && conversationHistory && conversationHistory.length > 0 && contextualLocation) {
+        const routeKeywords = ['route', 'routebeschrijving', 'hoe komen we', 'hoe kom ik', 'navigatie'];
+        const isRouteQuery = routeKeywords.some(kw => message.toLowerCase().includes(kw));
+
+        if (isRouteQuery && contextualLocation && currentHotel) {
+          console.log('🗺️ Route query detected');
+
+          const citySequence = {
+            'johannesburg': { next: 'tzaneen', prev: null },
+            'tzaneen': { next: 'graskop', prev: 'johannesburg' },
+            'graskop': { next: 'piet retief', prev: 'tzaneen' },
+            'piet retief': { next: 'st. lucia', prev: 'graskop' },
+            'st. lucia': { next: 'umhlanga', prev: 'piet retief' },
+            'umhlanga': { next: 'addo', prev: 'st. lucia' },
+            'addo': { next: 'knysna', prev: 'umhlanga' },
+            'knysna': { next: 'swellendam', prev: 'addo' },
+            'swellendam': { next: 'hermanus', prev: 'knysna' },
+            'hermanus': { next: 'kaapstad', prev: 'swellendam' },
+            'kaapstad': { next: null, prev: 'hermanus' }
+          };
+
+          const currentCity = citySequence[contextualLocation];
+          if (currentCity && currentCity.prev) {
+            const fromCity = currentCity.prev;
+            const fromHotelMappings: { [key: string]: string } = {
+              'johannesburg': 'City Lodge Johannesburg Airport',
+              'tzaneen': 'Tamboti Lodge Guest House',
+              'graskop': 'Westlodge at Graskop',
+              'piet retief': 'Dusk to Dawn Guesthouse',
+              'st. lucia': 'Ndiza Lodge & Cabanas',
+              'umhlanga': 'Tesorino',
+              'addo': 'Addo Dung Beetle Guest Farm',
+              'knysna': 'Knysna Manor House',
+              'swellendam': 'Aan de Oever Guesthouse',
+              'hermanus': 'Whale Coast Ocean Villa'
+            };
+
+            const fromHotel = fromHotelMappings[fromCity];
+
+            if (fromHotel) {
+              console.log(`🚗 Calculating route from ${fromCity} (${fromHotel}) to ${contextualLocation} (${currentHotel})`);
+
+              const directionsUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(fromHotel + ', ' + fromCity + ', South Africa')}&destination=${encodeURIComponent(currentHotel + ', ' + contextualLocation + ', South Africa')}&mode=driving&key=${googleMapsApiKey}&language=nl`;
+
+              const directionsResponse = await fetch(directionsUrl);
+              if (directionsResponse.ok) {
+                const directionsData = await directionsResponse.json();
+
+                if (directionsData.status === 'OK' && directionsData.routes && directionsData.routes.length > 0) {
+                  const route = directionsData.routes[0];
+                  const leg = route.legs[0];
+
+                  locationData = `\n\n🗺️ ROUTE INFORMATIE:\n\n`;
+                  locationData += `📍 Van: **${fromHotel}** in ${fromCity.charAt(0).toUpperCase() + fromCity.slice(1)}\n`;
+                  locationData += `📍 Naar: **${currentHotel}** in ${contextualLocation.charAt(0).toUpperCase() + contextualLocation.slice(1)}\n\n`;
+                  locationData += `🚗 Afstand: ${leg.distance.text}\n`;
+                  locationData += `⏱️ Rijdtijd: ${leg.duration.text}\n`;
+                  locationData += `🛣️ Startadres: ${leg.start_address}\n`;
+                  locationData += `🎯 Eindadres: ${leg.end_address}\n\n`;
+
+                  if (route.summary) {
+                    locationData += `📋 Route: ${route.summary}\n\n`;
+                  }
+
+                  if (leg.steps && leg.steps.length > 0) {
+                    locationData += `🧭 BELANGRIJKSTE STAPPEN:\n\n`;
+                    leg.steps.slice(0, 8).forEach((step: any, index: number) => {
+                      const instruction = step.html_instructions.replace(/<[^>]*>/g, '');
+                      locationData += `${index + 1}. ${instruction} (${step.distance.text})\n`;
+                    });
+
+                    if (leg.steps.length > 8) {
+                      locationData += `\n... en nog ${leg.steps.length - 8} stappen\n`;
+                    }
+                  }
+
+                  console.log('✅ Successfully calculated route');
+                }
+              }
+            }
+          }
+        } else if (isDistanceQuery && conversationHistory && conversationHistory.length > 0 && contextualLocation) {
           const lastAssistantMessage = conversationHistory
             .slice()
             .reverse()
@@ -333,6 +413,9 @@ GEEN algemene info over Zuid-Afrika. ALTIJD specifiek over de locatie waar ze he
 🚨 KRITIEKE REGEL #4 - GEBRUIK INTAKE DATA!
 De reizigers hebben persoonlijke voorkeuren ingevuld. GEBRUIK DIE in je antwoorden!
 
+🚨 KRITIEKE REGEL #5 - KIJK IN DE REISINFORMATIE!
+Als iemand vraagt "hoe komen we naar X" - kijk in de reisinformatie welke locatie VOOR X komt. Dat is het vertrekpunt!
+
 ❌ ZEG NOOIT:
 - "Die informatie heb ik niet"
 - "Kun je specifieker zijn?"
@@ -340,6 +423,8 @@ De reizigers hebben persoonlijke voorkeuren ingevuld. GEBRUIK DIE in je antwoord
 - "Welk hotel bedoel je?"
 - "Bij welk hotel zoek je een restaurant?"
 - "Kun je me vertellen bij welk hotel?"
+- "Stuur me even je vertrekpunt" (JE WEET het vertrekpunt uit de reisvolgorde!)
+- "Waar heb je precies informatie over nodig?" (Ze hebben het NET gezegd!)
 - "Het hangt af van welke bestemming je bedoelt" (JE WEET de bestemming uit de context!)
 - Generieke lijstjes van verschillende steden (focus op ÉÉN stad!)
 
@@ -413,7 +498,17 @@ Vraag: "is het daar leuk? of zitten we echt midden in the middle of nowhere?"
 
 ✅ GOED: "Tzaneen is super! Het ligt in de prachtige Letaba-vallei met veel te doen. Je zit niet 'in the middle of nowhere' - het is een levendig gebied met [SPECIFIEKE dingen in Tzaneen]. Jullie Tamboti Lodge ligt [specifieke info over ligging]. Als ik naar jullie voorkeuren kijk [intake data gebruiken], zou ik zeker [gepersonaliseerde suggesties voor Tzaneen] aanraden!"
 
-SCENARIO 3: Algemene vraag
+SCENARIO 3: Route vraag
+Iemand vraagt: "hoe komen we naar Tamboti Lodge met de auto?"
+Context: In de reisinformatie staat de volgorde: Johannesburg → Tzaneen (Tamboti Lodge) → Graskop
+
+❌ FOUT: "Stuur me even je vertrekpunt"
+❌ FOUT: "Waar vertrek je vandaan?"
+❌ FOUT: "Waar heb je precies informatie over nodig?"
+
+✅ GOED: "De route van Johannesburg naar Tamboti Lodge in Tzaneen is ongeveer [afstand] en duurt [tijd]. Je rijdt via [route details]. Tamboti Lodge ligt op [adres in Tzaneen]. Wil je dat ik specifieke tussenstops of bezienswaardigheden onderweg voor je opzoek?"
+
+SCENARIO 4: Algemene vraag
 Vraag: "is er een supermarkt?"
 
 ❌ FOUT: "In welke stad bedoel je?"
