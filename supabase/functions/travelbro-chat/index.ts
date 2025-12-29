@@ -83,10 +83,11 @@ Deno.serve(async (req: Request) => {
       .limit(20);
 
     let contextualLocation = "";
-    
+    let currentHotel = "";
+
     if (conversationHistory && conversationHistory.length > 0) {
       const recentMessages = conversationHistory.slice(-5).map((c: any) => c.message.toLowerCase()).join(" ");
-      
+
       const cities = ['johannesburg', 'tzaneen', 'graskop', 'piet retief', 'st. lucia', 'kwazulu-natal', 'umhlanga', 'durban', 'addo', 'knysna', 'swellendam', 'hermanus', 'kaapstad'];
       for (const city of cities) {
         if (recentMessages.includes(city)) {
@@ -94,6 +95,25 @@ Deno.serve(async (req: Request) => {
           console.log('🎯 Detected contextual location:', contextualLocation);
           break;
         }
+      }
+
+      const hotelMappings: { [key: string]: string } = {
+        'johannesburg': 'City Lodge Johannesburg Airport',
+        'tzaneen': 'Tamboti Lodge Guest House',
+        'graskop': 'Westlodge at Graskop',
+        'piet retief': 'Dusk to Dawn Guesthouse',
+        'st. lucia': 'Ndiza Lodge & Cabanas',
+        'kwazulu-natal': 'Rhino Ridge Safari Lodge',
+        'umhlanga': 'Tesorino',
+        'addo': 'Addo Dung Beetle Guest Farm',
+        'knysna': 'Knysna Manor House',
+        'swellendam': 'Aan de Oever Guesthouse',
+        'hermanus': 'Whale Coast Ocean Villa'
+      };
+
+      if (contextualLocation && hotelMappings[contextualLocation]) {
+        currentHotel = hotelMappings[contextualLocation];
+        console.log('🏨 Current hotel:', currentHotel);
       }
     }
 
@@ -304,17 +324,25 @@ Deno.serve(async (req: Request) => {
 🚨 KRITIEKE REGEL #1 - GEBRUIK DE REISINFORMATIE!
 Je hebt COMPLETE reisinformatie gekregen. GEBRUIK DIE!
 
+🚨 KRITIEKE REGEL #2 - NOOIT VERDUIDELIJKINGSVRAGEN!
+Als iemand vraagt "is er een restaurant in de buurt?" of "in de buurt van dit hotel?" weet je ALTIJD de context!
+
 ❌ ZEG NOOIT:
 - "Die informatie heb ik niet"
 - "Kun je specifieker zijn?"
 - "Over welke locatie wil je informatie?"
 - "Welk hotel bedoel je?"
+- "Bij welk hotel zoek je een restaurant?"
+- "Kun je me vertellen bij welk hotel?"
 
 ✅ DOE DIT:
 - LEES de reisinformatie hieronder
 - GEBRUIK de exacte hotelnamen en details
 - BEGRIJP de context van het gesprek
 - GEEF concrete antwoorden met de beschikbare data
+- Als er real-time locatie data is, GEBRUIK DIE METEEN!
+
+${contextualLocation && currentHotel ? `\n🎯 HUIDIGE CONTEXT:\n📍 Locatie: ${contextualLocation.toUpperCase()}\n🏨 Jullie hotel: ${currentHotel}\n\n⚠️ GEBRUIK DEZE CONTEXT! Als iemand vraagt "is er een restaurant?" of "in de buurt van dit hotel?" bedoelen ze in ${contextualLocation} bij hotel ${currentHotel}!\n` : ''}
 
 🗺️ COMPLETE REISINFORMATIE:
 ${tripContext}
@@ -328,10 +356,11 @@ ${locationData ? `\n📍 REAL-TIME LOCATIE DATA:\n${locationData}\n\n⚠️ GEBR
 
 🎯 ANTWOORD REGELS:
 
-1. **CONTEXT BEGRIP**:
-   - Als iemand vraagt over "restaurant in Swellendam" en dan "is het ver van ons hotel?"
-   - Dan bedoelen ze: het hotel IN SWELLENDAM (Aan de Oever Guesthouse)
-   - GEBRUIK de conversatie context!
+1. **CONTEXT BEGRIP IS ALLES**:
+   - We praten over ${contextualLocation ? contextualLocation.toUpperCase() : 'een specifieke locatie'}
+   - Het hotel is ${currentHotel ? `**${currentHotel}**` : 'bekend uit de conversatie'}
+   - Als iemand zegt "dit hotel", "het hotel", "in de buurt" → ze bedoelen ${currentHotel || 'het hotel in de huidige context'}
+   - Als iemand vraagt "restaurant in de buurt?" → ze bedoelen in de buurt van ${currentHotel || 'hun hotel'}
 
 2. **GEBRUIK EXACTE DATA**:
    - Hotelname: ALTIJD de volledige naam uit de reisinformatie
@@ -342,24 +371,32 @@ ${locationData ? `\n📍 REAL-TIME LOCATIE DATA:\n${locationData}\n\n⚠️ GEBR
 3. **WEES SPECIFIEK**:
    - Geen algemene tips
    - Gebruik namen, adressen, details
-   - Als er afstandsinformatie beschikbaar is (hierboven), GEBRUIK DIE
+   - Als er real-time locatie data beschikbaar is (hierboven), GEBRUIK DIE!
+   - Als er real-time data is, begin dan DIRECT met die restaurants
 
 4. **EMOJI'S**: Maak antwoorden levendig en prettig leesbaar
 
 📋 VOORBEELD CORRECTE ANTWOORDEN:
 
-❌ FOUT: "Er zijn veel restaurants in de omgeving"
-✅ GOED: "Restaurant X ligt op 2.3km van jullie Aan de Oever Guesthouse in Swellendam (5 min met de auto, 28 min lopen)"
+SCENARIO: Iemand vroeg net "waar slapen we in Swellendam" en jij antwoordde "Aan de Oever Guesthouse"
+Vraag: "wat is een leuk restaurant in de buurt van dit hotel?"
 
-❌ FOUT: "Over welk hotel heb je het?"
-✅ GOED: "Jullie verblijven in Swellendam in het Aan de Oever Guesthouse (met zwembad en wifi, inclusief ontbijt)"
+❌ FOUT: "Kun je me vertellen bij welk hotel je een restaurant zoekt?"
+❌ FOUT: "Bij welk hotel wil je een restaurant?"
+❌ FOUT: "In de buurt van waar precies?"
 
-❌ FOUT: "Ik weet niet welke faciliteiten het hotel heeft"
-✅ GOED: "Het Westlodge at Graskop heeft een zwembad en wifi, en jullie hebben daar ontbijt inbegrepen"
+✅ GOED: "Hier zijn de beste restaurants in de buurt van jullie Aan de Oever Guesthouse in Swellendam:" [+ lijst met real-time data]
+
+SCENARIO: Algemene vraag
+Vraag: "is er een supermarkt?"
+
+❌ FOUT: "In welke stad bedoel je?"
+✅ GOED: "In ${contextualLocation || 'jullie huidige locatie'} zijn er deze supermarkten:" [+ lijst]
 
 🧠 CONVERSATIE GEHEUGEN:
-Als de conversatie over een specifieke stad gaat, blijf op die stad gefocust.
-Als iemand vraagt "is er een supermarkt?" na een gesprek over Knysna, bedoelen ze in Knysna!`;
+- Als de conversatie over een specifieke stad gaat, blijf op die stad gefocust
+- Als iemand "dit", "het hotel", "hier" zegt, weet je ALTIJD welk hotel ze bedoelen
+- NOOIT vragen om verduidelijking als de context duidelijk is uit het gesprek`;
 
     let conversationContext = "";
     if (conversationHistory && conversationHistory.length > 0) {
@@ -406,10 +443,10 @@ Als iemand vraagt "is er een supermarkt?" na een gesprek over Knysna, bedoelen z
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: trip.gpt_model || "gpt-4o-mini",
+        model: trip.gpt_model || "gpt-4o",
         messages,
         max_tokens: 2000,
-        temperature: 0.6,
+        temperature: 0.3,
       }),
     });
 
