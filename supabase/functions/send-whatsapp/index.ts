@@ -80,6 +80,60 @@ Deno.serve(async (req: Request) => {
     const toNumber = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
     const fromWhatsApp = fromNumber.startsWith('whatsapp:') ? fromNumber : `whatsapp:${fromNumber}`;
 
+    if (tripId) {
+      console.log('🔧 Creating WhatsApp session BEFORE sending message');
+      const cleanPhoneNumber = to.replace('whatsapp:', '').replace('+', '');
+
+      const { data: trip } = await supabase
+        .from('travel_trips')
+        .select('brand_id')
+        .eq('id', tripId)
+        .single();
+
+      const sessionData: any = {
+        trip_id: tripId,
+        phone_number: cleanPhoneNumber,
+        brand_id: trip?.brand_id || brandId,
+        last_message_at: new Date().toISOString()
+      };
+
+      if (sessionToken && !skipIntake) {
+        const { data: intakeExists } = await supabase
+          .from('travel_intakes')
+          .select('session_token')
+          .eq('session_token', sessionToken)
+          .maybeSingle();
+
+        if (intakeExists) {
+          sessionData.session_token = sessionToken;
+          console.log('✅ Session token added - intake exists');
+        }
+      }
+
+      const { data: sessionResult, error: sessionError } = await supabase
+        .from('travel_whatsapp_sessions')
+        .upsert(sessionData, {
+          onConflict: 'trip_id,phone_number'
+        })
+        .select();
+
+      if (sessionError) {
+        console.error('❌ Error creating WhatsApp session:', sessionError);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Sessie aanmaken mislukt: ' + sessionError.message
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      } else {
+        console.log('✅ WhatsApp session created BEFORE sending:', sessionResult);
+      }
+    }
+
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
     const authHeader = 'Basic ' + btoa(`${accountSid}:${authToken}`);
 
@@ -184,63 +238,7 @@ Deno.serve(async (req: Request) => {
 
     console.log('WhatsApp message sent successfully:', responseData.sid);
 
-    if (tripId) {
-      console.log('🔧 Creating WhatsApp session for trip:', tripId);
-      console.log('🔧 Session token:', sessionToken);
-      console.log('🔧 Phone number (raw):', to);
-
-      const cleanPhoneNumber = to.replace('whatsapp:', '').replace('+', '');
-
-      console.log('🔧 Phone number (cleaned):', cleanPhoneNumber);
-
-      // Get brand_id from trip
-      const { data: trip } = await supabase
-        .from('travel_trips')
-        .select('brand_id')
-        .eq('id', tripId)
-        .single();
-
-      const sessionData: any = {
-        trip_id: tripId,
-        phone_number: cleanPhoneNumber,
-        brand_id: trip?.brand_id || brandId,
-        last_message_at: new Date().toISOString()
-      };
-
-      console.log('🔧 Session data:', { trip_id: tripId, phone_number: cleanPhoneNumber, brand_id: sessionData.brand_id });
-
-      if (sessionToken && !skipIntake) {
-        const { data: intakeExists } = await supabase
-          .from('travel_intakes')
-          .select('session_token')
-          .eq('session_token', sessionToken)
-          .maybeSingle();
-
-        if (intakeExists) {
-          sessionData.session_token = sessionToken;
-          console.log('✅ Session token added - intake exists');
-        } else {
-          console.log('⚠️ Session token skipped - intake does not exist yet');
-        }
-      } else {
-        console.log('⚠️ No session token provided or intake skipped');
-      }
-
-      const { data: sessionResult, error: sessionError } = await supabase
-        .from('travel_whatsapp_sessions')
-        .upsert(sessionData, {
-          onConflict: 'trip_id,phone_number'
-        })
-        .select();
-
-      if (sessionError) {
-        console.error('❌ Error creating WhatsApp session:', sessionError);
-        console.error('❌ Session error details:', JSON.stringify(sessionError, null, 2));
-      } else {
-        console.log('✅ WhatsApp session created/updated:', sessionResult);
-      }
-
-      if (useTemplate && sessionToken && !skipIntake) {
+    if (tripId && useTemplate && sessionToken && !skipIntake) {
         console.log('📧 Sending follow-up message with intake link...');
 
         const { data: trip } = await supabase
@@ -281,10 +279,6 @@ Deno.serve(async (req: Request) => {
             console.error('❌ Failed to send follow-up message:', await followUpResponse.text());
           }
         }
-      }
-    } else {
-      console.log('⚠️ Skipping session creation - missing tripId');
-      console.log('⚠️ tripId:', tripId);
     }
 
     return new Response(
