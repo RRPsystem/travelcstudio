@@ -123,6 +123,10 @@ Deno.serve(async (req: Request) => {
         uniqueLocations.add(loc);
         if (day.hotel && day.hotel.name) {
           hotelMappings[loc] = day.hotel.name;
+          const locWithoutDots = loc.replace(/\./g, '');
+          if (locWithoutDots !== loc) {
+            hotelMappings[locWithoutDots] = day.hotel.name;
+          }
         }
       });
       routeStops = Array.from(uniqueLocations);
@@ -165,13 +169,25 @@ Deno.serve(async (req: Request) => {
     let currentHotel = "";
 
     if (conversationHistory && conversationHistory.length > 0) {
-      const recentMessages = conversationHistory.slice(-5).map((c: any) => c.message.toLowerCase()).join(" ");
+      const recentMessages = conversationHistory.slice(-10).map((c: any) => c.message.toLowerCase()).join(" ");
 
       for (const stop of routeStops) {
-        if (recentMessages.includes(stop) || recentMessages.includes(stop.replace(' game reserve', '').replace(' national park', '').replace(' elephant', ''))) {
+        if (recentMessages.includes(stop) || recentMessages.includes(stop.replace(' game reserve', '').replace(' national park', '').replace(' elephant', '').replace('.', ''))) {
           contextualLocation = stop;
           console.log('🎯 Detected contextual location:', contextualLocation);
           break;
+        }
+      }
+
+      if (!contextualLocation) {
+        const currentMessage = message.toLowerCase();
+        for (const stop of routeStops) {
+          const cleanStop = stop.replace('.', '');
+          if (currentMessage.includes(cleanStop) || currentMessage.includes(stop.replace(' game reserve', '').replace(' national park', ''))) {
+            contextualLocation = stop;
+            console.log('🎯 Detected location in current message:', contextualLocation);
+            break;
+          }
         }
       }
 
@@ -576,7 +592,7 @@ Jij: "Tzaneen Dam ligt ongeveer 8 km van jullie hotel Tamboti Lodge Guest House.
 
 ${structuredItinerary.length > 0 ? `\n📅 GESTRUCTUREERD REISSCHEMA (GEBRUIK DIT!):\n\n${structuredItinerary.map(day => `Dag ${day.day} (${day.date}) - ${day.location}:\n  🏨 Hotel: ${day.hotel.name}${day.hotel.has_restaurant ? ' ✅ Heeft restaurant!' : ''}${day.hotel.amenities ? `\n  ✨ Faciliteiten: ${day.hotel.amenities.join(', ')}` : ''}\n  📍 Activiteiten: ${day.activities.join(', ')}`).join('\n\n')}\n\n⚠️ JE WEET PRECIES WELK HOTEL BIJ WELKE LOCATIE HOORT! GEBRUIK DIT!\n` : ''}
 
-${contextualLocation && currentHotel ? `\n🎯 HUIDIGE CONTEXT:\n📍 Locatie: ${contextualLocation.toUpperCase()}\n🏨 Jullie hotel: ${currentHotel}${structuredItinerary.find((d: any) => d.location.toLowerCase() === contextualLocation.toLowerCase())?.hotel?.has_restaurant ? ' ✅ Dit hotel HEEFT een restaurant!' : ''}\n\n⚠️ GEBRUIK DEZE CONTEXT!\n- "daar" = ${contextualLocation}\n- "het hotel" = ${currentHotel}\n- Als ze vragen "is het daar leuk?" bedoelen ze ${contextualLocation}!\n- Als ze vragen "heeft het hotel een restaurant?" zie je hierboven het antwoord!\n- Geef SPECIFIEKE info over ${contextualLocation}, NIET over heel Zuid-Afrika!\n` : ''}
+${contextualLocation && currentHotel ? `\n🎯 HUIDIGE CONTEXT:\n📍 Locatie: ${contextualLocation.toUpperCase()}\n🏨 Jullie hotel: ${currentHotel}${structuredItinerary.find((d: any) => d.location.toLowerCase() === contextualLocation.toLowerCase())?.hotel?.has_restaurant ? ' ✅ Dit hotel HEEFT een restaurant!' : ' ⚠️ Dit hotel heeft GEEN restaurant'}${structuredItinerary.find((d: any) => d.location.toLowerCase() === contextualLocation.toLowerCase())?.hotel?.amenities ? `\n✨ Faciliteiten: ${structuredItinerary.find((d: any) => d.location.toLowerCase() === contextualLocation.toLowerCase())?.hotel?.amenities?.join(', ')}` : ''}\n\n⚠️ GEBRUIK DEZE CONTEXT - DIT IS SUPER BELANGRIJK!\n- "daar" = ${contextualLocation}\n- "het hotel" = ${currentHotel}\n- "in de buurt" = in de buurt van ${currentHotel} in ${contextualLocation}\n- Als ze vragen "is het daar leuk?" bedoelen ze ${contextualLocation}!\n- Als ze vragen "heeft het hotel een restaurant?" zie je hierboven het antwoord!\n- Als ze vragen "is er een restaurant in de buurt?" → Check EERST of ${currentHotel} zelf een restaurant heeft (zie hierboven!)\n- Als ze vragen over faciliteiten "in de buurt" → Begin met de faciliteiten van ${currentHotel}!\n- Geef SPECIFIEKE info over ${contextualLocation}, NIET over heel Zuid-Afrika!\n- NOOIT vragen "over welke locatie wil je meer weten?" - je WEET dat het over ${contextualLocation} gaat!\n` : ''}
 
 🗺️ COMPLETE REISINFORMATIE:
 ${tripContext}
@@ -606,7 +622,7 @@ ${searchData ? `\n${searchData}\n⚠️ GEBRUIK DEZE ACTUELE INTERNET INFO IN JE
    - We praten over ${contextualLocation ? contextualLocation.toUpperCase() : 'een specifieke locatie'}
    - Het hotel is ${currentHotel ? `**${currentHotel}**` : 'bekend uit de conversatie'}
    - Als iemand zegt "dit hotel", "het hotel", "in de buurt" → ze bedoelen ${currentHotel || 'het hotel in de huidige context'}
-   - Als iemand vraagt "restaurant in de buurt?" → ze bedoelen in de buurt van ${currentHotel || 'hun hotel'}
+   - Als iemand vraagt "restaurant in de buurt?" → KIJK EERST naar de HUIDIGE CONTEXT hierboven! Als daar staat dat het hotel een restaurant heeft, zeg dat dan DIRECT! Bijvoorbeeld: "Ja! ${currentHotel || 'Jullie hotel'} heeft zelf een restaurant!" ${currentHotel && structuredItinerary.find((d: any) => d.location.toLowerCase() === contextualLocation?.toLowerCase())?.hotel?.has_restaurant ? `(En JA, ${currentHotel} HEEFT een restaurant!)` : ''}
 
 2. **GEBRUIK EXACTE DATA**:
    - Hotelname: ALTIJD de volledige naam uit de reisinformatie
