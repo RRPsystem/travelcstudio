@@ -262,8 +262,11 @@ ${toolData}
     const tokensUsed = openaiData.usage?.total_tokens;
 
     const slotsUpdates = stateManager.extractSlotsFromMessage(message, aiResponse, trip);
+
+    // Always update at least the intent to maintain conversation flow
+    slotsUpdates.last_intent = intent as any;
+
     if (Object.keys(slotsUpdates).length > 0) {
-      slotsUpdates.last_intent = intent as any;
       await stateManager.updateSlots(slotsUpdates);
     }
 
