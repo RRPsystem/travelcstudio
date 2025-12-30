@@ -193,11 +193,21 @@ Deno.serve(async (req: Request) => {
 
       console.log('🔧 Phone number (cleaned):', cleanPhoneNumber);
 
+      // Get brand_id from trip
+      const { data: trip } = await supabase
+        .from('travel_trips')
+        .select('brand_id')
+        .eq('id', tripId)
+        .single();
+
       const sessionData: any = {
         trip_id: tripId,
         phone_number: cleanPhoneNumber,
+        brand_id: trip?.brand_id || brandId,
         last_message_at: new Date().toISOString()
       };
+
+      console.log('🔧 Session data:', { trip_id: tripId, phone_number: cleanPhoneNumber, brand_id: sessionData.brand_id });
 
       if (sessionToken && !skipIntake) {
         const { data: intakeExists } = await supabase
