@@ -184,9 +184,25 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    let lastMentionedPlace = "";
+    if (conversationHistory && conversationHistory.length > 0) {
+      const recentMessages = conversationHistory.slice(-5);
+      for (const msg of recentMessages.reverse()) {
+        if (msg.role === 'assistant' && msg.message) {
+          const placeMatch = msg.message.match(/(?:Tzaneen Dam|Agatha Crocodile Ranch|Tzaneen|Graskop|Kruger|Blyde River Canyon|God's Window|Bourke's Luck Potholes)/i);
+          if (placeMatch) {
+            lastMentionedPlace = placeMatch[0];
+            console.log('🎯 Last mentioned place:', lastMentionedPlace);
+            break;
+          }
+        }
+      }
+    }
+
     let locationData = "";
     const locationKeywords = [
       'route', 'routes', 'hoe kom ik', 'afstand', 'reistijd', 'navigatie', 'rijden', 'waar is', 'waar ligt', 'adres', 'locatie',
+      'ver', 'dichtbij', 'nabij', 'kilometers', 'km', 'minuten', 'rijden naar', 'van ons hotel', 'van het hotel',
       'hotel', 'accommodatie', 'overnachten', 'slapen',
       'restaurant', 'eten', 'drinken', 'cafe', 'bar', 'bakker', 'bakkerij', 'supermarkt', 'winkel', 'boodschappen', 'brood', 'ontbijt', 'lunch', 'diner', 'koffie',
       'activiteiten', 'te doen', 'bezienswaardigheden', 'attractie', 'museum', 'park', 'doen', 'zien', 'bezichtigen', 'uitje', 'dagje uit',
@@ -262,66 +278,70 @@ Deno.serve(async (req: Request) => {
               }
             }
           }
-        } else if (isDistanceQuery && conversationHistory && conversationHistory.length > 0 && contextualLocation) {
-          const lastAssistantMessage = conversationHistory
-            .slice()
-            .reverse()
-            .find((c: any) => c.role === 'assistant');
+        } else if (isDistanceQuery && contextualLocation && currentHotel) {
+          console.log('📏 Distance query detected');
 
-          if (lastAssistantMessage) {
-            const placeMatches = lastAssistantMessage.message.match(/["']([^"']+)["']|\\*\\*([^*]+)\\*\\*/g);
+          let destinationPlace = lastMentionedPlace;
 
-            if (placeMatches && placeMatches.length > 0) {
-              const placeName = placeMatches[0].replace(/["'*]/g, '');
-
-              const hotelMatch = trip.custom_context?.match(new RegExp(`([^\\n]+)\\s+\\(ID:[^)]+\\)[^\\n]+${contextualLocation}[^\\n]+Swellendam`, 'i'));
-              let hotelName = hotelMatch ? hotelMatch[1].trim() : null;
-
-              if (!hotelName && contextualLocation === 'swellendam') {
-                hotelName = 'Aan de Oever Guesthouse';
+          if (!destinationPlace) {
+            const placeKeywords = ['dam', 'ranch', 'canyon', 'kruger', 'graskop', 'blyde', 'god\'s window', 'bourke'];
+            for (const keyword of placeKeywords) {
+              if (message.toLowerCase().includes(keyword)) {
+                if (keyword === 'dam' && contextualLocation.toLowerCase().includes('tzaneen')) {
+                  destinationPlace = 'Tzaneen Dam';
+                } else if (keyword === 'ranch') {
+                  destinationPlace = 'Agatha Crocodile Ranch';
+                } else if (keyword === 'canyon' || keyword === 'blyde') {
+                  destinationPlace = 'Blyde River Canyon';
+                } else if (keyword === 'god') {
+                  destinationPlace = "God's Window";
+                } else if (keyword === 'bourke') {
+                  destinationPlace = "Bourke's Luck Potholes";
+                }
+                break;
               }
+            }
+          }
 
-              if (hotelName) {
-                console.log('🔍 Calculating distance between:', hotelName, 'and', placeName);
+          if (destinationPlace) {
+            console.log(`🔍 Calculating distance from ${currentHotel} to ${destinationPlace}`);
 
-                const directionsUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(hotelName + ', ' + contextualLocation + ', South Africa')}&destination=${encodeURIComponent(placeName + ', ' + contextualLocation + ', South Africa')}&mode=driving&key=${googleMapsApiKey}&language=nl`;
+            const directionsUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(currentHotel + ', ' + contextualLocation + ', South Africa')}&destination=${encodeURIComponent(destinationPlace + ', ' + contextualLocation + ', South Africa')}&mode=driving&key=${googleMapsApiKey}&language=nl`;
 
-                const directionsResponse = await fetch(directionsUrl);
-                if (directionsResponse.ok) {
-                  const directionsData = await directionsResponse.json();
+            const directionsResponse = await fetch(directionsUrl);
+            if (directionsResponse.ok) {
+              const directionsData = await directionsResponse.json();
 
-                  if (directionsData.status === 'OK' && directionsData.routes && directionsData.routes.length > 0) {
-                    const route = directionsData.routes[0];
-                    const leg = route.legs[0];
+              if (directionsData.status === 'OK' && directionsData.routes && directionsData.routes.length > 0) {
+                const route = directionsData.routes[0];
+                const leg = route.legs[0];
 
-                    locationData = `\n\n📍 EXACTE AFSTANDSINFORMATIE:\n\n`;
-                    locationData += `Van: **${hotelName}** (jullie hotel in ${contextualLocation})\n`;
-                    locationData += `Naar: **${placeName}**\n\n`;
-                    locationData += `🚗 Met de auto: ${leg.distance.text} (${leg.duration.text})\n`;
+                locationData = `\n\n📍 EXACTE AFSTANDSINFORMATIE:\n\n`;
+                locationData += `Van: **${currentHotel}** (jullie hotel in ${contextualLocation})\n`;
+                locationData += `Naar: **${destinationPlace}**\n\n`;
+                locationData += `🚗 Met de auto: ${leg.distance.text} (${leg.duration.text})\n`;
 
-                    const walkingUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(hotelName + ', ' + contextualLocation + ', South Africa')}&destination=${encodeURIComponent(placeName + ', ' + contextualLocation + ', South Africa')}&mode=walking&key=${googleMapsApiKey}&language=nl`;
-                    const walkingResponse = await fetch(walkingUrl);
+                const walkingUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(currentHotel + ', ' + contextualLocation + ', South Africa')}&destination=${encodeURIComponent(destinationPlace + ', ' + contextualLocation + ', South Africa')}&mode=walking&key=${googleMapsApiKey}&language=nl`;
+                const walkingResponse = await fetch(walkingUrl);
 
-                    if (walkingResponse.ok) {
-                      const walkingData = await walkingResponse.json();
-                      if (walkingData.status === 'OK' && walkingData.routes && walkingData.routes.length > 0) {
-                        const walkLeg = walkingData.routes[0].legs[0];
-                        locationData += `🚶 Lopen: ${walkLeg.distance.text} (${walkLeg.duration.text})\n\n`;
+                if (walkingResponse.ok) {
+                  const walkingData = await walkingResponse.json();
+                  if (walkingData.status === 'OK' && walkingData.routes && walkingData.routes.length > 0) {
+                    const walkLeg = walkingData.routes[0].legs[0];
+                    locationData += `🚶 Lopen: ${walkLeg.distance.text} (${walkLeg.duration.text})\n\n`;
 
-                        const distanceKm = parseFloat(walkLeg.distance.text.replace(',', '.'));
-                        if (distanceKm < 2) {
-                          locationData += `✅ Dit is prima te lopen!\n`;
-                        } else if (distanceKm < 5) {
-                          locationData += `⚠️ Redelijk stuk lopen, misschien beter met de auto.\n`;
-                        } else {
-                          locationData += `❌ Te ver om te lopen, neem de auto.\n`;
-                        }
-                      }
+                    const distanceKm = parseFloat(walkLeg.distance.text.replace(',', '.'));
+                    if (distanceKm < 2) {
+                      locationData += `✅ Dit is prima te lopen!\n`;
+                    } else if (distanceKm < 5) {
+                      locationData += `⚠️ Redelijk stuk lopen, misschien beter met de auto.\n`;
+                    } else {
+                      locationData += `❌ Te ver om te lopen, neem de auto.\n`;
                     }
-
-                    console.log('✅ Successfully calculated distance');
                   }
                 }
+
+                console.log('✅ Successfully calculated distance');
               }
             }
           }
@@ -464,7 +484,7 @@ De reizigers hebben persoonlijke voorkeuren ingevuld. GEBRUIK DIE in je antwoord
 🚨 KRITIEKE REGEL #5 - AUTOMATISCHE ROUTE HERKENNING!
 Als iemand vraagt "hoe komen we naar X" - de REAL-TIME LOCATIE DATA hierboven bevat AUTOMATISCH de complete route van de vorige stop! Als er real-time route data is: GEBRUIK DIE DIRECT in je antwoord!
 
-❌ ZEG NOOIT:
+❌ ZEG NOOIT - DEZE ANTWOORDEN ZIJN VERBODEN:
 - "Die informatie heb ik niet" (Als er ACTUELE INTERNET INFO of LOCATIE DATA beschikbaar is, GEBRUIK DIE!)
 - "Ik heb geen informatie over het weer" (Als er web search results zijn, GEBRUIK DIE!)
 - "Raadpleeg een weerwebsite" (JE HEBT die info al via internet search!)
@@ -476,6 +496,12 @@ Als iemand vraagt "hoe komen we naar X" - de REAL-TIME LOCATIE DATA hierboven be
 - "Stuur me even je vertrekpunt" (JE WEET het vertrekpunt uit de reisvolgorde!)
 - "Waar heb je precies informatie over nodig?" (Ze hebben het NET gezegd!)
 - "Het hangt af van welke bestemming je bedoelt" (JE WEET de bestemming uit de context!)
+- "van welk hotel vertrek je?" (JE WEET HET - zie reisinformatie!)
+- "welke dam bedoel je?" (de dam die ZIJ NET noemden, of JIJ net hebt voorgesteld!)
+- "geef me de details" (JE HEBT DE DETAILS!)
+- "ik heb geen specifieke informatie over" (DAN ZOEK JE HET OP met Google Routes!)
+- "naar welke dam wil je precies?" (CONTEXT! Als JIJ Tzaneen Dam noemde, dan bedoelen ZIJ die!)
+- "Om je beter te helpen" gevolgd door vragen om info die je al hebt
 - Generieke lijstjes van verschillende steden (focus op ÉÉN stad!)
 
 ✅ DOE DIT:
@@ -486,6 +512,21 @@ Als iemand vraagt "hoe komen we naar X" - de REAL-TIME LOCATIE DATA hierboven be
 - Als er real-time locatie data is, GEBRUIK DIE METEEN!
 - Als er actuele internet info is, GEBRUIK DIE METEEN!
 - PERSONALISEER antwoorden met hun intake data (interesses, budget, reistijl)
+
+📚 VOORBEELD CONVERSATIES - ZO MOET HET:
+
+❌ FOUT:
+Reiziger: "Wat is er te doen in Tzaneen?"
+Jij: "4. Tzaneen Dam - perfect voor watersport"
+Reiziger: "is de dam ver van ons hotel?"
+Jij: "Van welk hotel vertrek je en welke dam bedoel je?"
+❌ DIT IS TOTAAL VERKEERD! Je weet ALLES: Tamboti Lodge Guest House + Tzaneen Dam!
+
+✅ GOED:
+Reiziger: "Wat is er te doen in Tzaneen?"
+Jij: "4. Tzaneen Dam - perfect voor watersport"
+Reiziger: "is de dam ver van ons hotel?"
+Jij: "Tzaneen Dam ligt ongeveer 8 km van jullie hotel Tamboti Lodge Guest House. Met de auto is het 12 minuten rijden. Een heerlijk plekje voor een dagje uit!"
 
 ${contextualLocation && currentHotel ? `\n🎯 HUIDIGE CONTEXT:\n📍 Locatie: ${contextualLocation.toUpperCase()}\n🏨 Jullie hotel: ${currentHotel}\n\n⚠️ GEBRUIK DEZE CONTEXT!\n- "daar" = ${contextualLocation}\n- "het hotel" = ${currentHotel}\n- Als ze vragen "is het daar leuk?" bedoelen ze ${contextualLocation}!\n- Geef SPECIFIEKE info over ${contextualLocation}, NIET over heel Zuid-Afrika!\n` : ''}
 
@@ -502,6 +543,8 @@ ${intake ? JSON.stringify(intake.intake_data, null, 2) : "Geen intake data besch
 - Als ze relaxed zijn → focus op ontspanning
 - Budget niveau → pas aanbevelingen aan
 - Interesses → gebruik dit bij suggesties
+
+${lastMentionedPlace ? `\n🎯 LAATST GENOEMDE PLAATS: ${lastMentionedPlace}\n⚠️ Als ze vragen over "de dam", "daar", "die plaats" bedoelen ze: ${lastMentionedPlace}!\n` : ''}
 
 ${locationData ? `\n📍 REAL-TIME LOCATIE DATA:\n${locationData}\n\n⚠️ GEBRUIK DEZE LOCATIE DATA IN JE ANTWOORD!\n` : ''}
 
