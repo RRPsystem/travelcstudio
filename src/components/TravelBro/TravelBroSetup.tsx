@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db, supabase } from '../../lib/supabase';
-import { Bot, Phone, MessageSquare, Users, Settings, CheckCircle, XCircle, ExternalLink, Copy, Send, Plus, FileText, Link as LinkIcon, Trash2, Share2, Upload, Loader, CreditCard as Edit, Clock, Calendar, ArrowRight, MapPin, Route, Navigation } from 'lucide-react';
+import { Bot, Phone, MessageSquare, Users, Settings, CheckCircle, XCircle, ExternalLink, Copy, Send, Plus, FileText, Link as LinkIcon, Trash2, Share2, Upload, Loader, Edit, Clock, Calendar, ArrowRight, MapPin, Route, Navigation, CreditCard } from 'lucide-react';
 import { GooglePlacesAutocomplete } from '../shared/GooglePlacesAutocomplete';
 import { edgeAIService } from '../../lib/apiServices';
 
@@ -65,6 +65,8 @@ export function TravelBroSetup() {
   const [editPdfFile, setEditPdfFile] = useState<File | null>(null);
   const [savingTripEdit, setSavingTripEdit] = useState(false);
 
+  const [creditBalance, setCreditBalance] = useState<number | null>(null);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -117,6 +119,14 @@ export function TravelBroSetup() {
         .order('created_at', { ascending: false });
 
       setActiveTravelBros(trips || []);
+
+      const { data: creditWallet } = await db.supabase
+        .from('credit_wallets')
+        .select('balance')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+
+      setCreditBalance(creditWallet?.balance ?? null);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -433,10 +443,20 @@ export function TravelBroSetup() {
             if (parseResult.itinerary) {
               console.log('📅 Itinerary found, storing in metadata');
             }
+
+            await loadData();
           } else {
             const errorText = await parseResponse.text();
             console.error('❌ PDF parsing failed:', errorText);
-            alert(`⚠️ PDF parsing mislukt: ${errorText.substring(0, 200)}. De TravelBRO wordt wel aangemaakt, maar zonder PDF data.`);
+
+            let errorMsg = '⚠️ PDF parsing mislukt: ';
+            if (parseResponse.status === 402) {
+              errorMsg += 'Onvoldoende credits. Neem contact op met de operator om credits bij te kopen.';
+            } else {
+              errorMsg += errorText.substring(0, 200);
+            }
+            errorMsg += '\n\nDe TravelBRO wordt wel aangemaakt, maar zonder PDF data.';
+            alert(errorMsg);
           }
         } catch (fetchError) {
           console.error('❌ Fetch error:', fetchError);
@@ -813,14 +833,32 @@ export function TravelBroSetup() {
     <>
     <div className="p-6">
       <div className="mb-6">
-        <div className="flex items-center space-x-3 mb-2">
-          <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-orange-500 to-amber-500">
-            <Bot className="w-6 h-6 text-white" />
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-orange-500 to-amber-500">
+              <Bot className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">TravelBRO Assistent</h1>
+              <p className="text-gray-600">Configureer en beheer je AI reisassistent</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">TravelBRO Assistent</h1>
-            <p className="text-gray-600">Configureer en beheer je AI reisassistent</p>
-          </div>
+          {creditBalance !== null && (
+            <div className={`px-4 py-2 rounded-lg ${creditBalance < 100 ? 'bg-red-100 border border-red-300' : 'bg-green-100 border border-green-300'}`}>
+              <div className="flex items-center space-x-2">
+                <CreditCard className={`w-5 h-5 ${creditBalance < 100 ? 'text-red-600' : 'text-green-600'}`} />
+                <div>
+                  <p className="text-xs text-gray-600">Credits</p>
+                  <p className={`font-bold ${creditBalance < 100 ? 'text-red-700' : 'text-green-700'}`}>
+                    {creditBalance.toFixed(2)}
+                  </p>
+                  {creditBalance < 100 && (
+                    <p className="text-xs text-red-600">Bijna op!</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1551,6 +1589,12 @@ export function TravelBroSetup() {
 
                               if (parseResponse.ok) {
                                 newParsedData = await parseResponse.json();
+                                await loadData();
+                              } else if (parseResponse.status === 402) {
+                                throw new Error('Onvoldoende credits. Neem contact op met de operator om credits bij te kopen.');
+                              } else {
+                                const errorText = await parseResponse.text();
+                                console.error('PDF parsing failed:', errorText);
                               }
                             }
                           }
