@@ -1590,11 +1590,13 @@ export function TravelBroSetup() {
                               if (parseResponse.ok) {
                                 newParsedData = await parseResponse.json();
                                 await loadData();
+                                console.log('✅ PDF parsing successful:', newParsedData);
                               } else if (parseResponse.status === 402) {
                                 throw new Error('Onvoldoende credits. Neem contact op met de operator om credits bij te kopen.');
                               } else {
                                 const errorText = await parseResponse.text();
-                                console.error('PDF parsing failed:', errorText);
+                                console.error('❌ PDF parsing failed:', parseResponse.status, errorText);
+                                throw new Error(`PDF parsing mislukt (status ${parseResponse.status}): ${errorText.substring(0, 200)}`);
                               }
                             }
                           }
