@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Lock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
@@ -13,23 +13,10 @@ export function TripViewer({ shareToken }: TripViewerProps) {
   const [passwordRequired, setPasswordRequired] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
   const [htmlContent, setHtmlContent] = useState<string | null>(null);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     loadTrip();
   }, [shareToken]);
-
-  useEffect(() => {
-    // When HTML content is loaded, write it to the iframe
-    if (htmlContent && iframeRef.current) {
-      const iframeDoc = iframeRef.current.contentDocument;
-      if (iframeDoc) {
-        iframeDoc.open();
-        iframeDoc.write(htmlContent);
-        iframeDoc.close();
-      }
-    }
-  }, [htmlContent]);
 
   const loadTrip = async (enteredPassword?: string) => {
     setLoading(true);
@@ -266,12 +253,12 @@ export function TripViewer({ shareToken }: TripViewerProps) {
     );
   }
 
-  // Render trip in fullscreen iframe (no React app chrome)
+  // Render trip in fullscreen iframe using srcdoc (no document.write!)
   if (htmlContent) {
     return (
       <iframe
-        ref={iframeRef}
         title="Trip Viewer"
+        srcDoc={htmlContent}
         style={{
           position: 'fixed',
           top: 0,
