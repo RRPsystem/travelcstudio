@@ -57,8 +57,8 @@ export function TripViewer({ shareToken }: TripViewerProps) {
         return;
       }
 
-      // Update view count (fire and forget)
-      supabase.rpc('increment_trip_views', { trip_token: shareToken }).catch(console.error);
+      // Update view count (fire and forget - no await needed)
+      supabase.rpc('increment_trip_views', { trip_token: shareToken });
 
       // Render the complete HTML from the builder - exactly as it was created
       document.open();
