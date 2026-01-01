@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { openTripBuilder } from '../../lib/jwtHelper';
 
 type TripType = 'roadbook' | 'offerte' | 'catalog' | 'wordpress' | 'custom';
 
@@ -175,10 +176,24 @@ export function TripManager() {
             </div>
           </div>
           <button
-            onClick={() => {
-              if (activeTab === 'roadbook' || activeTab === 'offerte') {
-                // Open external builder met juiste type
-                window.location.hash = `/brand/content/trips/new?type=${activeTab}`;
+            onClick={async () => {
+              if (!user?.brand_id || !user?.id) {
+                alert('Geen gebruiker gevonden');
+                return;
+              }
+
+              if (activeTab === 'roadbook' || activeTab === 'offerte' || activeTab === 'catalog' || activeTab === 'custom') {
+                try {
+                  const returnUrl = `${window.location.origin}#/brand/content/trips`;
+                  const deeplink = await openTripBuilder(user.brand_id, user.id, {
+                    tripType: activeTab,
+                    returnUrl
+                  });
+                  window.open(deeplink, '_blank');
+                } catch (error) {
+                  console.error('Error opening trip builder:', error);
+                  alert('Fout bij openen van de builder');
+                }
               } else {
                 alert('Deze functie komt binnenkort');
               }
@@ -206,9 +221,24 @@ export function TripManager() {
             Begin met het aanmaken van je eerste {activeTab}
           </p>
           <button
-            onClick={() => {
-              if (activeTab === 'roadbook' || activeTab === 'offerte') {
-                window.location.hash = `/brand/content/trips/new?type=${activeTab}`;
+            onClick={async () => {
+              if (!user?.brand_id || !user?.id) {
+                alert('Geen gebruiker gevonden');
+                return;
+              }
+
+              if (activeTab === 'roadbook' || activeTab === 'offerte' || activeTab === 'catalog' || activeTab === 'custom') {
+                try {
+                  const returnUrl = `${window.location.origin}#/brand/content/trips`;
+                  const deeplink = await openTripBuilder(user.brand_id, user.id, {
+                    tripType: activeTab,
+                    returnUrl
+                  });
+                  window.open(deeplink, '_blank');
+                } catch (error) {
+                  console.error('Error opening trip builder:', error);
+                  alert('Fout bij openen van de builder');
+                }
               }
             }}
             className={`inline-flex items-center space-x-2 px-4 py-2 bg-${config.color}-600 hover:bg-${config.color}-700 text-white rounded-lg transition-colors`}
@@ -293,8 +323,24 @@ export function TripManager() {
                 {/* Actions */}
                 <div className="flex items-center space-x-2">
                   <button
-                    onClick={() => {
-                      window.location.hash = `/brand/content/trips/edit/${trip.id}`;
+                    onClick={async () => {
+                      if (!user?.brand_id || !user?.id) {
+                        alert('Geen gebruiker gevonden');
+                        return;
+                      }
+
+                      try {
+                        const returnUrl = `${window.location.origin}#/brand/content/trips`;
+                        const deeplink = await openTripBuilder(user.brand_id, user.id, {
+                          tripType: activeTab,
+                          tripId: trip.id,
+                          returnUrl
+                        });
+                        window.open(deeplink, '_blank');
+                      } catch (error) {
+                        console.error('Error opening trip builder:', error);
+                        alert('Fout bij openen van de builder');
+                      }
                     }}
                     className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors"
                   >

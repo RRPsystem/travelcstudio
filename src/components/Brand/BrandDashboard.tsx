@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/supabase';
-import { openVideoGenerator, openTravelImport } from '../../lib/jwtHelper';
+import { openVideoGenerator, openTravelImport, openTripBuilder } from '../../lib/jwtHelper';
 import { AIContentGenerator } from './AIContentGenerator';
 import { BrandSettings } from './BrandSettings';
 import { HelpBot } from '../shared/HelpBot';
@@ -48,7 +48,7 @@ export function BrandDashboard() {
   const [showContentSubmenu, setShowContentSubmenu] = useState(initialSubmenus.showContentSubmenu);
   const [websites, setWebsites] = useState<any[]>([]);
   const [brandData, setBrandData] = useState<any>(null);
-  const [stats, setStats] = useState({ pages: 0, newsItems: 0, agents: 0 });
+  const [stats, setStats] = useState({ pages: 0, newsItems: 0, agents: 0, trips: 0 });
   const [newRoadmapCount, setNewRoadmapCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [isWordPressMode, setIsWordPressMode] = useState(false);
@@ -94,11 +94,12 @@ export function BrandDashboard() {
     if (!effectiveBrandId) return;
     setLoading(true);
     try {
-      const [brandResult, websitesResult, newsResult, agentsResult] = await Promise.all([
+      const [brandResult, websitesResult, newsResult, agentsResult, tripsResult] = await Promise.all([
         db.supabase.from('brands').select('*').eq('id', effectiveBrandId).maybeSingle(),
         db.supabase.from('websites').select('id', { count: 'exact' }).eq('brand_id', effectiveBrandId),
         db.supabase.from('news_items').select('id', { count: 'exact' }).eq('brand_id', effectiveBrandId),
-        db.supabase.from('agents').select('id', { count: 'exact' }).eq('brand_id', effectiveBrandId)
+        db.supabase.from('agents').select('id', { count: 'exact' }).eq('brand_id', effectiveBrandId),
+        db.supabase.from('trips').select('id', { count: 'exact' }).eq('brand_id', effectiveBrandId)
       ]);
 
       let pagesCount = 0;
@@ -125,7 +126,8 @@ export function BrandDashboard() {
       setStats({
         pages: pagesCount,
         newsItems: newsResult.count || 0,
-        agents: agentsResult.count || 0
+        agents: agentsResult.count || 0,
+        trips: tripsResult.count || 0
       });
 
       loadRoadmapNotifications();
@@ -282,6 +284,29 @@ export function BrandDashboard() {
       icon: Bot,
       color: 'from-orange-500 to-orange-600',
       action: () => setActiveSection('ai-travelbro')
+    },
+    {
+      title: 'Nieuw Roadbook',
+      description: 'Maak een nieuwe roadbook aan',
+      icon: BookOpen,
+      color: 'from-orange-400 to-orange-500',
+      action: async () => {
+        if (!user?.brand_id || !user?.id) {
+          alert('Geen gebruiker gevonden');
+          return;
+        }
+        try {
+          const returnUrl = `${window.location.origin}#/brand/content/trips`;
+          const deeplink = await openTripBuilder(user.brand_id, user.id, {
+            tripType: 'roadbook',
+            returnUrl
+          });
+          window.open(deeplink, '_blank');
+        } catch (error) {
+          console.error('Error opening trip builder:', error);
+          alert('Fout bij openen van de builder');
+        }
+      }
     },
     {
       title: 'Nieuws Beheer',
@@ -602,7 +627,7 @@ export function BrandDashboard() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="text-gray-600">Website Pagina's</h4>
@@ -617,6 +642,14 @@ export function BrandDashboard() {
                         <Newspaper className="w-5 h-5 text-green-500" />
                       </div>
                       <p className="text-3xl font-bold text-gray-900">{stats.newsItems}</p>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-gray-600">Reizen</h4>
+                        <Plane className="w-5 h-5 text-orange-500" />
+                      </div>
+                      <p className="text-3xl font-bold text-gray-900">{stats.trips}</p>
                     </div>
 
                     <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
