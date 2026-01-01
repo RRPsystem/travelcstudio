@@ -90,6 +90,14 @@ Deno.serve(async (req: Request) => {
     const brandId = domainData.brand_id;
     console.log("[VIEWER] Found brandId:", brandId);
 
+    // Check for trip share route: /trip/:token
+    const tripMatch = pathname.match(/^\/trip\/([a-f0-9-]+)$/i);
+    if (tripMatch) {
+      const shareToken = tripMatch[1];
+      console.log("[VIEWER] Trip share route detected:", shareToken);
+      return await renderTrip(supabase, shareToken, brandId);
+    }
+
     let page = null;
     let pageError = null;
 
@@ -347,6 +355,377 @@ function buildMenuHtml(menuPages: any[]): string {
       return `<li class="menu-item"><a href="${href}">${label}</a></li>`;
     })
     .join("\n    ");
+}
+
+async function renderTrip(supabase: any, shareToken: string, brandId: string) {
+  console.log("[VIEWER] Loading trip with token:", shareToken);
+
+  const { data: trip, error: tripError } = await supabase
+    .from("trips")
+    .select("*, brands!inner(name, primary_color, secondary_color)")
+    .eq("share_token", shareToken)
+    .maybeSingle();
+
+  if (tripError || !trip) {
+    console.error("[VIEWER] Trip not found:", tripError);
+    return new Response(
+      renderErrorPage(
+        "Reis niet gevonden",
+        "Deze reis is niet (meer) beschikbaar of de link is verlopen."
+      ),
+      { status: 404, headers: { ...corsHeaders, "Content-Type": "text/html" } }
+    );
+  }
+
+  await supabase.rpc("increment_trip_views", { trip_token: shareToken }).catch((err: any) => {
+    console.error("[VIEWER] Failed to increment views:", err);
+  });
+
+  const html = renderTripPage(trip);
+
+  return new Response(html, {
+    status: 200,
+    headers: { ...corsHeaders, "Content-Type": "text/html" },
+  });
+}
+
+function renderTripPage(trip: any): string {
+  const typeLabels: Record<string, string> = {
+    roadbook: "📚 Roadbook",
+    offerte: "💰 Offerte",
+    catalog: "📖 Reis",
+    wordpress: "📝 Reis",
+    custom: "🎯 Reis",
+  };
+
+  const typeLabel = typeLabels[trip.trip_type] || "📖 Reis";
+  const brandName = trip.brands?.name || "Reisorganisatie";
+  const primaryColor = trip.brands?.primary_color || "#ea580c";
+  const customMessage = trip.share_settings?.custom_message;
+  const showPrice = trip.share_settings?.show_price !== false;
+  const showContact = trip.share_settings?.show_contact !== false;
+
+  let description = trip.description || "";
+  if (!description && trip.content?.html) {
+    const tempDiv = trip.content.html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    description = tempDiv.substring(0, 200);
+  }
+
+  let galleryImages: string[] = [];
+  if (trip.gallery) {
+    if (Array.isArray(trip.gallery)) {
+      galleryImages = trip.gallery;
+    } else if (typeof trip.gallery === "string") {
+      try {
+        galleryImages = JSON.parse(trip.gallery);
+      } catch (e) {
+        console.error("[VIEWER] Failed to parse gallery:", e);
+      }
+    }
+  }
+
+  return `
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${trip.title} - ${brandName}</title>
+    <meta name="description" content="${description}">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f9fafb;
+            color: #1f2937;
+            line-height: 1.6;
+        }
+        .hero {
+            position: relative;
+            height: 400px;
+            background: linear-gradient(135deg, ${primaryColor} 0%, #1f2937 100%);
+            overflow: hidden;
+        }
+        .hero img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.8;
+        }
+        .hero-gradient {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 100%);
+        }
+        .hero-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 2rem;
+            color: white;
+        }
+        .type-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: ${primaryColor};
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        .hero-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .hero-description {
+            font-size: 1.25rem;
+            opacity: 0.9;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .message-box {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border-radius: 0.5rem;
+        }
+        .message-box p {
+            color: #1e40af;
+            margin: 0;
+        }
+        .info-bar {
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+        }
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .info-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            background: #f3f4f6;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+        .info-text {
+            display: flex;
+            flex-direction: column;
+        }
+        .info-label {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        .info-value {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #111827;
+        }
+        .content-box {
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .content-box h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: #111827;
+        }
+        .content-box p {
+            margin-bottom: 1rem;
+        }
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        .gallery img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 0.5rem;
+        }
+        .contact-box {
+            background: linear-gradient(135deg, ${primaryColor}15 0%, ${primaryColor}05 100%);
+            border: 2px solid ${primaryColor}40;
+            border-radius: 0.75rem;
+            padding: 2rem;
+            text-align: center;
+        }
+        .contact-box h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #111827;
+        }
+        .contact-box p {
+            color: #6b7280;
+            margin-bottom: 1.5rem;
+        }
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: ${primaryColor};
+            color: white;
+        }
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+        .btn-secondary {
+            background: white;
+            color: ${primaryColor};
+            border: 2px solid ${primaryColor};
+        }
+        .btn-secondary:hover {
+            background: ${primaryColor}10;
+        }
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 1.75rem;
+            }
+            .container {
+                padding: 1rem;
+            }
+            .info-bar {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    ${trip.featured_image ? `
+    <div class="hero">
+        <img src="${trip.featured_image}" alt="${trip.title}">
+        <div class="hero-gradient"></div>
+        <div class="hero-content">
+            <span class="type-badge">${typeLabel}</span>
+            <h1 class="hero-title">${trip.title}</h1>
+            ${trip.description ? `<p class="hero-description">${trip.description}</p>` : ""}
+        </div>
+    </div>
+    ` : `
+    <div class="hero">
+        <div class="hero-gradient"></div>
+        <div class="hero-content">
+            <span class="type-badge">${typeLabel}</span>
+            <h1 class="hero-title">${trip.title}</h1>
+            ${trip.description ? `<p class="hero-description">${trip.description}</p>` : ""}
+        </div>
+    </div>
+    `}
+
+    <div class="container">
+        ${customMessage ? `
+        <div class="message-box">
+            <p>${customMessage}</p>
+        </div>
+        ` : ""}
+
+        ${trip.duration_days || (showPrice && trip.price) ? `
+        <div class="info-bar">
+            ${trip.duration_days ? `
+            <div class="info-item">
+                <div class="info-icon">⏱️</div>
+                <div class="info-text">
+                    <span class="info-label">Duur</span>
+                    <span class="info-value">${trip.duration_days} dagen</span>
+                </div>
+            </div>
+            ` : ""}
+            ${showPrice && trip.price ? `
+            <div class="info-item">
+                <div class="info-icon">💰</div>
+                <div class="info-text">
+                    <span class="info-label">Prijs</span>
+                    <span class="info-value">€${trip.price},-</span>
+                </div>
+            </div>
+            ` : ""}
+        </div>
+        ` : ""}
+
+        ${trip.content?.html ? `
+        <div class="content-box">
+            ${trip.content.html}
+        </div>
+        ` : ""}
+
+        ${galleryImages.length > 0 ? `
+        <div class="content-box">
+            <h2>Foto's</h2>
+            <div class="gallery">
+                ${galleryImages.map((img: string) => `<img src="${img}" alt="Reis foto">`).join("")}
+            </div>
+        </div>
+        ` : ""}
+
+        ${showContact ? `
+        <div class="contact-box">
+            <h2>Interesse?</h2>
+            <p>Neem contact met ons op voor meer informatie of om te boeken!</p>
+            <div class="btn-group">
+                <a href="mailto:info@${brandName.toLowerCase().replace(/\s+/g, "")}.nl" class="btn btn-primary">
+                    📧 Email ons
+                </a>
+                <a href="tel:+31000000000" class="btn btn-secondary">
+                    📞 Bel ons
+                </a>
+            </div>
+        </div>
+        ` : ""}
+    </div>
+
+    <div class="footer">
+        <p>Aangeboden door ${brandName}</p>
+    </div>
+</body>
+</html>
+  `.trim();
 }
 
 function renderErrorPage(title: string, message: string): string {
