@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { TripViewer } from '../Public/TripViewer';
 
 interface SubdomainViewerProps {
   subdomain: string;
@@ -18,6 +19,15 @@ export function SubdomainViewer({ subdomain }: SubdomainViewerProps) {
       setLoading(true);
       setError('');
 
+      const path = window.location.pathname;
+
+      // Check if this is a trip share link
+      const tripMatch = path.match(/^\/trip\/([a-f0-9-]+)$/);
+      if (tripMatch) {
+        setLoading(false);
+        return; // Will be rendered by TripViewer below
+      }
+
       const { data: domainData, error: domainError } = await supabase
         .from('brand_domains')
         .select('website_id')
@@ -30,7 +40,6 @@ export function SubdomainViewer({ subdomain }: SubdomainViewerProps) {
         return;
       }
 
-      const path = window.location.pathname;
       const slug = path === '/' ? '/' : path;
 
       const { data: pageData, error: pageError } = await supabase
@@ -54,6 +63,13 @@ export function SubdomainViewer({ subdomain }: SubdomainViewerProps) {
       setError('Failed to load website');
       setLoading(false);
     }
+  }
+
+  // Check if this is a trip share link
+  const path = window.location.pathname;
+  const tripMatch = path.match(/^\/trip\/([a-f0-9-]+)$/);
+  if (tripMatch) {
+    return <TripViewer shareToken={tripMatch[1]} />;
   }
 
   if (loading) {

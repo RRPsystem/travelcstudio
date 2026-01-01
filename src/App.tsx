@@ -12,6 +12,7 @@ import { ClientInterface } from './components/TravelBro/ClientInterface';
 import { SubdomainViewer } from './components/Website/SubdomainViewer';
 import TravelJournal from './components/TravelJournal/TravelJournal';
 import QuestionSubmission from './components/Podcast/QuestionSubmission';
+import { TripViewer } from './components/Public/TripViewer';
 
 function AppContent() {
   console.log('🚀 AppContent component rendering');
@@ -43,6 +44,12 @@ function AppContent() {
   if (agentProfileMatch) {
     console.log('[App] Matched agent profile route');
     return <AgentProfile slug={agentProfileMatch[1]} />;
+  }
+
+  const tripViewMatch = path.match(/^\/trip\/([a-f0-9-]+)$/);
+  if (tripViewMatch) {
+    console.log('[App] Matched trip viewer route');
+    return <TripViewer shareToken={tripViewMatch[1]} />;
   }
 
   const pagePreviewMatch = path.match(/^\/preview\/([a-f0-9-]+)$/);
