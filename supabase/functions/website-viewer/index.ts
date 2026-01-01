@@ -377,9 +377,14 @@ async function renderTrip(supabase: any, shareToken: string, brandId: string) {
     );
   }
 
-  await supabase.rpc("increment_trip_views", { trip_token: shareToken }).catch((err: any) => {
+  // Increment views and get updated count
+  const { data: viewData } = await supabase.rpc("increment_trip_views", { trip_token: shareToken }).catch((err: any) => {
     console.error("[VIEWER] Failed to increment views:", err);
+    return { data: null };
   });
+
+  // Add view count to trip object
+  trip.view_count = viewData || trip.view_count || 1;
 
   const html = renderTripPage(trip);
 
@@ -473,6 +478,17 @@ function renderTripPage(trip: any): string {
             display: inline-block;
             padding: 0.5rem 1rem;
             background: ${primaryColor};
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            margin-right: 0.5rem;
+        }
+        .view-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
             border-radius: 9999px;
             font-size: 0.875rem;
             font-weight: 600;
@@ -643,7 +659,10 @@ function renderTripPage(trip: any): string {
         <img src="${trip.featured_image}" alt="${trip.title}">
         <div class="hero-gradient"></div>
         <div class="hero-content">
-            <span class="type-badge">${typeLabel}</span>
+            <div>
+                <span class="type-badge">${typeLabel}</span>
+                <span class="view-badge">👁️ ${trip.view_count || 1} ${trip.view_count === 1 ? 'weergave' : 'weergaven'}</span>
+            </div>
             <h1 class="hero-title">${trip.title}</h1>
             ${trip.description ? `<p class="hero-description">${trip.description}</p>` : ""}
         </div>
@@ -652,7 +671,10 @@ function renderTripPage(trip: any): string {
     <div class="hero">
         <div class="hero-gradient"></div>
         <div class="hero-content">
-            <span class="type-badge">${typeLabel}</span>
+            <div>
+                <span class="type-badge">${typeLabel}</span>
+                <span class="view-badge">👁️ ${trip.view_count || 1} ${trip.view_count === 1 ? 'weergave' : 'weergaven'}</span>
+            </div>
             <h1 class="hero-title">${trip.title}</h1>
             ${trip.description ? `<p class="hero-description">${trip.description}</p>` : ""}
         </div>
