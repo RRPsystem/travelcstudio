@@ -46,12 +46,6 @@ function AppContent() {
     return <AgentProfile slug={agentProfileMatch[1]} />;
   }
 
-  const tripViewMatch = path.match(/^\/trip\/([a-f0-9-]+)$/);
-  if (tripViewMatch) {
-    console.log('[App] Matched trip viewer route');
-    return <TripViewer shareToken={tripViewMatch[1]} />;
-  }
-
   const pagePreviewMatch = path.match(/^\/preview\/([a-f0-9-]+)$/);
   console.log('[App] Page preview check:', { path, match: pagePreviewMatch });
   if (pagePreviewMatch) {
@@ -118,6 +112,17 @@ function AppContent() {
 
 function App() {
   console.log('🚀 App component rendering');
+
+  // Check for public routes BEFORE AuthProvider
+  const path = window.location.pathname;
+
+  // Public trip viewer route
+  const tripViewMatch = path.match(/^\/trip\/([a-f0-9-]+)$/);
+  if (tripViewMatch) {
+    console.log('[App] Rendering public trip viewer (outside AuthProvider)');
+    return <TripViewer shareToken={tripViewMatch[1]} />;
+  }
+
   return (
     <AuthProvider>
       <AppContent />
