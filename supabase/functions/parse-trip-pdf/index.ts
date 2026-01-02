@@ -1,6 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2";
-import { deductCredits } from '../_shared/credits.ts';
+import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,7 +7,94 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-async function parseWithGPTVision(pdfBase64: string, openaiApiKey: string) {
+async function deductCredits(
+  supabase: SupabaseClient,
+  userId: string,
+  actionType: string,
+  description?: string,
+  metadata?: Record<string, any>
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { data, error } = await supabase.rpc('deduct_credits', {
+      p_user_id: userId,
+      p_action_type: actionType,
+      p_description: description,
+      p_metadata: metadata || {}
+    });
+
+    if (error) {
+      if (error.message.includes('Insufficient credits')) {
+        return { success: false, error: 'Onvoldoende credits. Koop nieuwe credits om door te gaan.' };
+      }
+      if (error.message.includes('Action type not found')) {
+        return { success: false, error: 'Deze actie vereist geen credits.' };
+      }
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deducting credits:', error);
+    return { success: false, error: 'Er is een fout opgetreden bij het aftrekken van credits.' };
+  }
+}
+
+async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<string> {
+  const uint8Array = new Uint8Array(pdfBuffer);
+  let text = '';
+
+  const textDecoder = new TextDecoder('utf-8', { fatal: false });
+  const pdfText = textDecoder.decode(uint8Array);
+
+  const streamRegex = /stream\s*([\s\S]*?)\s*endstream/g;
+  const textRegex = /\((.*?)\)/g;
+  const tjRegex = /\[(.*?)\]/g;
+
+  let match;
+  while ((match = streamRegex.exec(pdfText)) !== null) {
+    const streamContent = match[1];
+
+    let textMatch;
+    while ((textMatch = textRegex.exec(streamContent)) !== null) {
+      const cleanText = textMatch[1]
+        .replace(/\\n/g, '\n')
+        .replace(/\\r/g, '\r')
+        .replace(/\\t/g, '\t')
+        .replace(/\\(/g, '(')
+        .replace(/\\)/g, ')')
+        .replace(/\\\\/g, '\\');
+
+      if (cleanText.length > 1 && /[a-zA-Z0-9]/.test(cleanText)) {
+        text += cleanText + ' ';
+      }
+    }
+
+    while ((textMatch = tjRegex.exec(streamContent)) !== null) {
+      const arrayContent = textMatch[1];
+      const innerTextRegex = /\((.*?)\)/g;
+      let innerMatch;
+      while ((innerMatch = innerTextRegex.exec(arrayContent)) !== null) {
+        const cleanText = innerMatch[1]
+          .replace(/\\n/g, '\n')
+          .replace(/\\r/g, '\r')
+          .replace(/\\t/g, '\t')
+          .replace(/\\(/g, '(')
+          .replace(/\\)/g, ')')
+          .replace(/\\\\/g, '\\');
+
+        if (cleanText.length > 1 && /[a-zA-Z0-9]/.test(cleanText)) {
+          text += cleanText + ' ';
+        }
+      }
+    }
+  }
+
+  text = text.replace(/\s+/g, ' ').trim();
+
+  return text;
+}
+
+async function parseWithGPT(pdfText: string, openaiApiKey: string) {
   const systemPrompt = `Je bent een expert reisdocument parser. Extraheer en structureer ALLE reis informatie uit de tekst.
 
 VERPLICHTE VELDEN:
@@ -44,19 +130,12 @@ BELANGRIJK:
       model: 'gpt-4o',
       messages: [
         {
+          role: 'system',
+          content: systemPrompt
+        },
+        {
           role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: systemPrompt + '\n\nAnalyseer dit reisdocument en extraheer ALLE informatie. Return ALLEEN valid JSON volgens het schema.'
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:application/pdf;base64,${pdfBase64}`
-              }
-            }
-          ]
+          content: `Analyseer dit reisdocument en extraheer ALLE informatie:\n\n${pdfText.substring(0, 100000)}`
         }
       ],
       response_format: {
@@ -219,7 +298,6 @@ Deno.serve(async (req: Request) => {
         }
       );
     }
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
@@ -288,13 +366,15 @@ Deno.serve(async (req: Request) => {
 
     const pdfBuffer = await pdfResponse.arrayBuffer();
 
-    console.log('Converting PDF to base64...');
-    const uint8Array = new Uint8Array(pdfBuffer);
-    const binaryString = Array.from(uint8Array, byte => String.fromCharCode(byte)).join('');
-    const pdfBase64 = btoa(binaryString);
+    console.log('Extracting text from PDF...');
+    const pdfText = await extractTextFromPDF(pdfBuffer);
 
-    console.log('Parsing with GPT-4o Vision (PDF size:', pdfBase64.length, 'bytes)');
-    const parsedData = await parseWithGPTVision(pdfBase64, openaiApiKey);
+    if (!pdfText || pdfText.length < 100) {
+      throw new Error("Could not extract enough text from PDF. Please make sure the PDF contains readable text.");
+    }
+
+    console.log('Parsing with GPT-4o (text length:', pdfText.length, 'chars)');
+    const parsedData = await parseWithGPT(pdfText, openaiApiKey);
 
     const itinerary = convertToItinerary(parsedData);
 
