@@ -157,10 +157,21 @@ Deno.serve(async (req: Request) => {
           console.error("[sync-from-builder] Error updating assignment:", assignmentError);
         }
 
+        // Genereer publieke URL met trips.id
+        const { data: brandData } = await supabase
+          .from("brands")
+          .select("slug")
+          .eq("id", payload.brand_id)
+          .maybeSingle();
+
+        const brandSlug = brandData?.slug || "www";
+        const publicUrl = `https://${brandSlug}.ai-travelstudio.nl/trip/${trip_id}`;
+
         return new Response(
           JSON.stringify({
             success: true,
             trip: updatedTrip,
+            publicUrl: publicUrl,
             message: "Trip updated successfully"
           }),
           {
@@ -204,10 +215,21 @@ Deno.serve(async (req: Request) => {
           console.error("[sync-from-builder] Error creating assignment:", assignmentError);
         }
 
+        // Genereer publieke URL met trips.id
+        const { data: brandData } = await supabase
+          .from("brands")
+          .select("slug")
+          .eq("id", payload.brand_id)
+          .maybeSingle();
+
+        const brandSlug = brandData?.slug || "www";
+        const publicUrl = `https://${brandSlug}.ai-travelstudio.nl/trip/${trip_id}`;
+
         return new Response(
           JSON.stringify({
             success: true,
             trip: newTrip,
+            publicUrl: publicUrl,
             message: "Trip created successfully"
           }),
           {

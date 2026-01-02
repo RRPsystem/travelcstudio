@@ -24,11 +24,35 @@ export function TripViewer({ shareToken }: TripViewerProps) {
     setPasswordError(false);
 
     try {
-      const { data: trip, error: fetchError } = await supabase
-        .from('trips')
-        .select('id, title, content, share_settings, page_id')
-        .eq('share_token', shareToken)
-        .maybeSingle();
+      let trip = null;
+      let fetchError = null;
+
+      // Check if shareToken is a UUID (trips.id) or a share_token
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(shareToken);
+
+      if (isUUID) {
+        // Try to find by trips.id first
+        const result = await supabase
+          .from('trips')
+          .select('id, title, content, share_settings, page_id')
+          .eq('id', shareToken)
+          .maybeSingle();
+
+        trip = result.data;
+        fetchError = result.error;
+      }
+
+      // If not found by ID, or not a UUID, try by share_token
+      if (!trip && !fetchError) {
+        const result = await supabase
+          .from('trips')
+          .select('id, title, content, share_settings, page_id')
+          .eq('share_token', shareToken)
+          .maybeSingle();
+
+        trip = result.data;
+        fetchError = result.error;
+      }
 
       if (fetchError) throw fetchError;
       if (!trip) {
