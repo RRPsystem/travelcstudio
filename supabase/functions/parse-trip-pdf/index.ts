@@ -112,7 +112,7 @@ async function parseWithGPT(pdfText: string, openaiApiKey: string) {
         },
         {
           role: 'user',
-          content: `Analyseer dit reisdocument en extraheer ALLE informatie:\n\n${pdfText.substring(0, 100000)}`
+          content: `Analyseer dit reisdocument en extraheer ALLE informatie:\n\n${pdfText.substring(0, 25000)}`
         }
       ],
       response_format: {
