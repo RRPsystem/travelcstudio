@@ -60,8 +60,8 @@ async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<string> {
         .replace(/\\n/g, '\n')
         .replace(/\\r/g, '\r')
         .replace(/\\t/g, '\t')
-        .replace(/\\(/g, '(')
-        .replace(/\\)/g, ')')
+        .replace(/\\\(/g, '(')
+        .replace(/\\\)/g, ')')
         .replace(/\\\\/g, '\\');
 
       if (cleanText.length > 1 && /[a-zA-Z0-9]/.test(cleanText)) {
@@ -78,8 +78,8 @@ async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<string> {
           .replace(/\\n/g, '\n')
           .replace(/\\r/g, '\r')
           .replace(/\\t/g, '\t')
-          .replace(/\\(/g, '(')
-          .replace(/\\)/g, ')')
+          .replace(/\\\(/g, '(')
+          .replace(/\\\)/g, ')')
           .replace(/\\\\/g, '\\');
 
         if (cleanText.length > 1 && /[a-zA-Z0-9]/.test(cleanText)) {
