@@ -416,10 +416,11 @@ async function renderTrip(supabase: any, idOrToken: string, brandId: string) {
   }
 
   // Increment views and get updated count
-  const { data: viewData } = await supabase.rpc("increment_trip_views", { trip_token: idOrToken }).catch((err: any) => {
-    console.error("[VIEWER] Failed to increment views:", err);
-    return { data: null };
-  });
+  const { data: viewData, error: viewError } = await supabase.rpc("increment_trip_views", { trip_token: idOrToken });
+
+  if (viewError) {
+    console.error("[VIEWER] Failed to increment views:", viewError);
+  }
 
   // Add view count to trip object
   trip.view_count = viewData || trip.view_count || 1;
