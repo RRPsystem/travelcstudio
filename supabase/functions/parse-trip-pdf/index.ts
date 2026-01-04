@@ -43,7 +43,9 @@ async function extractTextWithPdfParse(pdfBuffer: ArrayBuffer): Promise<string> 
   try {
     console.log('📄 Using pdf-parse npm package...');
     const pdfParse = await import('npm:pdf-parse@1.1.1');
-    const data = await pdfParse.default(Buffer.from(pdfBuffer));
+    // Convert ArrayBuffer to Uint8Array for Deno compatibility
+    const uint8Array = new Uint8Array(pdfBuffer);
+    const data = await pdfParse.default(uint8Array);
     console.log('✅ Extracted', data.text.length, 'characters from PDF');
     return data.text;
   } catch (error) {
