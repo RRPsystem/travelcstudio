@@ -46,6 +46,13 @@ function AppContent() {
     return <AgentProfile slug={agentProfileMatch[1]} />;
   }
 
+  // Match trip viewer route: /trip/[token] (UUID or share_token)
+  const tripViewerMatch = path.match(/^\/trip\/([a-f0-9-]+)$/);
+  if (tripViewerMatch) {
+    console.log('[App] Matched trip viewer route');
+    return <TripViewer shareToken={tripViewerMatch[1]} />;
+  }
+
   const pagePreviewMatch = path.match(/^\/preview\/([a-f0-9-]+)$/);
   console.log('[App] Page preview check:', { path, match: pagePreviewMatch });
   if (pagePreviewMatch) {
