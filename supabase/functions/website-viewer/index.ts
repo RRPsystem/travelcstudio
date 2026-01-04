@@ -363,9 +363,10 @@ async function renderTrip(supabase: any, idOrToken: string, brandId: string) {
   let trip = null;
   let tripError = null;
 
-  const { data: tripById } = await supabase
+  // First try: by ID without brand join
+  const { data: tripById, error: errorById } = await supabase
     .from("trips")
-    .select("*, brands!inner(name, primary_color, secondary_color)")
+    .select("*")
     .eq("id", idOrToken)
     .maybeSingle();
 
@@ -373,9 +374,10 @@ async function renderTrip(supabase: any, idOrToken: string, brandId: string) {
     trip = tripById;
     console.log("[VIEWER] Found trip by ID");
   } else {
+    // Second try: by share_token
     const { data: tripByToken, error } = await supabase
       .from("trips")
-      .select("*, brands!inner(name, primary_color, secondary_color)")
+      .select("*")
       .eq("share_token", idOrToken)
       .maybeSingle();
 
@@ -387,7 +389,7 @@ async function renderTrip(supabase: any, idOrToken: string, brandId: string) {
   }
 
   if (tripError || !trip) {
-    console.error("[VIEWER] Trip not found:", tripError);
+    console.error("[VIEWER] Trip not found:", tripError || errorById);
     return new Response(
       renderErrorPage(
         "Reis niet gevonden",
@@ -395,6 +397,22 @@ async function renderTrip(supabase: any, idOrToken: string, brandId: string) {
       ),
       { status: 404, headers: { ...corsHeaders, "Content-Type": "text/html" } }
     );
+  }
+
+  // Now try to load brand data separately (optional)
+  if (trip.brand_id) {
+    const { data: brandData } = await supabase
+      .from("brands")
+      .select("name, primary_color, secondary_color")
+      .eq("id", trip.brand_id)
+      .maybeSingle();
+
+    if (brandData) {
+      trip.brands = brandData;
+      console.log("[VIEWER] Loaded brand data:", brandData.name);
+    } else {
+      console.log("[VIEWER] Brand not found or no access, using defaults");
+    }
   }
 
   // Increment views and get updated count
