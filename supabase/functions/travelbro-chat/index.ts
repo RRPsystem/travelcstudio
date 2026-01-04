@@ -49,10 +49,10 @@ Deno.serve(async (req: Request) => {
       .eq('is_active', true);
 
     const openaiApiKey = apiSettings?.find(s => s.provider === 'OpenAI')?.api_key || Deno.env.get('OPENAI_API_KEY');
-    const googleMapsApiKey = apiSettings?.find(s => s.provider === 'Google' && s.service_name === 'Google Maps API')?.api_key;
+    const googleMapsApiKey = apiSettings?.find(s => s.provider === 'Google' && s.service_name === 'Google Maps API')?.api_key || Deno.env.get('GOOGLE_MAPS_API_KEY');
     const systemSettings = apiSettings?.find(s => s.provider === 'system' && s.service_name === 'Twilio WhatsApp');
-    const googleSearchApiKey = systemSettings?.google_search_api_key;
-    const googleSearchEngineId = systemSettings?.google_search_engine_id;
+    const googleSearchApiKey = systemSettings?.google_search_api_key || Deno.env.get('GOOGLE_SEARCH_API_KEY');
+    const googleSearchEngineId = systemSettings?.google_search_engine_id || Deno.env.get('GOOGLE_SEARCH_ENGINE_ID');
 
     const { data: trip, error: tripError } = await supabase
       .from("travel_trips")
