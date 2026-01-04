@@ -39,63 +39,43 @@ async function deductCredits(
   }
 }
 
-async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<string> {
-  const uint8Array = new Uint8Array(pdfBuffer);
-  let text = '';
-
-  const textDecoder = new TextDecoder('utf-8', { fatal: false });
-  const pdfText = textDecoder.decode(uint8Array);
-
-  const streamRegex = /stream\s*([\s\S]*?)\s*endstream/g;
-  const textRegex = /\((.*?)\)/g;
-  const tjRegex = /\[(.*?)\]/g;
-
-  let match;
-  while ((match = streamRegex.exec(pdfText)) !== null) {
-    const streamContent = match[1];
-
-    let textMatch;
-    while ((textMatch = textRegex.exec(streamContent)) !== null) {
-      const cleanText = textMatch[1]
-        .replace(/\\n/g, '\n')
-        .replace(/\\r/g, '\r')
-        .replace(/\\t/g, '\t')
-        .replace(/\\\(/g, '(')
-        .replace(/\\\)/g, ')')
-        .replace(/\\\\/g, '\\');
-
-      if (cleanText.length > 1 && /[a-zA-Z0-9]/.test(cleanText)) {
-        text += cleanText + ' ';
-      }
-    }
-
-    while ((textMatch = tjRegex.exec(streamContent)) !== null) {
-      const arrayContent = textMatch[1];
-      const innerTextRegex = /\((.*?)\)/g;
-      let innerMatch;
-      while ((innerMatch = innerTextRegex.exec(arrayContent)) !== null) {
-        const cleanText = innerMatch[1]
-          .replace(/\\n/g, '\n')
-          .replace(/\\r/g, '\r')
-          .replace(/\\t/g, '\t')
-          .replace(/\\\(/g, '(')
-          .replace(/\\\)/g, ')')
-          .replace(/\\\\/g, '\\');
-
-        if (cleanText.length > 1 && /[a-zA-Z0-9]/.test(cleanText)) {
-          text += cleanText + ' ';
-        }
-      }
-    }
+async function extractTextWithPdfParse(pdfBuffer: ArrayBuffer): Promise<string> {
+  try {
+    console.log('📄 Using pdf-parse npm package...');
+    const pdfParse = await import('npm:pdf-parse@1.1.1');
+    const data = await pdfParse.default(Buffer.from(pdfBuffer));
+    console.log('✅ Extracted', data.text.length, 'characters from PDF');
+    return data.text;
+  } catch (error) {
+    console.error('❌ pdf-parse failed:', error.message);
+    throw new Error(`PDF text extraction failed: ${error.message}`);
   }
-
-  text = text.replace(/\s+/g, ' ').trim();
-
-  return text;
 }
 
 async function parseWithGPT(pdfText: string, openaiApiKey: string) {
-  const systemPrompt = `Je bent een expert reisdocument parser. Extraheer en structureer ALLE reis informatie uit de tekst.\n\nVERPLICHTE VELDEN:\n- trip_name: Naam van de reis\n- reservation_id: Hoofdreserveringsnummer (eerste boekingnummer dat je vindt)\n- departure_date: Vertrekdatum (ISO 8601: YYYY-MM-DD)\n- arrival_date: Aankomstdatum (ISO 8601: YYYY-MM-DD)\n- destination: { city, country, region }\n- segments: Array van reissegmenten\n- booking_refs: Alle boeknummers\n- emergency_contacts: Noodnummers\n\nElk segment MOET:\n- kind: "flight" | "hotel" | "transfer" | "activity"\n- segment_ref: Boeknummer\n- start_datetime: ISO 8601\n- end_datetime: ISO 8601 (of null)\n- location: { name, address, city, country }\n- details: Extra info\n\nBELANGRIJK:\n- Alle datums in ISO 8601 format\n- Als info ontbreekt: gebruik null\n- Return ALLEEN valid JSON`;
+  const systemPrompt = `Je bent een expert reisdocument parser. Extraheer en structureer ALLE reis informatie uit het document.
+
+VERPLICHTE VELDEN:
+- trip_name: Naam van de reis
+- reservation_id: Hoofdreserveringsnummer (eerste boekingnummer dat je vindt)
+- departure_date: Vertrekdatum (ISO 8601: YYYY-MM-DD)
+- arrival_date: Aankomstdatum (ISO 8601: YYYY-MM-DD)
+- destination: { city, country, region }
+- segments: Array van reissegmenten met ALLE overnachtingen en activiteiten
+
+Elk segment MOET bevatten:
+- kind: "flight" | "hotel" | "transfer" | "activity"
+- segment_ref: Boeknummer
+- start_datetime: ISO 8601 (YYYY-MM-DDTHH:MM:SS)
+- end_datetime: ISO 8601 of null
+- location: { name, address, city, country }
+- details: { room_type, meal_plan, amenities, etc }
+
+BELANGRIJK:
+- Extraheer ALLE hotels en accommodaties met complete details
+- Alle datums in ISO 8601 format
+- Als info ontbreekt: gebruik null maar probeer zo veel mogelijk te vinden
+- Return ALLEEN valid JSON`;
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -112,7 +92,7 @@ async function parseWithGPT(pdfText: string, openaiApiKey: string) {
         },
         {
           role: 'user',
-          content: `Analyseer dit reisdocument en extraheer ALLE informatie:\n\n${pdfText.substring(0, 25000)}`
+          content: `Analyseer dit reisdocument en extraheer ALLE informatie. Let SPECIAAL op accommodaties en hotels:\n\n${pdfText.substring(0, 50000)}`
         }
       ],
       response_format: {
@@ -386,9 +366,10 @@ Deno.serve(async (req: Request) => {
     const pdfBuffer = await pdfResponse.arrayBuffer();
     console.log('📦 PDF size:', pdfBuffer.byteLength, 'bytes');
 
-    console.log('📄 Extracting text from PDF...');
-    const pdfText = await extractTextFromPDF(pdfBuffer);
+    console.log('📄 Extracting text from PDF with pdf-parse...');
+    const pdfText = await extractTextWithPdfParse(pdfBuffer);
     console.log('✅ Extracted text length:', pdfText.length, 'chars');
+    console.log('📝 First 500 chars:', pdfText.substring(0, 500));
 
     if (!pdfText || pdfText.length < 100) {
       console.log('❌ Not enough text extracted');
