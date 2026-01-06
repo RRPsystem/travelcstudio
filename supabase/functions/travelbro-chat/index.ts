@@ -452,8 +452,16 @@ Deno.serve(async (req: Request) => {
     );
   } catch (error) {
     console.error("TravelBro error:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+
+    console.error("Error details:", { errorMessage, errorStack });
+
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({
+        error: errorMessage,
+        details: errorStack?.split('\n').slice(0, 3).join('\n')
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
