@@ -32,7 +32,8 @@ import {
   Image as ImageIcon,
   Wrench,
   Database,
-  Wallet
+  Wallet,
+  DollarSign
 } from 'lucide-react';
 import RoadmapManagement from './RoadmapManagement';
 import TestManagement from './TestManagement';
@@ -45,6 +46,7 @@ import DatabasePerformanceMonitor from './DatabasePerformanceMonitor';
 import { BrandManagement } from './BrandManagement';
 import CreditSystemManagement from './CreditSystemManagement';
 import { GoogleAPIDebugger } from './GoogleAPIDebugger';
+import { TravelBroMonitoring } from './TravelBroMonitoring';
 
 export function OperatorDashboard() {
   const { user, signOut, impersonationContext, availableContexts, switchContext, resetContext } = useAuth();
@@ -74,6 +76,7 @@ export function OperatorDashboard() {
     { id: 'wordpress-downloads', label: 'WordPress Downloads', icon: Download },
     { id: 'roadmap', label: 'Roadmap Management', icon: Map },
     { id: 'db-performance', label: 'DB Capaciteit (400 users)', icon: Database },
+    { id: 'bro-monitoring', label: 'TravelBro Kosten', icon: DollarSign },
     { id: 'monitoring', label: 'Error Monitoring', icon: Bell },
     { id: 'system-health', label: 'System Health', icon: Activity },
     { id: 'google-api-debug', label: 'Google API Debug', icon: Wrench },
@@ -161,6 +164,7 @@ export function OperatorDashboard() {
                 {activeSection === 'wordpress-downloads' && 'WordPress Downloads'}
                 {activeSection === 'roadmap' && 'Roadmap Management'}
                 {activeSection === 'db-performance' && 'Database Capaciteit (400 users)'}
+                {activeSection === 'bro-monitoring' && 'TravelBro Cost Monitoring'}
                 {activeSection === 'monitoring' && 'Error Monitoring'}
                 {activeSection === 'system-health' && 'System Health'}
                 {activeSection === 'google-api-debug' && 'Google API Debugger'}
@@ -182,6 +186,7 @@ export function OperatorDashboard() {
                 {activeSection === 'wordpress-downloads' && 'Download WordPress plugins en integraties'}
                 {activeSection === 'roadmap' && 'Manage feature requests and development priorities'}
                 {activeSection === 'db-performance' && 'Database connections, queries, locks & capacity voor 400+ concurrent users'}
+                {activeSection === 'bro-monitoring' && 'Monitor TravelBro kosten, opbrengsten en winstgevendheid per instantie'}
                 {activeSection === 'monitoring' && 'Application errors, alerts en frontend performance tracking'}
                 {activeSection === 'system-health' && 'Real-time browser metrics and service status'}
                 {activeSection === 'google-api-debug' && 'Test alle Google APIs: Places Autocomplete, Routes, Places Search'}
@@ -336,6 +341,7 @@ export function OperatorDashboard() {
           {activeSection === 'wordpress-downloads' && <div className="p-6"><WordPressDownloads /></div>}
           {activeSection === 'roadmap' && <div className="p-6"><RoadmapManagement /></div>}
           {activeSection === 'db-performance' && <div className="p-6"><DatabasePerformanceMonitor /></div>}
+          {activeSection === 'bro-monitoring' && <div className="p-6"><TravelBroMonitoring /></div>}
           {activeSection === 'monitoring' && <div className="p-6"><MonitoringDashboard /></div>}
           {activeSection === 'system-health' && <div className="p-6"><SystemHealth /></div>}
           {activeSection === 'google-api-debug' && <div className="p-6"><GoogleAPIDebugger /></div>}

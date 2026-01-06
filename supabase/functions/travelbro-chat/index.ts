@@ -56,7 +56,7 @@ Deno.serve(async (req: Request) => {
     const googleSearchEngineId = googleSearchSettings?.google_search_engine_id || Deno.env.get('GOOGLE_SEARCH_ENGINE_ID');
 
     const { data: trip, error: tripError } = await supabase
-      .from("travel_trips")
+      .from("trips")
       .select("*")
       .eq("id", tripId)
       .single();
@@ -65,6 +65,28 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({ error: "Trip not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check if Bro should be auto-expired
+    await supabase.rpc('check_bro_expiry', { trip_id: tripId });
+
+    // Reload trip to get updated status
+    const { data: updatedTrip } = await supabase
+      .from("trips")
+      .select("bro_status, stopped_reason")
+      .eq("id", tripId)
+      .single();
+
+    // Check if Bro is stopped or expired
+    if (updatedTrip?.bro_status === 'stopped' || updatedTrip?.bro_status === 'expired') {
+      return new Response(
+        JSON.stringify({
+          error: "Deze TravelBro is gestopt",
+          reason: updatedTrip.stopped_reason || "Deze TravelBro is niet meer beschikbaar",
+          status: updatedTrip.bro_status
+        }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -253,7 +275,16 @@ Deno.serve(async (req: Request) => {
 
     const openaiData = await openaiResponse.json();
     const aiResponse = openaiData.choices[0].message.content;
-    const tokensUsed = openaiData.usage?.total_tokens;
+    const tokensUsed = openaiData.usage?.total_tokens || 0;
+    const inputTokens = openaiData.usage?.prompt_tokens || 0;
+    const outputTokens = openaiData.usage?.completion_tokens || 0;
+
+    // Calculate costs in EUR (GPT-4o pricing with 0.92 EUR/USD rate)
+    // Input: $2.50/1M tokens = €0.0000023 per token
+    // Output: $10.00/1M tokens = €0.0000092 per token
+    const inputCostEur = inputTokens * 0.0000023;
+    const outputCostEur = outputTokens * 0.0000092;
+    const totalCostEur = inputCostEur + outputCostEur;
 
     const slotsUpdates = stateManager.extractSlotsFromMessage(message, aiResponse, trip);
 
@@ -271,12 +302,20 @@ Deno.serve(async (req: Request) => {
         trip_id: tripId,
         role: "user",
         message: message,
+        input_tokens: 0,
+        output_tokens: 0,
+        total_tokens: 0,
+        openai_cost_eur: 0,
       },
       {
         session_token: sessionToken,
         trip_id: tripId,
         role: "assistant",
         message: aiResponse,
+        input_tokens: inputTokens,
+        output_tokens: outputTokens,
+        total_tokens: tokensUsed,
+        openai_cost_eur: totalCostEur,
       },
     ]);
 
