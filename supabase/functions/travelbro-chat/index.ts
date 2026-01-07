@@ -80,7 +80,7 @@ Deno.serve(async (req: Request) => {
     const googleSearchEngineId = googleSearchSettings?.google_search_engine_id || Deno.env.get('GOOGLE_SEARCH_ENGINE_ID');
 
     const { data: trip, error: tripError } = await supabase
-      .from("trips")
+      .from("travel_trips")
       .select("*")
       .eq("id", tripId)
       .single();
@@ -97,7 +97,7 @@ Deno.serve(async (req: Request) => {
 
     // Reload trip to get updated status
     const { data: updatedTrip } = await supabase
-      .from("trips")
+      .from("travel_trips")
       .select("bro_status, stopped_reason")
       .eq("id", tripId)
       .single();
