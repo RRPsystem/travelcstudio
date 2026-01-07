@@ -56,7 +56,13 @@ Deno.serve(async (req: Request) => {
     console.log('[JWT] Request body received:', JSON.stringify(requestBody, null, 2));
     const requestedScopes = requestBody.scopes || ['pages:read', 'pages:write', 'layouts:read', 'layouts:write', 'menus:read', 'menus:write', 'content:read', 'content:write'];
 
-    const { data: userData, error: dbError } = await supabaseClient
+    // Use service role to read user data to bypass RLS
+    const serviceClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    const { data: userData, error: dbError } = await serviceClient
       .from('users')
       .select('brand_id, role')
       .eq('id', user.id)
@@ -83,11 +89,6 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log('[JWT] Final brand ID:', { brandId, user_role: userData.role, forced: !!requestBody.forceBrandId });
-
-    const serviceClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
 
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 2);
