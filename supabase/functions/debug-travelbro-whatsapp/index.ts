@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
@@ -13,11 +13,26 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { phoneNumber } = await req.json();
+    let phoneNumber;
+
+    if (req.method === "GET") {
+      const url = new URL(req.url);
+      phoneNumber = url.searchParams.get('phoneNumber');
+    } else {
+      try {
+        const body = await req.json();
+        phoneNumber = body.phoneNumber;
+      } catch (e) {
+        return new Response(
+          JSON.stringify({ error: "Invalid JSON body" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
 
     if (!phoneNumber) {
       return new Response(
-        JSON.stringify({ error: "phoneNumber required" }),
+        JSON.stringify({ error: "phoneNumber required (use ?phoneNumber=31611725801 for GET)" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
