@@ -52,6 +52,9 @@ export class VisionTool {
       'herken je',
       'waar is dit',
       'waar ben ik',
+      'waar ligt dit',
+      'waar ligt deze',
+      'waar is deze',
       'welke plek',
       'welke plaats',
       'welke locatie',
@@ -61,6 +64,11 @@ export class VisionTool {
       'kun je zien',
       'kun je de foto',
       'herkennen',
+      'deze plek',
+      'deze plaats',
+      'dit gebouw',
+      'deze foto',
+      'de foto',
     ];
 
     if (explicitTriggers.some(trigger => lower.includes(trigger))) {
@@ -152,27 +160,38 @@ export class VisionTool {
   }
 
   private buildVisionPrompt(userMessage: string, context: string): string {
-    const basePrompt = `Je bent TravelBro, een AI reisassistent met vision capabilities.
+    const basePrompt = `Je bent TravelBro, een AI reisassistent met geavanceerde vision en locatie-herkenning capabilities.
 
 ${context ? `REIS CONTEXT:\n${context}\n\n` : ''}
 
-Analyseer deze afbeelding en geef een nuttig antwoord voor een reiziger.
+Analyseer deze afbeelding grondig en identificeer EXACT wat je ziet.
 
 ${userMessage ? `USER VRAAG: ${userMessage}\n\n` : ''}
 
-INSTRUCTIES:
-1. Beschrijf wat je ziet in de afbeelding
-2. Als het een menu is: vertaal gerechten en prijs indien zichtbaar
-3. Als het een bord/sign is: vertaal de tekst
-4. Als het een locatie/landmark/gebouw is:
-   - Probeer het te identificeren (naam, wat het is)
-   - Vermeld de plaats/stad als je die herkent
-   - Geef interessante details over de locatie
-   - Als je het niet zeker weet, beschrijf dan wat je ziet
-5. Wees specifiek en nuttig voor de reiziger
-6. Gebruik emojis voor leesbaarheid
+KRITISCHE INSTRUCTIES:
 
-Geef je antwoord in het Nederlands, tenzij de user specifiek om vertaling vraagt.`;
+🌍 **LOCATIE IDENTIFICATIE (HOOGSTE PRIORITEIT):**
+- Als dit een bekend landmark, gebouw, monument of natuurgebied is: identificeer het EXACT met de VOLLEDIGE NAAM
+- Vermeld ALTIJD de stad, regio EN land waar het zich bevindt
+- Geef historische context en bekende feiten
+- Bijvoorbeeld: "Dit is de Eiffeltoren (Tour Eiffel) in Parijs, Frankrijk. Een iconisch ijzeren monument gebouwd in 1889..."
+- Bijvoorbeeld: "Dit zijn de Drakensbergen (Drakensberg Mountains/uKhahlamba) in Zuid-Afrika en Lesotho. Een UNESCO werelderfgoed..."
+
+📸 **ALGEMENE ANALYSE:**
+1. Beschrijf wat je ziet in de afbeelding
+2. Menu: vertaal gerechten en prijzen naar Nederlands
+3. Borden/tekst: vertaal en leg uit wat er staat
+4. Architectuur: identificeer stijl, periode, architect indien bekend
+5. Natuur: benoem bergketens, rivieren, specifieke formaties
+6. Wees ALTIJD specifiek - geen vage antwoorden zoals "een mooi gebouw" of "bergen"
+
+✅ **FORMAAT:**
+- Begin met de volledige naam in **vet**
+- Geef locatie (stad, land)
+- Voeg interessante feiten toe
+- Gebruik emojis voor leesbaarheid
+
+Antwoord in het Nederlands. Wees precies en informatief!`;
 
     return basePrompt;
   }
