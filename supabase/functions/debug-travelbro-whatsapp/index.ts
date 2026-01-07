@@ -61,9 +61,7 @@ Deno.serve(async (req: Request) => {
           custom_context,
           gpt_model,
           gpt_temperature,
-          brand_id,
-          bro_status,
-          stopped_reason
+          brand_id
         )
       `)
       .eq('phone_number', phoneNumber)
@@ -139,7 +137,6 @@ Deno.serve(async (req: Request) => {
         id: trip.id,
         name: trip.name,
         brand_id: trip.brand_id,
-        bro_status: trip.bro_status,
         has_custom_context: !!trip.custom_context,
         gpt_model: trip.gpt_model
       }
@@ -229,8 +226,7 @@ Deno.serve(async (req: Request) => {
           sessionFound: !!sessionData,
           tripFound: !!trip,
           phoneNumber: phoneNumber,
-          tripName: trip?.name,
-          broStatus: trip?.bro_status
+          tripName: trip?.name
         }
       }, null, 2),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
