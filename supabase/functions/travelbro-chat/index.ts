@@ -112,6 +112,7 @@ Deno.serve(async (req: Request) => {
     }
 
     let processedImageUrl: string | null = null;
+    let attachmentId: string | null = null;
     let conversationId: string | null = null;
     let visionResponse: string | null = null;
     let visionUsed = false;
@@ -140,6 +141,23 @@ Deno.serve(async (req: Request) => {
             .getPublicUrl(fileName);
 
           processedImageUrl = publicUrl;
+
+          // Store attachment record in database
+          const { data: attachmentData } = await supabase
+            .from('travel_attachments')
+            .insert({
+              trip_id: tripId,
+              session_token: sessionToken,
+              file_url: publicUrl,
+              file_type: 'image/jpeg',
+              storage_path: fileName,
+            })
+            .select('id')
+            .single();
+
+          if (attachmentData) {
+            attachmentId = attachmentData.id;
+          }
         }
       } else if (imageUrl) {
         processedImageUrl = imageUrl;
@@ -157,7 +175,8 @@ Deno.serve(async (req: Request) => {
             const analysis = await visionTool.analyze(
               processedImageUrl,
               message || 'Wat zie je op deze foto?',
-              contextInfo
+              contextInfo,
+              attachmentId
             );
 
             visionResponse = analysis.response;

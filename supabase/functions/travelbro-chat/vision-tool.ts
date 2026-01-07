@@ -7,6 +7,23 @@ interface VisionAnalysis {
   detectedLanguage?: string;
   confidence: number;
   categories: string[];
+  locationName?: string;
+  locationCity?: string;
+  locationCountry?: string;
+}
+
+interface VisionJsonResponse {
+  user_message: string;
+  identified_location?: {
+    name: string;
+    city: string;
+    country: string;
+    description: string;
+  };
+  detected_objects: string[];
+  categories: string[];
+  confidence_level: number;
+  uncertainty_note?: string;
 }
 
 export class VisionTool {
@@ -14,6 +31,14 @@ export class VisionTool {
   private supabase: SupabaseClient;
   private sessionToken: string;
   private tripId: string;
+
+  // OpenAI GPT-4o pricing per 1M tokens (EUR conversion: 1 USD ≈ 0.92 EUR)
+  private static readonly PRICING = {
+    INPUT_PER_1M_TOKENS: 2.50 * 0.92,  // EUR
+    OUTPUT_PER_1M_TOKENS: 10.0 * 0.92, // EUR
+    IMAGE_LOW_TOKENS: 85,
+    IMAGE_HIGH_BASE_TOKENS: 170, // per 512x512 tile
+  };
 
   constructor(
     openaiApiKey: string,
@@ -82,13 +107,36 @@ export class VisionTool {
     return false;
   }
 
+  /**
+   * Determine detail level based on intent
+   * - 'high': menu, signs, text (needs OCR precision)
+   * - 'auto': landmarks, general scenes (cost-efficient)
+   */
+  private getDetailLevel(message: string): 'high' | 'auto' {
+    const lower = message.toLowerCase();
+    const needsHighDetail = [
+      'menu',
+      'lees',
+      'vertaal',
+      'wat staat er',
+      'tekst',
+      'bord',
+      'sign',
+      'kaart',
+    ];
+
+    return needsHighDetail.some(keyword => lower.includes(keyword)) ? 'high' : 'auto';
+  }
+
   async analyze(
     imageUrl: string,
     userMessage: string,
-    context: string
+    context: string,
+    attachmentId?: string | null
   ): Promise<VisionAnalysis> {
     const startTime = Date.now();
 
+    const detailLevel = this.getDetailLevel(userMessage);
     const prompt = this.buildVisionPrompt(userMessage, context);
 
     try {
@@ -112,7 +160,7 @@ export class VisionTool {
                   type: 'image_url',
                   image_url: {
                     url: imageUrl,
-                    detail: 'high',
+                    detail: detailLevel,
                   },
                 },
               ],
@@ -120,6 +168,7 @@ export class VisionTool {
           ],
           max_tokens: 1000,
           temperature: 0.2,
+          response_format: { type: 'json_object' },
         }),
       });
 
@@ -130,24 +179,39 @@ export class VisionTool {
       }
 
       const data = await response.json();
-      const visionResponse = data.choices[0].message.content;
+      const visionJsonString = data.choices[0].message.content;
       const tokensUsed = data.usage?.total_tokens || 0;
+      const inputTokens = data.usage?.prompt_tokens || 0;
+      const outputTokens = data.usage?.completion_tokens || 0;
 
-      const costEur = 0.01;
+      // Calculate actual cost based on token usage
+      const costEur = this.calculateCost(inputTokens, outputTokens);
 
-      const analysis = this.parseVisionResponse(visionResponse);
+      let visionJson: VisionJsonResponse;
+      try {
+        visionJson = JSON.parse(visionJsonString);
+      } catch {
+        console.error('Failed to parse vision JSON response');
+        visionJson = {
+          user_message: visionJsonString,
+          detected_objects: [],
+          categories: ['general'],
+          confidence_level: 0.5,
+        };
+      }
 
+      const analysis = this.parseStructuredResponse(visionJson);
       const processingTime = Date.now() - startTime;
 
       await this.logVisionCall({
         prompt,
-        response: visionResponse,
+        response: visionJsonString,
         confidence: analysis.confidence,
         categories: analysis.categories,
         tokensUsed,
         costEur,
         processingTime,
-        attachmentId: null,
+        attachmentId: attachmentId || null,
       });
 
       await this.updateCostTracking(costEur);
@@ -157,6 +221,12 @@ export class VisionTool {
       console.error('Vision analysis failed:', error);
       throw error;
     }
+  }
+
+  private calculateCost(inputTokens: number, outputTokens: number): number {
+    const inputCost = (inputTokens / 1_000_000) * VisionTool.PRICING.INPUT_PER_1M_TOKENS;
+    const outputCost = (outputTokens / 1_000_000) * VisionTool.PRICING.OUTPUT_PER_1M_TOKENS;
+    return inputCost + outputCost;
   }
 
   private buildVisionPrompt(userMessage: string, context: string): string {
@@ -185,51 +255,48 @@ KRITISCHE INSTRUCTIES:
 5. Natuur: benoem bergketens, rivieren, specifieke formaties
 6. Wees ALTIJD specifiek - geen vage antwoorden zoals "een mooi gebouw" of "bergen"
 
-✅ **FORMAAT:**
-- Begin met de volledige naam in **vet**
-- Geef locatie (stad, land)
-- Voeg interessante feiten toe
-- Gebruik emojis voor leesbaarheid
+⚠️ **ANTI-HALLUCINATIE REGEL:**
+Als je NIET ZEKER bent over de identificatie van een locatie (confidence < 70%):
+- Begin je antwoord met: "Ik zie [beschrijving], maar ik ben niet 100% zeker..."
+- Vraag om extra info: "Kun je me meer context geven, zoals waar je ongeveer bent?"
+- Geef alternatieve mogelijkheden indien relevant
 
-Antwoord in het Nederlands. Wees precies en informatief!`;
+✅ **OUTPUT FORMAAT (STRICT JSON):**
+{
+  "user_message": "Volledig Nederlands antwoord met emoji's voor de gebruiker",
+  "identified_location": {
+    "name": "Volledige naam van locatie (indien bekend)",
+    "city": "Stad/regio",
+    "country": "Land",
+    "description": "Korte beschrijving"
+  },
+  "detected_objects": ["lijst", "van", "objecten"],
+  "categories": ["landmark" | "menu" | "signage" | "map" | "nature" | "general"],
+  "confidence_level": 0.9,
+  "uncertainty_note": "Optionele notitie bij lage zekerheid"
+}
+
+Antwoord ALLEEN in valid JSON format. Geen extra tekst!`;
 
     return basePrompt;
   }
 
-  private parseVisionResponse(response: string): VisionAnalysis {
-    const detectedObjects: string[] = [];
-    const categories: string[] = [];
+  private parseStructuredResponse(json: VisionJsonResponse): VisionAnalysis {
+    const userMessage = json.user_message || 'Geen analyse beschikbaar.';
 
-    const lower = response.toLowerCase();
-
-    if (lower.includes('menu') || lower.includes('gerecht')) {
-      categories.push('restaurant_menu');
-      detectedObjects.push('menu');
-    }
-    if (lower.includes('bord') || lower.includes('sign') || lower.includes('tekst')) {
-      categories.push('signage');
-      detectedObjects.push('sign');
-    }
-    if (lower.includes('gebouw') || lower.includes('landmark') || lower.includes('monument')) {
-      categories.push('landmark');
-      detectedObjects.push('building');
-    }
-    if (lower.includes('kaart') || lower.includes('map')) {
-      categories.push('map');
-      detectedObjects.push('map');
-    }
-
-    const hasNumbers = /\d+/.test(response);
-    const hasDetailedInfo = response.length > 200;
-    const confidence = hasDetailedInfo ? 0.9 : hasNumbers ? 0.8 : 0.7;
+    // Add uncertainty note to user message if present
+    const finalMessage = json.uncertainty_note
+      ? `${userMessage}\n\n⚠️ ${json.uncertainty_note}`
+      : userMessage;
 
     return {
-      response,
-      detectedObjects,
-      detectedText: undefined,
-      detectedLanguage: undefined,
-      confidence,
-      categories: categories.length > 0 ? categories : ['general'],
+      response: finalMessage,
+      detectedObjects: json.detected_objects || [],
+      confidence: json.confidence_level || 0.5,
+      categories: json.categories || ['general'],
+      locationName: json.identified_location?.name,
+      locationCity: json.identified_location?.city,
+      locationCountry: json.identified_location?.country,
     };
   }
 
@@ -252,7 +319,7 @@ Antwoord in het Nederlands. Wees precies en informatief!`;
         vision_response: params.response,
         confidence_score: params.confidence,
         detected_categories: params.categories,
-        model_used: 'gpt-4o-vision',
+        model_used: 'gpt-4o',
         tokens_used: params.tokensUsed,
         cost_eur: params.costEur,
         processing_time_ms: params.processingTime,
