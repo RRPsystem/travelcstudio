@@ -96,7 +96,6 @@ async function getOrCreateSession(supabase: any, tripId: string, brandId: string
       .from('travel_whatsapp_sessions')
       .update({
         last_message_at: new Date().toISOString(),
-        message_count: (existingSession.message_count || 0) + 1
       })
       .eq('id', existingSession.id);
 
@@ -114,7 +113,6 @@ async function getOrCreateSession(supabase: any, tripId: string, brandId: string
       brand_id: brandId,
       phone_number: phoneNumber,
       session_token: sessionToken,
-      message_count: 1,
     })
     .select()
     .single();
@@ -223,13 +221,14 @@ Deno.serve(async (req: Request) => {
     const mediaUrl = numMedia > 0 ? formData.get('MediaUrl0')?.toString() : undefined;
     const mediaContentType = numMedia > 0 ? formData.get('MediaContentType0')?.toString() : undefined;
 
-    console.log('WhatsApp message received:', { from, to, body, numMedia, mediaContentType });
+    console.log('WhatsApp message received:', { from, to, body, numMedia, mediaContentType, mediaUrl });
 
     if (!from) {
       return new Response('Missing sender', { status: 400 });
     }
 
-    if (!body) {
+    const hasMedia = numMedia > 0 && mediaUrl;
+    if (!body && !hasMedia) {
       return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
         headers: { 'Content-Type': 'text/xml' },
       });
@@ -275,7 +274,10 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    const session = await getOrCreateSession(supabase, trip.id, trip.brand_id, from);
+
     const isVoiceMessage = mediaContentType?.includes('audio');
+    const isImage = mediaContentType?.startsWith('image/');
 
     if (isVoiceMessage && mediaUrl && openaiApiKey) {
       try {
@@ -294,7 +296,67 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const session = await getOrCreateSession(supabase, trip.id, trip.brand_id, from);
+    if (isImage || isVoiceMessage) {
+      console.log('📸 Using travelbro-chat for multimodal input');
+
+      const travelbroChatRequest: any = {
+        tripId: trip.id,
+        sessionToken: session.session_token,
+        message: body || 'Wat is dit?',
+        deviceType: 'whatsapp'
+      };
+
+      if (isImage && mediaUrl) {
+        travelbroChatRequest.imageUrl = mediaUrl;
+      }
+
+      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const travelbroResponse = await fetch(`${supabaseUrl}/functions/v1/travelbro-chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+        },
+        body: JSON.stringify(travelbroChatRequest),
+      });
+
+      if (!travelbroResponse.ok) {
+        let errorText = '';
+        try {
+          errorText = await travelbroResponse.text();
+          console.error('❌ TravelBro chat error:', errorText);
+        } catch {
+          errorText = 'Failed to read error response';
+        }
+
+        await sendWhatsAppMessage(
+          from,
+          'Sorry, ik kan je bericht momenteel niet verwerken. Probeer het later opnieuw.',
+          apiSettings.twilio_account_sid,
+          apiSettings.twilio_auth_token,
+          apiSettings.twilio_whatsapp_number || to
+        );
+
+        return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
+          headers: { 'Content-Type': 'text/xml' },
+        });
+      }
+
+      const travelbroResult = await travelbroResponse.json();
+      const aiMessage = travelbroResult.text || travelbroResult.message || 'Geen antwoord ontvangen';
+
+      await sendWhatsAppMessage(
+        from,
+        aiMessage,
+        apiSettings.twilio_account_sid,
+        apiSettings.twilio_auth_token,
+        apiSettings.twilio_whatsapp_number || to
+      );
+
+      return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
+        headers: { 'Content-Type': 'text/xml' },
+      });
+    }
 
     const isNewSession = !session.session_token;
     if (isNewSession) {
