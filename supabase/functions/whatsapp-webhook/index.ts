@@ -307,7 +307,32 @@ Deno.serve(async (req: Request) => {
       };
 
       if (isImage && mediaUrl) {
-        travelbroChatRequest.imageUrl = mediaUrl;
+        try {
+          console.log('📥 Downloading image from Twilio:', mediaUrl);
+          const imageResponse = await fetch(mediaUrl, {
+            headers: {
+              'Authorization': 'Basic ' + btoa(`${apiSettings.twilio_account_sid}:${apiSettings.twilio_auth_token}`),
+            },
+          });
+
+          if (!imageResponse.ok) {
+            throw new Error(`Failed to download image: ${imageResponse.status}`);
+          }
+
+          const imageBlob = await imageResponse.blob();
+          const imageBuffer = await imageBlob.arrayBuffer();
+          const imageBase64 = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
+
+          console.log('✅ Image downloaded and converted to base64');
+          travelbroChatRequest.imageBase64 = imageBase64;
+        } catch (imageError) {
+          console.error('❌ Failed to download/convert image:', imageError);
+          await supabase.from('debug_logs').insert({
+            function_name: 'whatsapp-webhook -> image-download',
+            error_message: String(imageError),
+            request_payload: { mediaUrl, tripId: trip.id }
+          });
+        }
       }
 
       const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -325,7 +350,15 @@ Deno.serve(async (req: Request) => {
         try {
           errorText = await travelbroResponse.text();
           console.error('❌ TravelBro chat error:', errorText);
-        } catch {
+
+          await supabase.from('debug_logs').insert({
+            function_name: 'whatsapp-webhook -> travelbro-chat',
+            error_message: errorText,
+            request_payload: { tripId: trip.id, sessionToken: session.session_token, hasImage: !!mediaUrl },
+            response_status: travelbroResponse.status
+          });
+        } catch (logError) {
+          console.error('Failed to log error:', logError);
           errorText = 'Failed to read error response';
         }
 
