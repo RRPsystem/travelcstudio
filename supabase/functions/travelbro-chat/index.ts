@@ -160,7 +160,65 @@ Deno.serve(async (req: Request) => {
           }
         }
       } else if (imageUrl) {
-        processedImageUrl = imageUrl;
+        // Download image from Twilio with authentication
+        try {
+          const twilioAccountSid = apiSettings?.find(s => s.provider === 'system' && s.service_name === 'Twilio WhatsApp')?.twilio_account_sid;
+          const twilioAuthToken = apiSettings?.find(s => s.provider === 'system' && s.service_name === 'Twilio WhatsApp')?.twilio_auth_token;
+
+          const headers: Record<string, string> = {};
+          if (twilioAccountSid && twilioAuthToken) {
+            headers['Authorization'] = 'Basic ' + btoa(`${twilioAccountSid}:${twilioAuthToken}`);
+          }
+
+          const imageResponse = await fetch(imageUrl, { headers });
+
+          if (!imageResponse.ok) {
+            throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
+          }
+
+          const imageBlob = await imageResponse.blob();
+          const buffer = new Uint8Array(await imageBlob.arrayBuffer());
+          const fileName = `${tripId}/${crypto.randomUUID()}.jpg`;
+
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('travelbro-attachments')
+            .upload(fileName, buffer, {
+              contentType: imageBlob.type || 'image/jpeg',
+              upsert: false,
+            });
+
+          if (uploadError) {
+            console.error('Image upload failed:', uploadError);
+            throw uploadError;
+          }
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('travelbro-attachments')
+            .getPublicUrl(fileName);
+
+          processedImageUrl = publicUrl;
+
+          // Store attachment record in database
+          const { data: attachmentData } = await supabase
+            .from('travel_attachments')
+            .insert({
+              trip_id: tripId,
+              session_token: sessionToken,
+              file_url: publicUrl,
+              file_type: imageBlob.type || 'image/jpeg',
+              storage_path: fileName,
+            })
+            .select('id')
+            .single();
+
+          if (attachmentData) {
+            attachmentId = attachmentData.id;
+          }
+        } catch (error) {
+          console.error('Failed to download and store image from URL:', error);
+          // Continue without image
+          processedImageUrl = null;
+        }
       }
 
       if (processedImageUrl && openaiApiKey) {
