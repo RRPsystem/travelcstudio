@@ -307,6 +307,15 @@ Deno.serve(async (req: Request) => {
       const error = await travelbroResponse.text();
       console.error('TravelBro chat error:', error);
 
+      // Log error to database for debugging
+      await supabase.from('debug_logs').insert({
+        function_name: 'whatsapp-webhook -> travelbro-chat',
+        error_message: error,
+        request_payload: travelbroChatRequest,
+        response_status: travelbroResponse.status,
+        response_body: error
+      });
+
       await sendWhatsAppMessage(
         from,
         'Sorry, ik kan je bericht momenteel niet verwerken. Probeer het later opnieuw.',
