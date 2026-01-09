@@ -1,93 +1,81 @@
 # 🎙️ TravelAgent Voice - Action Plan
 
-## Status: Planning → Execution
+## Status: Beslissingen ✅ → Ready to Build 🚀
 
 **Huidige situatie:** Alleen documentatie, geen code
 **Doel:** Werkende voice-to-offer systeem voor travel agents
 **Tijdlijn:** 12 weken (3 maanden)
+**Budget:** €66.150 (eerste 3 maanden)
+**Platform:** Web-based (mobile + desktop)
+**Voice:** OpenAI Realtime API (beste kwaliteit)
+**Offers:** Externe builder (zoals bij bv Reizen)
 
 ---
 
-## 🚨 Kritieke Beslissingen (EERST)
+## ✅ Kritieke Beslissingen - GEMAAKT!
 
-### Beslissing 1: Externe Builder - JA of NEE?
+### ✅ Beslissing 1: Externe Builder - JA!
 
-**Optie A: Met externe builder (volgens originele plan)**
+**GEKOZEN: Externe builder (zoals bij bv Reizen)**
 - ✅ Sneller time-to-market (specialist doet zijn ding)
 - ✅ Betere kwaliteit offer pages (hun expertise)
 - ✅ Minder technische schuld voor ons
-- ❌ Afhankelijkheid van externe partij
+- ✅ **Bewezen: werkt al voor bv Reizen**
 - ❌ Kosten per offer (€2-3)
-- ❌ Minder controle over kwaliteit/speed
 
-**Optie B: Volledig intern bouwen**
-- ✅ Volledige controle
-- ✅ Geen externe kosten
-- ✅ Snellere iteraties
-- ❌ Langere ontwikkeltijd (meer te bouwen)
-- ❌ Wij moeten hotel/flight API's integreren
-- ❌ Wij moeten templates ontwerpen
-
-**ACTIE:** Kies binnen 3 dagen
+**ACTIE:** ✅ Besloten - we gebruiken bestaande externe builder
 
 ---
 
-### Beslissing 2: Mobile App - ECHT of PWA?
+### ✅ Beslissing 2: Multi-Platform - Mobile + Desktop!
 
-**Optie A: Native apps (iOS + Android)**
-- ✅ Beste performance
-- ✅ Push notifications makkelijker
-- ✅ Better voice integration
-- ✅ App Store presence
-- ❌ 2x development (iOS en Android)
-- ❌ App Store review proces
-- ❌ Updates trager
-
-**Optie B: Progressive Web App (PWA)**
-- ✅ 1x bouwen, overal werken
-- ✅ Instant updates
+**GEKOZEN: Web-based (werkt overal)**
+- ✅ **Mobile:** Responsive web app (werkt op iOS + Android)
+- ✅ **Desktop:** Werkt ook op laptop/desktop in browser
 - ✅ Geen app store goedkeuring nodig
-- ❌ Voice API beperkingen in browser
-- ❌ Minder "native" gevoel
-- ❌ Push notifications complexer
+- ✅ Instant updates (push nieuwe versie, iedereen heeft het)
+- ✅ 1x bouwen, overal werken
+- ✅ Ook op tablet bruikbaar
 
-**Optie C: React Native (hybrid)**
-- ✅ 1x codebase voor iOS + Android
-- ✅ Native performance
-- ✅ Groot ecosystem
-- ❌ Extra framework om te leren
-- ❌ Platform-specifieke bugs
+**Technologie:**
+- React web app (wat we al gebruiken)
+- Web Speech API + OpenAI Realtime
+- Progressive Web App features (installeerbaar)
+- Push notifications via web push (opt-in)
 
-**ACTIE:** Kies binnen 3 dagen
+**Voordelen beide platforms:**
+```
+MOBILE (onderweg):
+- Agent bij klant thuis → voice op telefoon
+- Snel offer maken in auto
+- Notificaties op mobiel
+
+DESKTOP (op kantoor):
+- Agent op kantoor → voice op laptop
+- Groot scherm voor offer review
+- Multi-tasking makkelijker
+```
+
+**ACTIE:** ✅ Besloten - web-based, werkt op alles
 
 ---
 
-### Beslissing 3: Voice Engine - Welke?
+### ✅ Beslissing 3: Voice Engine - OpenAI Realtime API!
 
-**Optie A: OpenAI Realtime API (in de docs genoemd)**
+**GEKOZEN: OpenAI Realtime API (beste kwaliteit)**
 - ✅ State-of-the-art kwaliteit
 - ✅ Natuurlijke conversaties
 - ✅ Multi-turn dialogen
-- ❌ Duur ($0.06/min audio)
-- ❌ Amerikaans bedrijf (privacy?)
-- ❌ Beta/experimental nog
+- ✅ Laagste latency (<1 sec)
+- ✅ Nederlandse taal support
+- ⚠️ Kosten: $0.06/min audio (~€0.06/min)
 
-**Optie B: Whisper (OpenAI) + GPT + TTS**
-- ✅ Stabiele APIs
-- ✅ Goedkoper
-- ✅ Meer controle
-- ❌ Minder natuurlijk (niet real-time)
-- ❌ Hogere latency
-- ❌ 3 API calls per turn
+**Kosten calculatie:**
+- 100 agents × 10 offers/dag × 3 min gesprek = 3.000 min/dag
+- 3.000 × €0.06 = **€180/dag** = €5.400/maand
+- Per offer: €0.18 (acceptabel vs €2.50 voor template)
 
-**Optie C: Google Cloud Speech + Dialogflow**
-- ✅ Europese servers mogelijk
-- ✅ Betere Nederlands support
-- ✅ Enterprise-ready
-- ❌ Minder geavanceerd dan OpenAI
-- ❌ Complexere setup
-
-**ACTIE:** Kies binnen 3 dagen
+**ACTIE:** ✅ Besloten - OpenAI Realtime API, geen compromissen
 
 ---
 
@@ -312,41 +300,44 @@ Systeem moet:
 
 ## 📊 Resource Planning
 
-### Als je EXTERN bouwt:
+### ✅ GEKOZEN ROUTE: Externe Builder + Web App
 
 **Development team nodig:**
-- 1x Backend developer (voice + webhooks) - **6 weken**
-- 1x Mobile developer (iOS of Android) - **8 weken**
-- 1x Designer (UI/UX) - **2 weken**
+- 1x Full-stack developer (voice + web app + webhooks) - **8 weken**
+- 1x Frontend developer (UI/UX + responsive design) - **6 weken**
+- 1x Designer (UI/UX wireframes) - **2 weken**
 
-**Kosten:**
-- Development: ~€40.000 (3x developer @ €5k/week)
-- OpenAI API: ~€500/maand (100 agents × 10 offers × €0.05)
-- Externe builder: €2.50 × 1000 offers/maand = €2.500/maand
-- Supabase: ~€100/maand
-- **Total first 3 months: ~€50.000**
+**Timeline:**
+- Week 1-2: Setup + database + OpenAI Realtime POC
+- Week 3-6: Voice interface (web-based)
+- Week 6-8: Externe builder integratie + webhooks
+- Week 8-10: UI polish + responsive design
+- Week 10-11: Notifications + testing
+- Week 11-12: Beta met 5 agencies
 
----
+**Kosten (eerste 3 maanden):**
+- Development: ~€42.000
+  - Full-stack: 8 weken × €5.000 = €40.000
+  - Designer: 2 weken × €1.000 = €2.000
+- OpenAI Realtime API: €5.400/maand × 3 = €16.200
+- Externe builder: €2.50 × 1000 offers/maand × 3 = €7.500
+- Supabase: ~€100/maand × 3 = €300
+- Push notifications (web push): €50/maand × 3 = €150
 
-### Als je INTERN bouwt:
+**TOTAL FIRST 3 MONTHS: ~€66.150**
 
-**Development team nodig:**
-- 1x Backend developer (voice + offer generation) - **10 weken**
-- 1x Integration specialist (hotel/flight APIs) - **8 weken**
-- 1x Frontend/Mobile developer - **8 weken**
-- 1x Designer (templates + UI) - **4 weken**
+**Maandelijkse kosten (na launch):**
+- OpenAI API: €5.400/maand (bij 100 agents)
+- Externe builder: €2.500/maand (1000 offers)
+- Supabase: €100/maand
+- Hosting/CDN: €50/maand
+- **Total recurring: €8.050/maand**
 
-**Kosten:**
-- Development: ~€70.000 (4x developers)
-- OpenAI API: ~€500/maand
-- Hotel/Flight APIs: ~€1.000/maand
-- Supabase: ~€100/maand
-- **Total first 3 months: ~€75.000**
-
-**Maar daarna:**
-- Geen €2.50 per offer
-- Volledige controle
-- Snellere iteraties
+**Break-even:**
+- 100 agents × €299/maand = €29.900/maand revenue
+- Kosten: €8.050/maand
+- **Profit: €21.850/maand** (73% margin!)
+- Break-even op development: 3 maanden
 
 ---
 
@@ -412,36 +403,59 @@ Systeem moet:
 
 ## 📞 Next Actions (Deze Week!)
 
-### Actie 1: Stakeholder Meeting
-**Wie:** Product owner, CTO, potentiële beta testers
-**Doel:** Beslissingen 1-3 nemen
-**Duur:** 2 uur
-**Output:** Go/no-go op externe builder, platform keuze, voice engine
+### ✅ Actie 1: Beslissingen
+- ✅ Externe builder: JA (bv Reizen builder)
+- ✅ Platform: Web-based (mobile + desktop)
+- ✅ Voice: OpenAI Realtime API
 
-### Actie 2: Externe Builder Outreach
-**Als jullie externe route kiezen:**
-- [ ] Shortlist maken (3-5 kandidaten)
-- [ ] VOICE_AGENT_EXTERNAL_BUILDER_BRIEFING.md sturen
-- [ ] Calls inplannen
-- [ ] Proposals opvragen
-- [ ] Keuze maken binnen 2 weken
+### Actie 2: Externe Builder Coordinatie
+**Met bestaande bv Reizen builder:**
+- [ ] Check API toegang (hebben we al?)
+- [ ] Vraag SLA en capaciteit (kunnen ze 1000 offers/maand aan?)
+- [ ] Check pricing (nog steeds €2-3 per offer?)
+- [ ] Test current API voor offer generation
+- [ ] Vraag: kunnen ze voice-to-data input accepteren?
 
 ### Actie 3: Budget Goedkeuring
 - [ ] Present dit plan aan finance
-- [ ] Budget request: €50K (extern) of €75K (intern)
+- [ ] Budget request: **€66.150 voor 3 maanden**
+- [ ] Laat ROI zien (73% margin, 3 maanden break-even)
 - [ ] Goedkeuring binnen 1 week
 
 ### Actie 4: Beta Testers Rekruteren
-- [ ] Shortlist 10 agencies
-- [ ] Pitch meeting inplannen
-- [ ] Committment krijgen van 5
-- [ ] NDA + beta agreement
+- [ ] Shortlist 10 travel agencies
+- [ ] Pitch meeting inplannen (gebruik VOICE_AGENT_PITCH_DECK.md)
+- [ ] Commitment krijgen van minimaal 5 agencies
+- [ ] NDA + beta agreement tekenen
+- [ ] Gratis toegang eerste 3 maanden (beta deal)
 
-### Actie 5: Tech Spike (1 week)
-- [ ] OpenAI Realtime API testen (proof of concept)
-- [ ] Voice recording in browser/app testen
-- [ ] Nederlands accent test
-- [ ] Latency meten
+### Actie 5: Tech Spike (deze week, 2 dagen)
+**OpenAI Realtime API proof of concept:**
+- [ ] API key aanvragen bij OpenAI
+- [ ] Simpel web prototype bouwen
+- [ ] Voice recording in browser testen
+- [ ] Nederlands gesprek testen
+- [ ] Latency meten (moet <1 sec zijn)
+- [ ] Kosten per sessie valideren
+
+**Test scenario:**
+```
+"Ik wil naar Las Vegas, 15 tot 22 juni,
+twee volwassenen, vier sterren hotel met casino,
+vertrek vanaf Amsterdam Schiphol,
+budget ongeveer 3000 euro per persoon"
+```
+
+- [ ] Transcript accuraat?
+- [ ] Intent + entities correct?
+- [ ] Response natuurlijk?
+
+### Actie 6: Developer Sourcing (volgende week)
+- [ ] Zoek full-stack developer (8 weken beschikbaar)
+- [ ] Zoek frontend developer (6 weken beschikbaar)
+- [ ] Zoek designer (2 weken beschikbaar)
+- [ ] Interviews plannen
+- [ ] Start: week van 20 januari 2026
 
 ---
 
@@ -499,13 +513,16 @@ Week 13+:   [SCALE] → Open for 100+ agencies
 
 ## 🤔 Open Questions
 
-1. **Wie is onze target externe builder?** (naam/bedrijf?)
-2. **Hebben we al prototype voice UI designs?**
-3. **Wie wordt product owner van dit project?**
-4. **Wat is ons launch marketing plan?**
-5. **Gaan we dit eerst intern testen voor eigen GoWild reizen?**
-6. **Hoe verhouden dit zich tot bestaande TravelBro WhatsApp bot?**
-7. **Kunnen we TravelBro tech hergebruiken?** (heeft al trip generation logica)
+1. ✅ **Externe builder:** Zelfde als bij bv Reizen (al opgelost)
+2. ✅ **Platform:** Web-based, mobile + desktop (al opgelost)
+3. ✅ **Voice engine:** OpenAI Realtime API (al opgelost)
+4. ❓ **Hebben we al prototype voice UI designs?**
+5. ❓ **Wie wordt product owner van dit project?**
+6. ❓ **Wat is ons launch marketing plan?**
+7. ❓ **Gaan we dit eerst intern testen voor eigen GoWild reizen?**
+8. ❓ **Hoe verhouden dit zich tot bestaande TravelBro WhatsApp bot?**
+9. ❓ **Kunnen we TravelBro tech hergebruiken?** (heeft al trip generation logica)
+10. ❓ **Externe builder API details:** Hebben we al toegang? Wat is hun SLA?
 
 ---
 
@@ -517,11 +534,56 @@ Week 13+:   [SCALE] → Open for 100+ agencies
 
 ---
 
-**Status:** Wachtend op go-beslissing
-**Next:** Stakeholder meeting deze week
+---
+
+## 📌 Executive Summary
+
+### ✅ Wat is Besloten:
+1. **Externe builder JA** - Gebruiken dezelfde als bij bv Reizen (bewezen tech)
+2. **Web-based platform** - Werkt op mobile + desktop (geen app store gedoe)
+3. **OpenAI Realtime API** - Beste voice kwaliteit, geen compromissen
+
+### 💰 Financiën:
+- **Investering:** €66.150 (3 maanden development)
+- **Maandelijkse kosten:** €8.050 (APIs + builder + hosting)
+- **Break-even:** 3 maanden (bij 100 agents)
+- **Profit margin:** 73% (€21.850/maand bij 100 agents)
+
+### 🎯 Timeline:
+- **Week 1-2:** Database + OpenAI POC
+- **Week 3-6:** Voice interface
+- **Week 6-8:** Builder integratie
+- **Week 8-10:** UI polish
+- **Week 10-11:** Testing
+- **Week 11-12:** Beta (5 agencies)
+- **Week 13+:** Scale naar 100+ agencies
+
+### 👥 Team Nodig:
+- 1x Full-stack developer (8 weken)
+- 1x Frontend developer (6 weken)
+- 1x Designer (2 weken)
+
+### 🚀 Next Steps (Deze Week):
+1. ✅ Beslissingen genomen
+2. Check externe builder API toegang
+3. Budget goedkeuring (€66K)
+4. Beta testers rekruteren (5 agencies)
+5. OpenAI Realtime API POC (2 dagen)
+6. Developers sourcing
+
+### 📈 Expected Results Year 1:
+- **100 agents** × €299/maand = **€358.800 revenue**
+- Kosten: €96.600 (€8.050 × 12)
+- **Profit Year 1: €262.200**
+
+---
+
+**Status:** ✅ Beslissingen compleet → Ready to execute
+**Next:** Budget goedkeuring + tech spike
 **Owner:** TBD
+**Start development:** Week van 20 januari 2026
 
 ---
 
 *Gemaakt: 8 januari 2026*
-*Laatste update: 8 januari 2026*
+*Laatste update: 9 januari 2026*
