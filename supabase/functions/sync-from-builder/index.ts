@@ -5,7 +5,7 @@ import { jwtVerify } from "npm:jose@5";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Max-Age": "86400",
 };
 
@@ -85,20 +85,28 @@ Deno.serve(async (req: Request) => {
         trip_data_keys: Object.keys(body),
       });
 
-      const { id, page_id, title, description, destinations, duration_days, price_from,
-              images, tags, gpt_instructions, is_featured, featured_priority, is_published } = body;
+      const { trip_id, page_id, title, description, destinations, duration_days, price_from,
+              images, tags, gpt_instructions, is_featured, featured_priority } = body;
 
-      let tripId = id;
-      let existingTrip = null;
+      if (!trip_id) {
+        return new Response(
+          JSON.stringify({ error: "trip_id is required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
-      if (tripId) {
-        const { data: trip } = await supabase
-          .from("trips")
-          .select("id, share_token")
-          .eq("id", tripId)
-          .maybeSingle();
+      const { data: existingTrip, error: fetchError } = await supabase
+        .from("trips")
+        .select("id")
+        .eq("id", trip_id)
+        .maybeSingle();
 
-        existingTrip = trip;
+      if (fetchError) {
+        console.error("[sync-from-builder] Error checking existing trip:", fetchError);
+        return new Response(
+          JSON.stringify({ error: "Database error checking trip" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
 
       const tripData = {
@@ -113,17 +121,16 @@ Deno.serve(async (req: Request) => {
         is_featured: is_featured || false,
         featured_priority: featured_priority || null,
         page_id: page_id || null,
-        status: 'published',
         updated_at: new Date().toISOString(),
       };
 
       if (existingTrip) {
-        console.log("[sync-from-builder] Updating existing trip:", tripId);
+        console.log("[sync-from-builder] Updating existing trip:", trip_id);
 
         const { data: updatedTrip, error: updateError } = await supabase
           .from("trips")
           .update(tripData)
-          .eq("id", tripId)
+          .eq("id", trip_id)
           .select()
           .single();
 
@@ -138,9 +145,9 @@ Deno.serve(async (req: Request) => {
         const { error: assignmentError } = await supabase
           .from("trip_brand_assignments")
           .upsert({
-            trip_id: updatedTrip.id,
+            trip_id: trip_id,
             brand_id: payload.brand_id,
-            is_published: is_published !== undefined ? is_published : true,
+            is_published: false,
             updated_at: new Date().toISOString(),
           }, {
             onConflict: "trip_id,brand_id"
@@ -150,26 +157,10 @@ Deno.serve(async (req: Request) => {
           console.error("[sync-from-builder] Error updating assignment:", assignmentError);
         }
 
-        console.log("[sync-from-builder] Assignment updated:", {
-          trip_id: updatedTrip.id,
-          brand_id: payload.brand_id,
-          is_published: is_published !== undefined ? is_published : true,
-        });
-
-        const { data: brandData } = await supabase
-          .from("brands")
-          .select("slug")
-          .eq("id", payload.brand_id)
-          .maybeSingle();
-
-        const brandSlug = brandData?.slug || "www";
-        const publicUrl = `https://${brandSlug}.ai-travelstudio.nl/trip/${updatedTrip.id}`;
-
         return new Response(
           JSON.stringify({
             success: true,
             trip: updatedTrip,
-            publicUrl: publicUrl,
             message: "Trip updated successfully"
           }),
           {
@@ -178,22 +169,16 @@ Deno.serve(async (req: Request) => {
           }
         );
       } else {
-        console.log("[sync-from-builder] Creating new trip (Supabase will generate UUID)");
-
-        const insertData: any = {
-          brand_id: payload.brand_id,
-          ...tripData,
-          created_at: new Date().toISOString(),
-        };
-
-        if (tripId) {
-          insertData.id = tripId;
-          insertData.share_token = tripId;
-        }
+        console.log("[sync-from-builder] Creating new trip:", trip_id);
 
         const { data: newTrip, error: insertError } = await supabase
           .from("trips")
-          .insert(insertData)
+          .insert({
+            id: trip_id,
+            brand_id: payload.brand_id,
+            ...tripData,
+            created_at: new Date().toISOString(),
+          })
           .select()
           .single();
 
@@ -205,22 +190,12 @@ Deno.serve(async (req: Request) => {
           );
         }
 
-        if (!tripId && newTrip.share_token !== newTrip.id) {
-          console.log("[sync-from-builder] Setting share_token to match trip ID");
-          await supabase
-            .from("trips")
-            .update({ share_token: newTrip.id })
-            .eq("id", newTrip.id);
-
-          newTrip.share_token = newTrip.id;
-        }
-
         const { error: assignmentError } = await supabase
           .from("trip_brand_assignments")
           .insert({
-            trip_id: newTrip.id,
+            trip_id: trip_id,
             brand_id: payload.brand_id,
-            is_published: is_published !== undefined ? is_published : true,
+            is_published: false,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           });
@@ -229,26 +204,10 @@ Deno.serve(async (req: Request) => {
           console.error("[sync-from-builder] Error creating assignment:", assignmentError);
         }
 
-        console.log("[sync-from-builder] Assignment created:", {
-          trip_id: newTrip.id,
-          brand_id: payload.brand_id,
-          is_published: is_published !== undefined ? is_published : true,
-        });
-
-        const { data: brandData } = await supabase
-          .from("brands")
-          .select("slug")
-          .eq("id", payload.brand_id)
-          .maybeSingle();
-
-        const brandSlug = brandData?.slug || "www";
-        const publicUrl = `https://${brandSlug}.ai-travelstudio.nl/trip/${newTrip.id}`;
-
         return new Response(
           JSON.stringify({
             success: true,
             trip: newTrip,
-            publicUrl: publicUrl,
             message: "Trip created successfully"
           }),
           {

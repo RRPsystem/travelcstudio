@@ -1,5 +1,4 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { deductCredits } from '../_shared/credits.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -33,17 +32,6 @@ interface GenerateContentRequest {
     maxTokens?: number;
     model?: string;
     systemPrompt?: string;
-  };
-  structuredGeneration?: {
-    name: string;
-    introWords?: number;
-    highlights?: number;
-    attractions?: number;
-    restaurants?: number;
-    hotels?: number;
-    language?: string;
-    brandId?: string;
-    userId?: string;
   };
 }
 
@@ -81,33 +69,17 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const authHeader = req.headers.get('Authorization');
-    let userId: string | null = null;
-
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      const { data: { user } } = await supabase.auth.getUser(token);
-      userId = user?.id || null;
-    }
-
     const { data: settings } = await supabase
       .from('api_settings')
       .select('api_key')
       .eq('provider', 'OpenAI')
       .maybeSingle();
 
-    let openaiApiKey = settings?.api_key;
-
-    if (!openaiApiKey) {
-      openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-      if (openaiApiKey) {
-        console.log('⚠️ Using system-wide OPENAI_API_KEY fallback');
-      }
-    }
-
-    if (!openaiApiKey) {
+    if (!settings?.api_key) {
       throw new Error('OpenAI API key not configured');
     }
+
+    const openaiApiKey = settings.api_key;
 
     const { data: gptModel } = await supabase
       .from('gpt_models')
@@ -477,9 +449,6 @@ Deno.serve(async (req: Request) => {
     const getSystemPrompt = (contentType: string) => {
       const basePrompts: Record<string, string> = {
         destination: `Je bent een professionele reisschrijver die boeiende bestemmingsteksten schrijft over {DESTINATION}. Schrijf in {WRITING_STYLE} stijl voor {VACATION_TYPE} reizigers. Gebruik actuele informatie en maak de tekst aantrekkelijk.`,
-        structured_destination: `Je bent een professionele reisschrijver die complete bestemmingscontent genereert. Genereer content in STRICT JSON format zonder markdown formatting. Output moet ALLEEN valid JSON zijn zonder extra tekst.`,
-        structured_trip: `Je bent een reisorganisatie expert die complete reis content genereert. Genereer content in STRICT JSON format zonder markdown formatting. Output moet ALLEEN valid JSON zijn zonder extra tekst.`,
-        structured_news: `Je bent een professionele journalist die nieuwsartikelen schrijft. Genereer content in STRICT JSON format zonder markdown formatting. Output moet ALLEEN valid JSON zijn zonder extra tekst.`,`
         route: `Je bent een enthousiaste reisbuddy die routes tot een beleving maakt. {ROUTE_TYPE_INSTRUCTION}
 
 FOCUS OP BELEVING, NIET OP NAVIGATIE:
@@ -519,182 +488,6 @@ STIJL:
 
       return systemPrompt;
     };
-
-    const generateStructuredContent = async (structuredReq: any) => {
-      const { name, introWords = 200, highlights = 10, attractions = 5, restaurants = 2, hotels = 3, language = 'nl', brandId, userId } = structuredReq;
-
-      const { data: brandVoice } = brandId ? await supabase
-        .from('brand_voice_settings')
-        .select('*')
-        .eq('brand_id', brandId)
-        .maybeSingle() : { data: null };
-
-      const voiceInstructions = brandVoice ? `
-
-BRAND VOICE:
-- Tone: ${brandVoice.tone_of_voice}
-- Target Audience: ${brandVoice.target_audience}
-- Key Phrases: ${brandVoice.key_phrases?.join(', ')}
-- Writing Style: ${brandVoice.writing_style}` : '';
-
-      const structuredPrompt = `Genereer complete content voor de bestemming: ${name}
-
-Genereer een JSON object met de volgende structuur (GEEN markdown, ALLEEN JSON):
-
-{
-  "intro": "${introWords} woorden professionele introductie over ${name}",
-  "highlights": ["${highlights} korte highlights (elk 5-10 woorden)"],
-  "attractions": [
-    {
-      "name": "Naam van bezienswaardigheid",
-      "description": "Beschrijving 50-100 woorden",
-      "location": "Locatie/wijk",
-      "estimated_price": "€10-20",
-      "rating": 4.5,
-      "best_time": "Beste tijd om te bezoeken"
-    }
-    // ${attractions} bezienswaardigheden totaal
-  ],
-  "restaurants": [
-    {
-      "name": "Restaurant naam",
-      "cuisine": "Type keuken",
-      "description": "Beschrijving 30-50 woorden",
-      "price_range": "€€",
-      "specialty": "Specialiteit",
-      "rating": 4.3
-    }
-    // ${restaurants} restaurants totaal
-  ],
-  "hotels": [
-    {
-      "name": "Hotel naam",
-      "type": "Type accommodatie",
-      "description": "Beschrijving 30-50 woorden",
-      "price_range": "€€€",
-      "amenities": ["voorziening1", "voorziening2"],
-      "rating": 4.7
-    }
-    // ${hotels} hotels totaal
-  ],
-  "best_time_to_visit": "Beste reisperiode met uitleg",
-  "getting_around": "Vervoer tips en opties",
-  "budget_tips": ["5 concrete budget tips"],
-  "local_customs": "Culturele tips en lokale gewoonten",
-  "weather": "Klimaat informatie per seizoen",
-  "language_tips": "Handige zinnen en taal tips"
-}
-
-Schrijf in het ${language === 'nl' ? 'Nederlands' : language === 'en' ? 'Engels' : language === 'de' ? 'Duits' : 'Nederlands'}.
-Gebruik actuele en accurate informatie.
-Wees specifiek en concreet met namen en locaties.${voiceInstructions}
-
-Output ALLEEN het JSON object, geen extra tekst, geen markdown formatting.`;
-
-      const cacheKey = `${contentType}_${name}_${language}_${introWords}_${highlights}_${attractions}`;
-      const promptHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(structuredPrompt))
-        .then(hash => Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join(''));
-
-      const { data: cached } = await supabase
-        .from('ai_content_cache')
-        .select('*')
-        .eq('cache_key', cacheKey)
-        .eq('prompt_hash', promptHash)
-        .gt('expires_at', new Date().toISOString())
-        .maybeSingle();
-
-      if (cached) {
-        console.log('✅ Using cached content');
-        await supabase.rpc('increment_cache_usage', { cache_id: cached.id });
-        return cached.generated_content;
-      }
-
-      console.log('🤖 Generating new content with OpenAI');
-
-      if (userId) {
-        const creditResult = await deductCredits(
-          supabase,
-          userId,
-          'ai_content_generation',
-          `AI content generatie voor ${name}`,
-          { destination: name, contentType }
-        );
-
-        if (!creditResult.success) {
-          throw new Error(creditResult.error || 'Failed to deduct credits');
-        }
-      }
-
-      const { data: settings } = await supabase
-        .from('api_settings')
-        .select('api_key')
-        .eq('provider', 'OpenAI')
-        .maybeSingle();
-
-      if (!settings?.api_key) {
-        throw new Error('OpenAI API key not configured');
-      }
-
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${settings.api_key}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: [
-            { role: 'system', content: getSystemPrompt('structured_destination') },
-            { role: 'user', content: structuredPrompt }
-          ],
-          temperature: 0.7,
-          max_tokens: 4000,
-          response_format: { type: 'json_object' }
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`OpenAI API error: ${error}`);
-      }
-
-      const data = await response.json();
-      const content = JSON.parse(data.choices[0].message.content);
-      const tokensUsed = data.usage?.total_tokens || 0;
-      const cost = (tokensUsed / 1000) * 0.03;
-
-      await supabase.from('ai_content_cache').insert({
-        content_type: contentType,
-        cache_key: cacheKey,
-        prompt_hash: promptHash,
-        generated_content: content
-      });
-
-      if (brandId && userId) {
-        await supabase.from('ai_content_generations').insert({
-          brand_id: brandId,
-          user_id: userId,
-          content_type: contentType,
-          prompt_settings: structuredReq,
-          generated_content: content,
-          tokens_used: tokensUsed,
-          cost_usd: cost,
-          status: 'completed'
-        });
-      }
-
-      return content;
-    };
-
-    if (body.structuredGeneration) {
-      const structuredContent = await generateStructuredContent(body.structuredGeneration);
-      return new Response(
-        JSON.stringify({ success: true, content: structuredContent }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
 
     let userPrompt = prompt;
 
@@ -763,29 +556,6 @@ Output ALLEEN het JSON object, geen extra tekst, geen markdown formatting.`;
       console.log('[GPT] Max tokens:', maxTokensToUse);
     } else {
       console.log('[GPT] No operator instructions found, using fallback prompt');
-    }
-
-    if (userId) {
-      const creditResult = await deductCredits(
-        supabase,
-        userId,
-        'ai_content_generation',
-        `AI content: ${contentType}`,
-        { contentType, prompt: prompt.substring(0, 100) }
-      );
-
-      if (!creditResult.success) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: creditResult.error || 'Failed to deduct credits'
-          }),
-          {
-            status: 402,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
-        );
-      }
     }
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {

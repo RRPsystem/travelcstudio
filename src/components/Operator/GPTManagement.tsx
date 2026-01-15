@@ -266,17 +266,22 @@ export function GPTManagement() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          {!supabase && (
-            <div className="text-orange-600 text-sm">
-              Using localStorage -
-              <button
-                onClick={() => setShowSupabaseSetup(true)}
-                className="underline hover:text-orange-700 ml-1"
-              >
-                setup Supabase for multi-user support
-              </button>
-            </div>
-          )}
+          <h2 className="text-2xl font-bold text-gray-900">GPT Model Management</h2>
+          <p className="text-gray-600">
+            Configure and manage custom GPT models for different content types
+            {!supabase && (
+              <span className="text-orange-600 ml-2">
+                (Using localStorage - 
+                <button 
+                  onClick={() => setShowSupabaseSetup(true)}
+                  className="underline hover:text-orange-700 ml-1"
+                >
+                  setup Supabase for multi-user support
+                </button>
+                )
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex items-center space-x-3">
           <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">

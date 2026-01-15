@@ -14,7 +14,6 @@ export function BrandForm({ onBack, onSuccess, editingBrand }: BrandFormProps) {
     slug: '',
     description: '',
     business_type: 'custom_travel_agency',
-    website_type: 'wordpress',
     primary_color: '#3B82F6',
     secondary_color: '#6B7280',
     contact_person: '',
@@ -46,7 +45,6 @@ export function BrandForm({ onBack, onSuccess, editingBrand }: BrandFormProps) {
         slug: editingBrand.slug || '',
         description: editingBrand.description || '',
         business_type: editingBrand.business_type || 'custom_travel_agency',
-        website_type: editingBrand.website_type || 'wordpress',
         primary_color: editingBrand.primary_color || '#3B82F6',
         secondary_color: editingBrand.secondary_color || '#6B7280',
         contact_person: editingBrand.contact_person || '',
@@ -190,11 +188,11 @@ export function BrandForm({ onBack, onSuccess, editingBrand }: BrandFormProps) {
   };
 
   return (
-    <div className="flex-1 bg-gray-50 flex flex-col h-screen overflow-hidden">
+    <div className="flex-1 bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b px-6 py-4 flex-shrink-0">
+      <div className="bg-white border-b px-6 py-4">
         <div className="flex items-center space-x-4">
-          <button
+          <button 
             onClick={onBack}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
@@ -205,8 +203,8 @@ export function BrandForm({ onBack, onSuccess, editingBrand }: BrandFormProps) {
               {isEditing ? 'Brand Bewerken' : 'Nieuwe Brand Aanmaken'}
             </h1>
             <p className="text-sm text-gray-600">
-              {isEditing
-                ? 'Wijzig de gegevens van de travel agency brand'
+              {isEditing 
+                ? 'Wijzig de gegevens van de travel agency brand' 
                 : 'Vul de basisgegevens in voor de nieuwe travel agency brand'
               }
             </p>
@@ -215,8 +213,8 @@ export function BrandForm({ onBack, onSuccess, editingBrand }: BrandFormProps) {
       </div>
 
       {/* Form */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <form onSubmit={handleSubmit} className="space-y-8 max-w-4xl mx-auto pb-8">
+      <div className="p-6 max-w-4xl">
+        <form onSubmit={handleSubmit} className="space-y-8">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
               {error}
@@ -319,50 +317,6 @@ export function BrandForm({ onBack, onSuccess, editingBrand }: BrandFormProps) {
                     className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   />
                 </div>
-              </div>
-            </div>
-
-            {/* Website Type / Builder */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Website Type / Builder <span className="text-red-500">*</span>
-              </label>
-              <p className="text-sm text-gray-600 mb-3">
-                Bepaalt welk content systeem gebruikt wordt voor nieuwsberichten, reizen en bestemmingen
-              </p>
-              <div className="space-y-2">
-                <label className="flex items-start p-4 border-2 rounded-lg cursor-pointer hover:border-orange-500 transition-colors" style={{
-                  borderColor: formData.website_type === 'ai_builder' ? '#EA580C' : '#E5E7EB'
-                }}>
-                  <input
-                    type="radio"
-                    name="website_type"
-                    value="ai_builder"
-                    checked={formData.website_type === 'ai_builder'}
-                    onChange={(e) => handleInputChange('website_type', e.target.value)}
-                    className="mt-1 mr-3"
-                  />
-                  <div>
-                    <div className="font-medium text-gray-900">A) AI Website Builder</div>
-                    <div className="text-sm text-gray-600">Alle content via AI systeem (nieuwsberichten, reizen, bestemmingen)</div>
-                  </div>
-                </label>
-                <label className="flex items-start p-4 border-2 rounded-lg cursor-pointer hover:border-orange-500 transition-colors" style={{
-                  borderColor: formData.website_type === 'wordpress' ? '#EA580C' : '#E5E7EB'
-                }}>
-                  <input
-                    type="radio"
-                    name="website_type"
-                    value="wordpress"
-                    checked={formData.website_type === 'wordpress'}
-                    onChange={(e) => handleInputChange('website_type', e.target.value)}
-                    className="mt-1 mr-3"
-                  />
-                  <div>
-                    <div className="font-medium text-gray-900">B) WordPress Builder</div>
-                    <div className="text-sm text-gray-600">Alle content via WordPress (nieuwsberichten, reizen, bestemmingen)</div>
-                  </div>
-                </label>
               </div>
             </div>
 
