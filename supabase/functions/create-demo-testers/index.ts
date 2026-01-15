@@ -23,9 +23,9 @@ Deno.serve(async (req) => {
     );
 
     const timestamp = Date.now();
-    const brandEmail = `demo-brand-${timestamp}@test.com`;
-    const agentEmail = `demo-agent-${timestamp}@test.com`;
-    const password = 'demo123';
+    const brandEmail = `tester-brand-${timestamp}@test.com`;
+    const agentEmail = `tester-agent-${timestamp}@test.com`;
+    const password = 'test123';
 
     const { data: brandUser, error: brandError } = await supabaseAdmin.auth.admin.createUser({
       email: brandEmail,

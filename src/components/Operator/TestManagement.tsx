@@ -287,7 +287,7 @@ export default function TestManagement() {
   };
 
   const createDemoTesters = async () => {
-    if (!confirm('Wil je 2 demo testers aanmaken (1 brand + 1 agent)?')) {
+    if (!confirm('Wil je 2 testers aanmaken (1 brand + 1 agent)?')) {
       return;
     }
 
@@ -303,15 +303,15 @@ export default function TestManagement() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create demo testers');
+        throw new Error('Failed to create testers');
       }
 
       const data = await response.json();
       await loadTestData();
-      alert(`Demo testers aangemaakt!\n\nBrand: ${data.brand.email}\nAgent: ${data.agent.email}\nWachtwoord: demo123`);
+      alert(`Testers aangemaakt!\n\nBrand: ${data.brand.email}\nAgent: ${data.agent.email}\nWachtwoord: test123`);
     } catch (error) {
-      console.error('Error creating demo testers:', error);
-      alert('Er ging iets mis bij het aanmaken van demo testers');
+      console.error('Error creating testers:', error);
+      alert('Er ging iets mis bij het aanmaken van testers');
     } finally {
       setLoading(false);
     }
@@ -683,7 +683,7 @@ export default function TestManagement() {
                     disabled={loading}
                     className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 transition-colors"
                   >
-                    Maak Demo Testers Aan
+                    Maak Testers Aan
                   </button>
                 </div>
               )}
