@@ -992,6 +992,110 @@ Schrijf het in een gezellige, persoonlijke toon alsof je een vriend helpt. Gebru
   }
 }
 
+// WordPress Service
+export class WordPressService {
+  private apiKeyPromise: Promise<string> | null = null;
+  private wordpressUrl: string = '';
+
+  async getWordPressSource(): Promise<{ url: string; api_key?: string } | null> {
+    if (this.wordpressUrl) {
+      return { url: this.wordpressUrl };
+    }
+
+    if (!this.apiKeyPromise) {
+      this.apiKeyPromise = (async () => {
+        try {
+          const { data, error } = await supabase
+            .from('wordpress_sources')
+            .select('url, api_key')
+            .eq('is_active', true)
+            .single();
+
+          if (error) throw error;
+
+          this.wordpressUrl = data.url;
+          return data;
+        } catch (error) {
+          console.error('Error loading WordPress source:', error);
+          return null;
+        }
+      })();
+    }
+
+    return this.apiKeyPromise;
+  }
+
+  async fetchTemplate(wpPageId: string): Promise<any> {
+    const source = await this.getWordPressSource();
+    if (!source) {
+      throw new Error('WordPress source not configured');
+    }
+
+    const url = `${source.url}/wp-json/wp/v2/pages/${wpPageId}`;
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json'
+    };
+
+    if (source.api_key) {
+      headers['Authorization'] = `Bearer ${source.api_key}`;
+    }
+
+    const response = await fetch(url, { headers });
+
+    if (!response.ok) {
+      throw new Error(`WordPress API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    return {
+      id: data.id,
+      title: data.title.rendered,
+      content: data.content.rendered,
+      excerpt: data.excerpt?.rendered,
+      featured_media_url: data.featured_media_url,
+      link: data.link
+    };
+  }
+
+  async fetchAllTemplates(category?: string): Promise<any[]> {
+    const source = await this.getWordPressSource();
+    if (!source) {
+      throw new Error('WordPress source not configured');
+    }
+
+    let url = `${source.url}/wp-json/wp/v2/pages?per_page=100`;
+    if (category) {
+      url += `&categories=${category}`;
+    }
+
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json'
+    };
+
+    if (source.api_key) {
+      headers['Authorization'] = `Bearer ${source.api_key}`;
+    }
+
+    const response = await fetch(url, { headers });
+
+    if (!response.ok) {
+      throw new Error(`WordPress API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    return data.map((page: any) => ({
+      id: page.id,
+      title: page.title.rendered,
+      excerpt: page.excerpt?.rendered,
+      featured_media_url: page.featured_media_url,
+      link: page.link
+    }));
+  }
+}
+
 // Export singleton instances
 export const aiTravelService = new AITravelService();
 export const edgeAIService = new EdgeFunctionAIService();
+export const wordpressService = new WordPressService();

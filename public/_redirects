@@ -1,8 +1,14 @@
+# Subdomain proxy - check hostname
+/:subdomain.ai-travelstudio.nl/* /api/proxy/subdomain?path=:splat 200
+
 # API redirects
-/api/* https://nquhuzvfqmnyghbxrurz.supabase.co/functions/v1/:splat 200
+/api/* https://huaaogdxxdcakxryecnw.supabase.co/functions/v1/:splat 200
 
 # Don't redirect assets
 /assets/* /assets/:splat 200
+
+# Don't redirect text files
+/*.txt /:splat.txt 200
 
 # SPA fallback - must be last
 /* /index.html 200

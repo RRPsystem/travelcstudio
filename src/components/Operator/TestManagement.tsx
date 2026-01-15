@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   CheckCircle, XCircle, AlertCircle, Clock, ThumbsUp, Users,
   RefreshCw, Play, Pause, ChevronDown, ChevronRight, MessageSquare,
-  Star, Save
+  Star, Save, UserPlus, UserCheck, Trash2
 } from 'lucide-react';
 
 interface TestFeature {
@@ -44,6 +44,13 @@ interface FeatureStatus {
   operator_notes: string;
 }
 
+interface Tester {
+  id: string;
+  email: string;
+  role: string;
+  assignmentCount: number;
+}
+
 export default function TestManagement() {
   const { user } = useAuth();
   const [rounds, setRounds] = useState<TestRound[]>([]);
@@ -54,6 +61,8 @@ export default function TestManagement() {
   const [expandedFeatures, setExpandedFeatures] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [testers, setTesters] = useState<Tester[]>([]);
+  const [showTesterManagement, setShowTesterManagement] = useState(true);
 
   useEffect(() => {
     loadTestData();
@@ -77,6 +86,8 @@ export default function TestManagement() {
         setLoading(false);
         return;
       }
+
+      await loadTesters(activeRoundData.id);
 
       const { data: featuresData } = await supabase
         .from('test_features')
@@ -124,6 +135,183 @@ export default function TestManagement() {
 
     } catch (error) {
       console.error('Error loading test data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadTesters = async (roundId: string) => {
+    try {
+      const { data: usersData } = await supabase
+        .from('users')
+        .select('id, email, role')
+        .or('role.eq.brand,role.eq.agent')
+        .order('email');
+
+      if (!usersData) return;
+
+      const { data: assignmentsData } = await supabase
+        .from('test_assignments')
+        .select('user_id, feature_id')
+        .eq('round_id', roundId);
+
+      const assignmentCounts = new Map<string, number>();
+      assignmentsData?.forEach(assignment => {
+        const count = assignmentCounts.get(assignment.user_id) || 0;
+        assignmentCounts.set(assignment.user_id, count + 1);
+      });
+
+      const testersWithCounts: Tester[] = usersData.map(u => ({
+        id: u.id,
+        email: u.email,
+        role: u.role,
+        assignmentCount: assignmentCounts.get(u.id) || 0
+      }));
+
+      setTesters(testersWithCounts);
+    } catch (error) {
+      console.error('Error loading testers:', error);
+    }
+  };
+
+  const assignTester = async (userId: string, userRole: string) => {
+    if (!activeRound) return;
+
+    setSaving(userId);
+
+    try {
+      const relevantCategories = userRole === 'brand'
+        ? ['brand', 'shared']
+        : ['agent', 'shared'];
+
+      const relevantFeatures = features.filter(f =>
+        relevantCategories.includes(f.category)
+      );
+
+      const assignments = relevantFeatures.map(feature => ({
+        feature_id: feature.id,
+        user_id: userId,
+        round_id: activeRound.id,
+        status: 'pending'
+      }));
+
+      const { error } = await supabase
+        .from('test_assignments')
+        .upsert(assignments, {
+          onConflict: 'feature_id,user_id,round_id',
+          ignoreDuplicates: false
+        });
+
+      if (error) throw error;
+
+      await loadTesters(activeRound.id);
+      alert(`✓ Testomgeving geactiveerd!\n\n${relevantFeatures.length} features toegewezen aan deze gebruiker.\n\nDe gebruiker kan nu inloggen en de testvragen zien in hun dashboard.`);
+    } catch (error) {
+      console.error('Error assigning tester:', error);
+      alert('Er ging iets mis bij het toewijzen van de tester');
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const removeTester = async (userId: string) => {
+    if (!activeRound) return;
+
+    if (!confirm('Weet je zeker dat je deze tester wilt verwijderen? Alle feedback blijft behouden.')) {
+      return;
+    }
+
+    setSaving(userId);
+
+    try {
+      const { error } = await supabase
+        .from('test_assignments')
+        .delete()
+        .eq('user_id', userId)
+        .eq('round_id', activeRound.id);
+
+      if (error) throw error;
+
+      await loadTesters(activeRound.id);
+      alert('Tester verwijderd!');
+    } catch (error) {
+      console.error('Error removing tester:', error);
+      alert('Er ging iets mis bij het verwijderen van de tester');
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const resetRound = async () => {
+    if (!activeRound) return;
+
+    if (!confirm('Weet je zeker dat je deze test ronde wilt resetten? Alle assignments en feedback worden verwijderd en de status wordt teruggezet!')) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await supabase
+        .from('test_feedback')
+        .delete()
+        .eq('round_id', activeRound.id);
+
+      await supabase
+        .from('test_assignments')
+        .delete()
+        .eq('round_id', activeRound.id);
+
+      await supabase
+        .from('test_feature_status')
+        .delete()
+        .eq('round_id', activeRound.id);
+
+      await supabase
+        .from('test_rounds')
+        .update({
+          status: 'pending',
+          start_date: null,
+          end_date: null
+        })
+        .eq('id', activeRound.id);
+
+      await loadTestData();
+      alert('Test ronde gereset!');
+    } catch (error) {
+      console.error('Error resetting round:', error);
+      alert('Er ging iets mis bij het resetten van de ronde');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createDemoTesters = async () => {
+    if (!confirm('Wil je 2 testers aanmaken (1 brand + 1 agent)?')) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-demo-testers`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create testers');
+      }
+
+      const data = await response.json();
+      await loadTestData();
+      alert(`Testers aangemaakt!\n\nBrand: ${data.brand.email}\nAgent: ${data.agent.email}\nWachtwoord: test123`);
+    } catch (error) {
+      console.error('Error creating testers:', error);
+      alert('Er ging iets mis bij het aanmaken van testers');
     } finally {
       setLoading(false);
     }
@@ -291,17 +479,26 @@ export default function TestManagement() {
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Test Management</h1>
-            <p className="text-gray-600 mt-1">Overzicht van alle test rondes en feedback</p>
+          <h1 className="text-2xl font-bold text-gray-900">Test Management</h1>
+          <div className="flex gap-2">
+            {activeRound && (
+              <button
+                onClick={resetRound}
+                disabled={loading}
+                className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Reset Ronde
+              </button>
+            )}
+            <button
+              onClick={loadTestData}
+              className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Vernieuwen
+            </button>
           </div>
-          <button
-            onClick={loadTestData}
-            className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Vernieuwen
-          </button>
         </div>
 
         <div className="grid grid-cols-4 gap-4 mb-6">
@@ -384,6 +581,125 @@ export default function TestManagement() {
           </div>
         </div>
       </div>
+
+      {activeRound && showTesterManagement && (
+        <div className="bg-white rounded-lg shadow">
+          <div className="p-6 border-b">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Activeer Testers</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Selecteer bestaande gebruikers en activeer hun test omgeving
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  Na activering zien gebruikers hun testvragen in hun eigen dashboard
+                </p>
+              </div>
+              <button
+                onClick={() => setShowTesterManagement(false)}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                Verberg
+              </button>
+            </div>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {testers.map(tester => (
+                <div
+                  key={tester.id}
+                  className={`border-2 rounded-lg p-4 transition-all ${
+                    tester.assignmentCount > 0
+                      ? 'border-green-300 bg-green-50'
+                      : 'border-gray-200 bg-white'
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        {tester.assignmentCount > 0 ? (
+                          <UserCheck className="w-5 h-5 text-green-600 flex-shrink-0" />
+                        ) : (
+                          <Users className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                        )}
+                        <span className="font-medium text-gray-900 truncate">{tester.email}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`text-xs px-2 py-0.5 rounded ${
+                          tester.role === 'brand' ? 'bg-purple-100 text-purple-700' :
+                          tester.role === 'agent' ? 'bg-blue-100 text-blue-700' :
+                          tester.role === 'operator' ? 'bg-green-100 text-green-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {tester.role.charAt(0).toUpperCase() + tester.role.slice(1)}
+                        </span>
+                        {tester.assignmentCount > 0 && (
+                          <span className="text-xs text-green-600 font-medium">
+                            {tester.assignmentCount} features
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    {tester.assignmentCount === 0 ? (
+                      <button
+                        onClick={() => assignTester(tester.id, tester.role)}
+                        disabled={saving === tester.id}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 text-sm transition-colors"
+                      >
+                        {saving === tester.id ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <UserPlus className="w-4 h-4" />
+                        )}
+                        {saving === tester.id ? 'Bezig...' : 'Activeer Testomgeving'}
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => assignTester(tester.id, tester.role)}
+                          disabled={saving === tester.id}
+                          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400 text-sm transition-colors"
+                        >
+                          {saving === tester.id ? (
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-4 h-4" />
+                          )}
+                          Update
+                        </button>
+                        <button
+                          onClick={() => removeTester(tester.id)}
+                          disabled={saving === tester.id}
+                          className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:bg-gray-400 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {testers.length === 0 && (
+                <div className="col-span-full text-center py-8">
+                  <p className="text-gray-500">Geen gebruikers gevonden</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!showTesterManagement && activeRound && (
+        <button
+          onClick={() => setShowTesterManagement(true)}
+          className="w-full py-3 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+        >
+          <UserPlus className="w-5 h-5" />
+          Toon Tester Management
+        </button>
+      )}
 
       {activeRound && (
         <>

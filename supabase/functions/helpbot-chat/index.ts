@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
+import { deductCredits } from '../_shared/credits.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -77,7 +78,16 @@ Deno.serve(async (req: Request) => {
       .eq('service_name', 'OpenAI API')
       .maybeSingle();
 
-    if (settingsError || !apiSettings?.is_active || !apiSettings?.api_key) {
+    let openaiKey = apiSettings?.api_key;
+
+    if ((!openaiKey || !apiSettings?.is_active) && !settingsError) {
+      openaiKey = Deno.env.get('OPENAI_API_KEY');
+      if (openaiKey) {
+        console.log('⚠️ Using system-wide OPENAI_API_KEY fallback');
+      }
+    }
+
+    if (!openaiKey) {
       return new Response(
         JSON.stringify({ error: 'OpenAI API key not configured or inactive' }),
         {
@@ -100,11 +110,29 @@ Deno.serve(async (req: Request) => {
       messagesWithSystemPrompt.unshift({ role: 'system', content: systemPrompt });
     }
 
+    const creditResult = await deductCredits(
+      supabase,
+      user.id,
+      'ai_chat_message',
+      'HelpBot chat bericht',
+      { messageCount: messages.length }
+    );
+
+    if (!creditResult.success) {
+      return new Response(
+        JSON.stringify({ error: creditResult.error || 'Insufficient credits' }),
+        {
+          status: 402,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiSettings.api_key}`,
+        'Authorization': `Bearer ${openaiKey}`,
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',

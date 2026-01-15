@@ -1,34 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/supabase';
-import { openVideoGenerator, openTravelImport } from '../../lib/jwtHelper';
+import { openVideoGenerator, openTravelImport, openTripBuilder } from '../../lib/jwtHelper';
 import { AIContentGenerator } from './AIContentGenerator';
 import { BrandSettings } from './BrandSettings';
 import { HelpBot } from '../shared/HelpBot';
 import { NewsApproval } from './NewsApproval';
 import { DestinationApproval } from './DestinationApproval';
 import { TripApproval } from './TripApproval';
+import { TripManager } from './TripManager';
 import { PageManagement } from './PageManagement';
-import { NewPage } from './NewPage';
+import { QuickStart } from './QuickStart';
 import { AgentManagement } from './AgentManagement';
-import { MenuBuilder } from './MenuBuilder';
-import { FooterBuilder } from './FooterBuilder';
 import { SocialMediaConnector } from './SocialMediaConnector';
 import { SocialMediaManager } from './SocialMediaManager';
 import { TravelBroSetup } from '../TravelBro/TravelBroSetup';
-import { Users, Settings, Plus, Bot, Sparkles, Import as FileImport, ChevronDown, ChevronRight, LayoutGrid as Layout, FileText, Globe, Newspaper, MapPin, Plane, Share2, Map, ArrowRight, Menu, ClipboardCheck, Video, BookOpen } from 'lucide-react';
+import WordPressTemplateChooser from './WordPressTemplateChooser';
+import WordPressPageManager from './WordPressPageManager';
+import { Users, Settings, Plus, Bot, Sparkles, Import as FileImport, ChevronDown, ChevronRight, LayoutGrid as Layout, FileText, Globe, Newspaper, MapPin, Plane, Share2, Map, ArrowRight, Menu, ClipboardCheck, Video, BookOpen, Rocket, Wallet, Download } from 'lucide-react';
 import RoadmapBoard from './RoadmapBoard';
 import TestDashboard from '../Testing/TestDashboard';
+import CreditWallet from '../shared/CreditWallet';
 
 export function BrandDashboard() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isOperator, impersonationContext, resetContext, effectiveBrandId } = useAuth();
 
   const getInitialSection = () => {
     const hash = window.location.hash;
     if (hash.includes('/brand/content/news')) return 'nieuwsbeheer';
     if (hash.includes('/brand/website/pages')) return 'pages';
-    if (hash.includes('/brand/menu')) return 'menu';
-    if (hash.includes('/brand/footer')) return 'footer';
+    if (hash.includes('brand-settings')) return 'settings';
     return 'dashboard';
   };
 
@@ -36,7 +37,7 @@ export function BrandDashboard() {
     const hash = window.location.hash;
     return {
       showContentSubmenu: hash.includes('/brand/content/news'),
-      showWebsiteSubmenu: hash.includes('/brand/website/') || hash.includes('/brand/menu') || hash.includes('/brand/footer')
+      showWebsiteSubmenu: hash.includes('/brand/website/')
     };
   };
 
@@ -47,9 +48,10 @@ export function BrandDashboard() {
   const [showContentSubmenu, setShowContentSubmenu] = useState(initialSubmenus.showContentSubmenu);
   const [websites, setWebsites] = useState<any[]>([]);
   const [brandData, setBrandData] = useState<any>(null);
-  const [stats, setStats] = useState({ pages: 0, newsItems: 0, agents: 0 });
+  const [stats, setStats] = useState({ pages: 0, newsItems: 0, agents: 0, trips: 0 });
   const [newRoadmapCount, setNewRoadmapCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [isWordPressMode, setIsWordPressMode] = useState(false);
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -62,6 +64,9 @@ export function BrandDashboard() {
         console.log('Hash routing: Navigating to news section');
         setActiveSection('nieuwsbeheer');
         setShowContentSubmenu(true);
+      } else if (hash.includes('brand-settings')) {
+        console.log('Hash routing: Navigating to settings section');
+        setActiveSection('settings');
       }
     };
 
@@ -77,17 +82,24 @@ export function BrandDashboard() {
     if (activeSection === 'dashboard') {
       loadDashboardData();
     }
-  }, [activeSection, user?.brand_id]);
+  }, [activeSection, effectiveBrandId]);
+
+  useEffect(() => {
+    if (effectiveBrandId) {
+      loadWebsites();
+    }
+  }, [effectiveBrandId]);
 
   const loadDashboardData = async () => {
-    if (!user?.brand_id) return;
+    if (!effectiveBrandId) return;
     setLoading(true);
     try {
-      const [brandResult, websitesResult, newsResult, agentsResult] = await Promise.all([
-        db.supabase.from('brands').select('*').eq('id', user.brand_id).maybeSingle(),
-        db.supabase.from('websites').select('id', { count: 'exact' }).eq('brand_id', user.brand_id),
-        db.supabase.from('news_items').select('id', { count: 'exact' }).eq('brand_id', user.brand_id),
-        db.supabase.from('agents').select('id', { count: 'exact' }).eq('brand_id', user.brand_id)
+      const [brandResult, websitesResult, newsResult, agentsResult, tripsResult] = await Promise.all([
+        db.supabase.from('brands').select('*').eq('id', effectiveBrandId).maybeSingle(),
+        db.supabase.from('websites').select('id', { count: 'exact' }).eq('brand_id', effectiveBrandId),
+        db.supabase.from('news_items').select('id', { count: 'exact' }).eq('brand_id', effectiveBrandId),
+        db.supabase.from('agents').select('id', { count: 'exact' }).eq('brand_id', effectiveBrandId),
+        db.supabase.from('trips').select('id', { count: 'exact' }).eq('brand_id', effectiveBrandId)
       ]);
 
       let pagesCount = 0;
@@ -103,15 +115,19 @@ export function BrandDashboard() {
       const legacyPagesResult = await db.supabase
         .from('pages')
         .select('id', { count: 'exact' })
-        .eq('brand_id', user.brand_id)
+        .eq('brand_id', effectiveBrandId)
         .eq('is_template', false);
       pagesCount += legacyPagesResult.count || 0;
 
-      if (brandResult.data) setBrandData(brandResult.data);
+      if (brandResult.data) {
+        setBrandData(brandResult.data);
+        setIsWordPressMode(brandResult.data.content_system === 'wordpress');
+      }
       setStats({
         pages: pagesCount,
         newsItems: newsResult.count || 0,
-        agents: agentsResult.count || 0
+        agents: agentsResult.count || 0,
+        trips: tripsResult.count || 0
       });
 
       loadRoadmapNotifications();
@@ -141,10 +157,10 @@ export function BrandDashboard() {
   };
 
   const loadWebsites = async () => {
-    if (!user?.brand_id) return;
+    if (!effectiveBrandId) return;
     setLoading(true);
     try {
-      const data = await db.getWebsites(user.brand_id);
+      const data = await db.getWebsites(effectiveBrandId);
       setWebsites(data || []);
     } catch (error) {
       console.error('Error loading websites:', error);
@@ -155,7 +171,7 @@ export function BrandDashboard() {
   };
 
   React.useEffect(() => {
-    if (['new-page', 'pages'].includes(activeSection)) {
+    if (['new-page', 'pages', 'wordpress-template-chooser', 'wordpress-page-manager', 'wordpress-settings', 'wordpress-plugin'].includes(activeSection)) {
       setShowWebsiteSubmenu(true);
     }
     if (['ai-content', 'ai-travelbro', 'ai-import'].includes(activeSection)) {
@@ -167,20 +183,24 @@ export function BrandDashboard() {
     if (activeSection === 'websites') {
       loadWebsites();
     }
-  }, [activeSection, user?.brand_id]);
+  }, [activeSection, effectiveBrandId]);
 
   const sidebarItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Sparkles },
+    { id: 'credits', label: 'Mijn Credits', icon: Wallet },
     { id: 'agents', label: 'Agents', icon: Users },
     { id: 'social-media', label: 'Social Media', icon: Share2 },
     { id: 'testing', label: 'Test Dashboard', icon: ClipboardCheck },
   ];
 
-  const websiteManagementItems = [
-    { id: 'new-page', label: 'Nieuwe Pagina', icon: Plus },
+  const websiteManagementItems = isWordPressMode ? [
+    { id: 'wordpress-template-chooser', label: 'Template Kiezer', icon: Layout },
+    { id: 'wordpress-page-manager', label: 'Pagina Beheer', icon: FileText },
+    { id: 'wordpress-settings', label: 'WordPress Instellingen', icon: Settings },
+    { id: 'wordpress-plugin', label: 'Plugin Download', icon: Download },
+  ] : [
+    { id: 'new-page', label: 'Quick Start', icon: Rocket },
     { id: 'pages', label: 'Pagina Beheer', icon: FileText },
-    { id: 'menu', label: 'Menu Beheer', icon: Menu },
-    { id: 'footer', label: 'Footer Beheer', icon: Layout },
   ];
 
   const aiToolsItems = [
@@ -190,7 +210,11 @@ export function BrandDashboard() {
     { id: 'ai-video', label: 'AI Travel Video', icon: Video },
   ];
 
-  const contentItems = [
+  const contentItems = isWordPressMode ? [
+    { id: 'nieuwsbeheer', label: 'Nieuwsbeheer', icon: Newspaper },
+    { id: 'destinations', label: 'Bestemmingen', icon: MapPin },
+    { id: 'trips', label: 'Reizen', icon: Plane },
+  ] : [
     { id: 'nieuwsbeheer', label: 'Nieuwsbeheer', icon: Newspaper },
     { id: 'destinations', label: 'Bestemmingen', icon: MapPin },
     { id: 'trips', label: 'Reizen', icon: Plane },
@@ -234,9 +258,9 @@ export function BrandDashboard() {
 
   const quickActions = [
     {
-      title: 'Nieuwe Pagina',
-      description: 'Maak een nieuwe website pagina',
-      icon: Plus,
+      title: 'Quick Start',
+      description: 'Start snel met een nieuwe pagina of website',
+      icon: Rocket,
       color: 'from-blue-500 to-blue-600',
       action: () => setActiveSection('new-page')
     },
@@ -260,6 +284,29 @@ export function BrandDashboard() {
       icon: Bot,
       color: 'from-orange-500 to-orange-600',
       action: () => setActiveSection('ai-travelbro')
+    },
+    {
+      title: 'Nieuw Roadbook',
+      description: 'Maak een nieuwe roadbook aan',
+      icon: BookOpen,
+      color: 'from-orange-400 to-orange-500',
+      action: async () => {
+        if (!user?.brand_id || !user?.id) {
+          alert('Geen gebruiker gevonden');
+          return;
+        }
+        try {
+          const returnUrl = `${window.location.origin}#/brand/content/trips`;
+          const deeplink = await openTripBuilder(user.brand_id, user.id, {
+            tripType: 'roadbook',
+            returnUrl
+          });
+          window.open(deeplink, '_blank');
+        } catch (error) {
+          console.error('Error opening trip builder:', error);
+          alert('Fout bij openen van de builder');
+        }
+      }
     },
     {
       title: 'Nieuws Beheer',
@@ -310,14 +357,14 @@ export function BrandDashboard() {
               <button
                 onClick={() => setShowWebsiteSubmenu(!showWebsiteSubmenu)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                  ['pages'].includes(activeSection)
+                  ['quickstart', 'pages', 'new-page'].includes(activeSection)
                     ? 'bg-gray-700 text-white'
                     : 'text-gray-300 hover:text-white hover:bg-gray-700'
                 }`}
               >
                 <div className="flex items-center space-x-3">
                   <Globe size={20} />
-                  <span>Website Management</span>
+                  <span>{isWordPressMode ? 'WordPress Management' : 'Website Management'}</span>
                 </div>
                 {showWebsiteSubmenu ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
               </button>
@@ -487,6 +534,15 @@ export function BrandDashboard() {
             <BookOpen size={20} />
             <span>Travel Journaal</span>
           </button>
+          {isOperator && impersonationContext?.role === 'brand' && (
+            <button
+              onClick={() => resetContext()}
+              className="w-full flex items-center space-x-3 px-3 py-2 text-orange-400 hover:text-white hover:bg-orange-600 rounded-lg transition-colors font-medium"
+            >
+              <ArrowRight size={20} className="rotate-180" />
+              <span>Terug naar Operator</span>
+            </button>
+          )}
           <button
             onClick={signOut}
             className="w-full flex items-center space-x-3 px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
@@ -497,17 +553,20 @@ export function BrandDashboard() {
       </div>
 
       <div className="flex-1 flex flex-col">
-        {!['nieuwsbeheer', 'destinations', 'trips', 'settings', 'testing', 'roadmap'].includes(activeSection) && (
+        {!['nieuwsbeheer', 'destinations', 'trips', 'settings', 'testing', 'roadmap', 'quickstart'].includes(activeSection) && (
           <header className="bg-white border-b border-gray-200 px-6 py-4">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
                   {activeSection === 'dashboard' && 'Brand Dashboard'}
+                  {activeSection === 'credits' && 'Mijn Credits'}
                   {activeSection === 'websites' && 'My Websites'}
                   {activeSection === 'agents' && 'Agents'}
+                  {activeSection === 'new-page' && 'Quick Start'}
                   {activeSection === 'pages' && 'Pagina Beheer'}
-                  {activeSection === 'menu' && 'Menu Beheer'}
-                  {activeSection === 'footer' && 'Footer Beheer'}
+                  {activeSection === 'wordpress-settings' && 'WordPress Instellingen'}
+                  {activeSection === 'wordpress-api' && 'API Configuratie'}
+                  {activeSection === 'wordpress-plugin' && 'Plugin Download'}
                   {activeSection === 'content' && 'Nieuwsberichten'}
                   {activeSection === 'ai-content' && 'AI Content Generator'}
                   {activeSection === 'ai-travelbro' && 'AI TravelBRO'}
@@ -518,9 +577,12 @@ export function BrandDashboard() {
                 <p className="text-gray-600 mt-1">
                   {activeSection === 'dashboard' && 'Welkom terug bij je brand dashboard'}
                   {activeSection === 'websites' && 'Manage your travel websites'}
+                  {activeSection === 'quickstart' && 'Maak snel een complete website met templates'}
+                  {activeSection === 'new-page' && 'Voeg een nieuwe pagina toe aan je website'}
                   {activeSection === 'pages' && 'Beheer alle pagina\'s van je website'}
-                  {activeSection === 'menu' && 'Beheer menu\'s voor je website'}
-                  {activeSection === 'footer' && 'Beheer footers voor je website'}
+                  {activeSection === 'wordpress-settings' && 'Configureer je WordPress instellingen'}
+                  {activeSection === 'wordpress-api' && 'API gegevens voor WordPress integratie'}
+                  {activeSection === 'wordpress-plugin' && 'Download de WordPress plugin voor nieuwsintegratie'}
                   {activeSection === 'ai-content' && 'Generate travel content with AI'}
                   {activeSection === 'ai-travelbro' && 'Your AI travel assistant'}
                   {activeSection === 'ai-import' && 'Import travel data with AI'}
@@ -565,7 +627,7 @@ export function BrandDashboard() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="text-gray-600">Website Pagina's</h4>
@@ -580,6 +642,14 @@ export function BrandDashboard() {
                         <Newspaper className="w-5 h-5 text-green-500" />
                       </div>
                       <p className="text-3xl font-bold text-gray-900">{stats.newsItems}</p>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-gray-600">Reizen</h4>
+                        <Plane className="w-5 h-5 text-orange-500" />
+                      </div>
+                      <p className="text-3xl font-bold text-gray-900">{stats.trips}</p>
                     </div>
 
                     <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
@@ -620,10 +690,62 @@ export function BrandDashboard() {
             </div>
           )}
 
-          {activeSection === 'new-page' && <NewPage />}
+          {activeSection === 'new-page' && <QuickStart />}
           {activeSection === 'pages' && <PageManagement />}
-          {activeSection === 'menu' && <MenuBuilder />}
-          {activeSection === 'footer' && <FooterBuilder />}
+          {activeSection === 'wordpress-template-chooser' && <WordPressTemplateChooser />}
+          {activeSection === 'wordpress-page-manager' && <WordPressPageManager />}
+          {activeSection === 'wordpress-settings' && <BrandSettings />}
+          {activeSection === 'wordpress-api' && (
+            <div className="p-6">
+              <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-2xl font-bold mb-4">API Configuratie</h2>
+                <p className="text-gray-600 mb-4">
+                  Configureer hier je API instellingen voor de WordPress integratie.
+                </p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      API URL
+                    </label>
+                    <input
+                      type="text"
+                      value={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/wordpress-news`}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Brand ID
+                    </label>
+                    <input
+                      type="text"
+                      value={effectiveBrandId || ''}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {activeSection === 'wordpress-plugin' && (
+            <div className="p-6">
+              <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-2xl font-bold mb-4">Plugin Download</h2>
+                <p className="text-gray-600 mb-4">
+                  Download de WordPress plugin om nieuwsberichten te integreren in je WordPress website.
+                </p>
+                <a
+                  href="/wordpress-ai-news-plugin.php"
+                  download
+                  className="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
+                >
+                  Download Plugin
+                </a>
+              </div>
+            </div>
+          )}
           {activeSection === 'settings' && <BrandSettings />}
           {activeSection === 'social-connector' && <SocialMediaConnector />}
           {activeSection === 'nieuwsbeheer' && (
@@ -638,13 +760,13 @@ export function BrandDashboard() {
           )}
           {activeSection === 'trips' && (
             <div className="p-6">
-              <TripApproval />
+              <TripManager />
             </div>
           )}
+          {activeSection === 'credits' && <div className="p-6"><CreditWallet /></div>}
           {activeSection === 'ai-content' && <AIContentGenerator />}
           {activeSection === 'ai-travelbro' && <TravelBroSetup />}
           {activeSection === 'social-media' && <SocialMediaManager />}
-          {activeSection === 'settings' && <BrandSettings />}
           {activeSection === 'agents' && <AgentManagement />}
           {activeSection === 'testing' && <TestDashboard />}
           {activeSection === 'roadmap' && <RoadmapBoard />}

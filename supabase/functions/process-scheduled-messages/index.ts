@@ -161,7 +161,8 @@ Deno.serve(async (req: Request) => {
 
         const sendPayload: any = {
           to: phoneNumber,
-          brandId: msg.brand_id
+          brandId: msg.brand_id,
+          tripId: msg.trip_id
         };
 
         if (templateSid) {

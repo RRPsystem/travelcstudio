@@ -229,12 +229,6 @@ export function OAuthManagement() {
             <div className="p-3 bg-orange-100 rounded-lg">
               <Key className="w-6 h-6 text-orange-600" />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">OAuth App Management</h2>
-              <p className="text-gray-600 mt-1">
-                Configureer OAuth apps voor social media integraties. Elke brand gebruikt deze credentials om hun eigen accounts te koppelen.
-              </p>
-            </div>
           </div>
         </div>
       </div>

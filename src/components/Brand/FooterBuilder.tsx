@@ -14,7 +14,7 @@ interface FooterData {
 }
 
 export function FooterBuilder() {
-  const { user } = useAuth();
+  const { user, effectiveBrandId } = useAuth();
   const [footers, setFooters] = useState<FooterData[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -34,10 +34,10 @@ export function FooterBuilder() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [user?.brand_id]);
+  }, [effectiveBrandId]);
 
   const loadFooters = async () => {
-    if (!user?.brand_id) {
+    if (!effectiveBrandId) {
       setLoading(false);
       return;
     }
@@ -46,7 +46,7 @@ export function FooterBuilder() {
       const { data, error } = await supabase
         .from('layouts')
         .select('*')
-        .eq('brand_id', user.brand_id)
+        .eq('brand_id', effectiveBrandId)
         .eq('type', 'footer')
         .order('updated_at', { ascending: false });
 
@@ -66,11 +66,11 @@ export function FooterBuilder() {
   };
 
   const handleCreateNew = async () => {
-    if (!user?.brand_id) return;
+    if (!effectiveBrandId) return;
 
     const returnUrl = `${window.location.origin}${window.location.pathname}#/brand/footer`;
     await openBuilderSimple({
-      brand_id: user.brand_id,
+      brand_id: effectiveBrandId,
       user_id: user.id,
       mode: 'footer',
       return_url: returnUrl,
@@ -78,11 +78,11 @@ export function FooterBuilder() {
   };
 
   const handleEdit = async (footerId: string) => {
-    if (!user?.brand_id) return;
+    if (!effectiveBrandId) return;
 
     const returnUrl = `${window.location.origin}${window.location.pathname}#/brand/footer`;
     await openBuilderSimple({
-      brand_id: user.brand_id,
+      brand_id: effectiveBrandId,
       user_id: user.id,
       mode: 'footer',
       footer_id: footerId,
@@ -95,7 +95,7 @@ export function FooterBuilder() {
       await supabase
         .from('layouts')
         .update({ is_default: false })
-        .eq('brand_id', user?.brand_id)
+        .eq('brand_id', effectiveBrandId)
         .eq('type', 'footer');
 
       const { error } = await supabase

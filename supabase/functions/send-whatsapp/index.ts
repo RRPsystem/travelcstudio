@@ -80,6 +80,90 @@ Deno.serve(async (req: Request) => {
     const toNumber = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
     const fromWhatsApp = fromNumber.startsWith('whatsapp:') ? fromNumber : `whatsapp:${fromNumber}`;
 
+    if (tripId) {
+      console.log('🔧 Creating WhatsApp session BEFORE sending message');
+      const cleanPhoneNumber = to.replace('whatsapp:', '').replace('+', '');
+
+      const { data: trip, error: tripError } = await supabase
+        .from('travel_trips')
+        .select('brand_id')
+        .eq('id', tripId)
+        .maybeSingle();
+
+      if (tripError) {
+        console.error('❌ Error fetching trip:', tripError);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Trip ophalen mislukt: ' + tripError.message
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      if (!trip) {
+        console.error('❌ Trip not found with ID:', tripId);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Trip niet gevonden met ID: ' + tripId
+          }),
+          {
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      console.log('✅ Trip found:', tripId, 'Brand:', trip.brand_id);
+
+      const sessionData: any = {
+        trip_id: tripId,
+        phone_number: cleanPhoneNumber,
+        brand_id: trip.brand_id,
+        last_message_at: new Date().toISOString()
+      };
+
+      if (sessionToken && !skipIntake) {
+        const { data: intakeExists } = await supabase
+          .from('travel_intakes')
+          .select('session_token')
+          .eq('session_token', sessionToken)
+          .maybeSingle();
+
+        if (intakeExists) {
+          sessionData.session_token = sessionToken;
+          console.log('✅ Session token added - intake exists');
+        }
+      }
+
+      const { data: sessionResult, error: sessionError } = await supabase
+        .from('travel_whatsapp_sessions')
+        .upsert(sessionData, {
+          onConflict: 'trip_id,phone_number'
+        })
+        .select();
+
+      if (sessionError) {
+        console.error('❌ Error creating WhatsApp session:', sessionError);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Sessie aanmaken mislukt: ' + sessionError.message
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      } else {
+        console.log('✅ WhatsApp session created BEFORE sending:', sessionResult);
+      }
+    }
+
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
     const authHeader = 'Basic ' + btoa(`${accountSid}:${authToken}`);
 
@@ -184,27 +268,47 @@ Deno.serve(async (req: Request) => {
 
     console.log('WhatsApp message sent successfully:', responseData.sid);
 
-    if (tripId && sessionToken) {
-      console.log('Creating WhatsApp session for trip:', tripId);
+    if (tripId && useTemplate && sessionToken && !skipIntake) {
+        console.log('📧 Sending follow-up message with intake link...');
 
-      const cleanPhoneNumber = to.replace('whatsapp:', '');
+        const { data: trip } = await supabase
+          .from('travel_trips')
+          .select('brand_id, share_token')
+          .eq('id', tripId)
+          .single();
 
-      const { error: sessionError } = await supabase
-        .from('travel_whatsapp_sessions')
-        .upsert({
-          trip_id: tripId,
-          session_token: sessionToken,
-          phone_number: cleanPhoneNumber,
-          last_message_at: new Date().toISOString()
-        }, {
-          onConflict: 'trip_id,phone_number'
-        });
+        if (trip) {
+          const { data: brandInfo } = await supabase
+            .from('brands')
+            .select('travelbro_domain')
+            .eq('id', trip.brand_id)
+            .single();
 
-      if (sessionError) {
-        console.error('Error creating WhatsApp session:', sessionError);
-      } else {
-        console.log('✅ WhatsApp session created/updated');
-      }
+          const intakeLink = `https://${brandInfo?.travelbro_domain || 'travelbro.nl'}/${trip.share_token}`;
+          const followUpMessage = `📋 Klik hier om je reisgegevens in te vullen:\n${intakeLink}\n\nDaarna kun je direct hier in WhatsApp al je vragen stellen! ✈️`;
+
+          const followUpFormData = new URLSearchParams();
+          followUpFormData.append('To', toNumber);
+          followUpFormData.append('From', fromWhatsApp);
+          followUpFormData.append('Body', followUpMessage);
+
+          console.log('Sending follow-up message with link:', intakeLink);
+
+          const followUpResponse = await fetch(twilioUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': authHeader,
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: followUpFormData.toString(),
+          });
+
+          if (followUpResponse.ok) {
+            console.log('✅ Follow-up message sent successfully');
+          } else {
+            console.error('❌ Failed to send follow-up message:', await followUpResponse.text());
+          }
+        }
     }
 
     return new Response(

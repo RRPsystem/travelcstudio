@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Save, AlertCircle, Settings, Globe } from 'lucide-react';
+import { Upload, Save, AlertCircle, Settings, Globe, Copy, Check } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { DomainSettings } from './DomainSettings';
@@ -7,19 +7,24 @@ import { DomainSettings } from './DomainSettings';
 type TabType = 'general' | 'domains';
 
 export function BrandSettings() {
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabType>('general');
+  const { user, effectiveBrandId } = useAuth();
+  const getInitialTab = (): TabType => {
+    const hash = window.location.hash;
+    if (hash.includes('domains')) return 'domains';
+    return 'general';
+  };
+  const [activeTab, setActiveTab] = useState<TabType>(getInitialTab());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [copiedSetup, setCopiedSetup] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
     description: '',
-    business_type: 'custom_travel_agency',
     primary_color: '#3B82F6',
     secondary_color: '#6B7280',
     contact_person: '',
@@ -30,15 +35,41 @@ export function BrandSettings() {
     postal_code: '',
     country: 'Netherlands',
     website_url: '',
-    logo_url: ''
+    logo_url: '',
+    website_type: 'wordpress',
+    wordpress_url: '',
+    wordpress_username: '',
+    wordpress_app_password: '',
+    wordpress_connected: false
+  });
+
+  const [websiteInfo, setWebsiteInfo] = useState<{
+    type: string;
+    builderName?: string;
+    hasWebsite: boolean;
+  }>({
+    type: 'Geen website',
+    hasWebsite: false
   });
 
   useEffect(() => {
     loadBrandData();
   }, [user]);
 
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash.includes('domains')) {
+        setActiveTab('domains');
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
   const loadBrandData = async () => {
-    if (!user?.brand_id) {
+    if (!effectiveBrandId) {
       setLoading(false);
       return;
     }
@@ -48,7 +79,7 @@ export function BrandSettings() {
       const { data, error: fetchError } = await supabase
         .from('brands')
         .select('*')
-        .eq('id', user.brand_id)
+        .eq('id', effectiveBrandId)
         .maybeSingle();
 
       if (fetchError) throw fetchError;
@@ -58,7 +89,6 @@ export function BrandSettings() {
           name: data.name || '',
           slug: data.slug || '',
           description: data.description || '',
-          business_type: data.business_type || 'custom_travel_agency',
           primary_color: data.primary_color || '#3B82F6',
           secondary_color: data.secondary_color || '#6B7280',
           contact_person: data.contact_person || '',
@@ -69,7 +99,43 @@ export function BrandSettings() {
           postal_code: data.postal_code || '',
           country: data.country || 'Netherlands',
           website_url: data.website_url || '',
-          logo_url: data.logo_url || ''
+          logo_url: data.logo_url || '',
+          website_type: data.website_type || 'wordpress',
+          wordpress_url: data.wordpress_url || '',
+          wordpress_username: data.wordpress_username || '',
+          wordpress_app_password: data.wordpress_app_password || '',
+          wordpress_connected: data.wordpress_connected || false
+        });
+      }
+
+      const { data: website, error: websiteError } = await supabase
+        .from('websites')
+        .select('id, template_source_type, external_builder_id, external_builders(name)')
+        .eq('brand_id', effectiveBrandId)
+        .maybeSingle();
+
+      if (!websiteError && website) {
+        let type = 'Onbekend';
+        let builderName = undefined;
+
+        if (website.template_source_type === 'wordpress') {
+          type = 'WordPress Website';
+        } else if (website.external_builder_id && website.external_builders) {
+          type = 'External Builder Website';
+          builderName = (website.external_builders as any).name || 'Unknown Builder';
+        } else if (website.template_source_type === 'quickstart') {
+          type = 'QuickStart Website (External Builder)';
+        }
+
+        setWebsiteInfo({
+          type,
+          builderName,
+          hasWebsite: true
+        });
+      } else {
+        setWebsiteInfo({
+          type: 'Geen website',
+          hasWebsite: false
         });
       }
     } catch (err) {
@@ -87,6 +153,30 @@ export function BrandSettings() {
     }));
     setError('');
     setSuccess('');
+  };
+
+  const copySetupCode = async () => {
+    const setupCode = `=== WordPress AI News Setup Code ===
+
+Supabase Function URL:
+${import.meta.env.VITE_SUPABASE_URL}/functions/v1/wordpress-news
+
+Brand ID:
+${effectiveBrandId}
+
+OpenAI API Key:
+[Vraag aan Bolt support, of gebruik je eigen OpenAI key]
+
+---
+Plak deze gegevens in WordPress > Instellingen > AI News Plugin`;
+
+    try {
+      await navigator.clipboard.writeText(setupCode);
+      setCopiedSetup(true);
+      setTimeout(() => setCopiedSetup(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
   };
 
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,7 +213,7 @@ export function BrandSettings() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?.brand_id) return;
+    if (!effectiveBrandId) return;
 
     setSaving(true);
     setError('');
@@ -135,7 +225,6 @@ export function BrandSettings() {
         .update({
           name: formData.name,
           description: formData.description,
-          business_type: formData.business_type,
           primary_color: formData.primary_color,
           secondary_color: formData.secondary_color,
           contact_person: formData.contact_person,
@@ -147,9 +236,14 @@ export function BrandSettings() {
           country: formData.country,
           website_url: formData.website_url,
           logo_url: formData.logo_url,
+          website_type: formData.website_type,
+          content_system: formData.website_type,
+          wordpress_url: formData.wordpress_url,
+          wordpress_username: formData.wordpress_username,
+          wordpress_app_password: formData.wordpress_app_password,
           updated_at: new Date().toISOString()
         })
-        .eq('id', user.brand_id);
+        .eq('id', effectiveBrandId);
 
       if (updateError) throw updateError;
 
@@ -234,6 +328,21 @@ export function BrandSettings() {
               </div>
             )}
 
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <div className="flex items-start space-x-3">
+                <Settings className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-900 mb-1">Brand ID</p>
+                  <p className="text-sm text-blue-800 font-mono bg-blue-100 px-2 py-1 rounded inline-block">
+                    {effectiveBrandId || 'N/A'}
+                  </p>
+                  <p className="text-xs text-blue-700 mt-2">
+                    Dit ID gebruik je voor externe integraties en API calls
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -274,51 +383,33 @@ export function BrandSettings() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Business Type
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Logo
+              </label>
+              <div className="flex items-center space-x-3">
+                {formData.logo_url && (
+                  <img
+                    src={formData.logo_url}
+                    alt="Logo"
+                    className="w-12 h-12 object-contain rounded border border-gray-300"
+                  />
+                )}
+                <label className="flex-1 cursor-pointer">
+                  <div className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                    <Upload size={16} className="mr-2" />
+                    <span className="text-sm text-gray-700">
+                      {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
+                    </span>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                    disabled={uploadingLogo}
+                  />
                 </label>
-                <select
-                  value={formData.business_type}
-                  onChange={(e) => handleInputChange('business_type', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                >
-                  <option value="custom_travel_agency">Custom Travel Agency</option>
-                  <option value="tour_operator">Tour Operator</option>
-                  <option value="travel_agent">Travel Agent</option>
-                  <option value="destination_management">Destination Management</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Logo
-                </label>
-                <div className="flex items-center space-x-3">
-                  {formData.logo_url && (
-                    <img
-                      src={formData.logo_url}
-                      alt="Logo"
-                      className="w-12 h-12 object-contain rounded border border-gray-300"
-                    />
-                  )}
-                  <label className="flex-1 cursor-pointer">
-                    <div className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                      <Upload size={16} className="mr-2" />
-                      <span className="text-sm text-gray-700">
-                        {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
-                      </span>
-                    </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleLogoUpload}
-                      className="hidden"
-                      disabled={uploadingLogo}
-                    />
-                  </label>
-                </div>
               </div>
             </div>
 
@@ -360,6 +451,48 @@ export function BrandSettings() {
                     onChange={(e) => handleInputChange('secondary_color', e.target.value)}
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   />
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Website Informatie</h3>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Content Systeem
+                </label>
+                <select
+                  value={formData.website_type}
+                  onChange={(e) => handleInputChange('website_type', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                >
+                  <option value="internal">Option A - AI Websitebuilder</option>
+                  <option value="wordpress">Option B - WordPress</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Kies je content management systeem: Gebruik het interne systeem (A) of koppel je WordPress website (B).
+                </p>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start">
+                  <Globe className="w-5 h-5 text-blue-600 mr-3 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">Huidig Website Type</p>
+                    <p className="text-sm text-blue-700 mt-1">
+                      {websiteInfo.hasWebsite ? (
+                        <>
+                          {websiteInfo.type}
+                          {websiteInfo.builderName && (
+                            <span className="ml-2 text-blue-600">({websiteInfo.builderName})</span>
+                          )}
+                        </>
+                      ) : (
+                        'Geen website geconfigureerd'
+                      )}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -473,6 +606,145 @@ export function BrandSettings() {
                 </div>
               </div>
             </div>
+
+            {formData.website_type === 'wordpress' && (
+              <div className="border-t border-gray-200 pt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">WordPress Integratie</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Verbind je WordPress site om pagina's automatisch te synchroniseren naar Bolt
+                </p>
+
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                  <h4 className="text-sm font-semibold text-yellow-900 mb-2">WordPress Application Password nodig</h4>
+                  <p className="text-xs text-yellow-800 mb-2">
+                    Je hebt een WordPress Application Password nodig (geen gewoon wachtwoord):
+                  </p>
+                  <ol className="text-xs text-yellow-800 space-y-1 ml-4 list-decimal">
+                    <li>Log in op je WordPress admin</li>
+                    <li>Ga naar: Gebruikers → Profiel</li>
+                    <li>Scroll naar "Application Passwords"</li>
+                    <li>Geef een naam (bijv. "Bolt Integration")</li>
+                    <li>Klik "Add New Application Password"</li>
+                    <li>Kopieer het gegenereerde wachtwoord hieronder</li>
+                  </ol>
+                </div>
+
+                {formData.wordpress_connected && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                    <p className="text-sm text-green-800">✓ WordPress verbinding actief</p>
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      WordPress URL *
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.wordpress_url}
+                      onChange={(e) => handleInputChange('wordpress_url', e.target.value)}
+                      placeholder="https://jouwwebsite.nl"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      required={formData.website_type === 'wordpress'}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">De volledige URL van je WordPress site</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      WordPress Gebruikersnaam *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.wordpress_username}
+                      onChange={(e) => handleInputChange('wordpress_username', e.target.value)}
+                      placeholder="admin"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      required={formData.website_type === 'wordpress'}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Je WordPress admin gebruikersnaam</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Application Password *
+                    </label>
+                    <input
+                      type="password"
+                      value={formData.wordpress_app_password}
+                      onChange={(e) => handleInputChange('wordpress_app_password', e.target.value)}
+                      placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent font-mono"
+                      required={formData.website_type === 'wordpress'}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Het WordPress Application Password (inclusief spaties is OK)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-200 pt-6 mt-6">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-2">WordPress Plugin Setup Instructies</h4>
+                  <p className="text-xs text-gray-600 mb-4">
+                    Kopieer onderstaande setup code en plak deze in je WordPress AI News plugin instellingen
+                  </p>
+
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-gray-700 mb-1">Supabase Function URL</p>
+                        <code className="text-xs text-gray-900 bg-white px-2 py-1 rounded border border-gray-300 block break-all">
+                          {import.meta.env.VITE_SUPABASE_URL}/functions/v1/wordpress-news
+                        </code>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-gray-700 mb-1">Brand ID</p>
+                        <code className="text-xs text-gray-900 bg-white px-2 py-1 rounded border border-gray-300 block break-all">
+                          {effectiveBrandId}
+                        </code>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-gray-700 mb-1">OpenAI API Key</p>
+                        <p className="text-xs text-gray-600 bg-white px-2 py-1 rounded border border-gray-300">
+                          Vraag aan Bolt support, of gebruik je eigen OpenAI API key
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={copySetupCode}
+                    className="mt-4 w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                  >
+                    {copiedSetup ? (
+                      <>
+                        <Check size={16} />
+                        <span>Gekopieerd!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={16} />
+                        <span>Kopieer Setup Code</span>
+                      </>
+                    )}
+                  </button>
+
+                  <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-xs text-blue-800">
+                      <strong>Let op:</strong> Download eerst de WordPress AI News plugin en installeer deze op je WordPress site voordat je de setup code gebruikt.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end pt-6 border-t border-gray-200">
               <button

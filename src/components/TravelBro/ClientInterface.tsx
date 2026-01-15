@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Send, Loader, Bot, User, Sparkles } from 'lucide-react';
+import { MultimodalInput } from './MultimodalInput';
+import { ResponseDisplay } from './ResponseDisplay';
 
 interface Trip {
   id: string;
@@ -14,6 +16,8 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  imageUrl?: string;
+  response?: any;
 }
 
 export function ClientInterface({ shareToken }: { shareToken: string }) {
@@ -24,6 +28,7 @@ export function ClientInterface({ shareToken }: { shareToken: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -175,56 +180,61 @@ export function ClientInterface({ shareToken }: { shareToken: string }) {
   };
 
   const sendMessage = async () => {
-    if (!inputMessage.trim() || !sessionToken || sending) return;
+    if ((!inputMessage.trim() && !selectedImage) || !sessionToken || sending) return;
 
     const userMessage: Message = {
       role: 'user',
-      content: inputMessage.trim(),
+      content: inputMessage.trim() || (selectedImage ? '📸 [Foto verstuurd]' : ''),
       timestamp: new Date(),
+      imageUrl: selectedImage || undefined,
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const messageToSend = inputMessage.trim();
+    const imageToSend = selectedImage;
     setInputMessage('');
+    setSelectedImage(null);
     setSending(true);
 
     try {
-      await supabase.from('travel_conversations').insert({
-        trip_id: trip?.id,
-        session_token: sessionToken,
-        message: userMessage.content,
-        role: 'user',
-      });
+      const requestBody: any = {
+        tripId: trip?.id,
+        sessionToken,
+        deviceType: 'web',
+      };
+
+      if (messageToSend) {
+        requestBody.message = messageToSend;
+      }
+
+      if (imageToSend) {
+        requestBody.imageBase64 = imageToSend;
+      }
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/travelbro-chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
-        body: JSON.stringify({
-          tripId: trip?.id,
-          sessionToken,
-          message: userMessage.content,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
-      if (!response.ok) throw new Error('Failed to get response');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to get response');
+      }
 
       const data = await response.json();
 
       const assistantMessage: Message = {
         role: 'assistant',
-        content: data.response,
+        content: data.text || data.message || 'Geen antwoord ontvangen',
         timestamp: new Date(),
+        response: data,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-
-      await supabase.from('travel_conversations').insert({
-        trip_id: trip?.id,
-        session_token: sessionToken,
-        message: data.response,
-        role: 'assistant',
-      });
     } catch (error) {
       console.error('Error sending message:', error);
       const errorMessage: Message = {
@@ -314,7 +324,18 @@ export function ClientInterface({ shareToken }: { shareToken: string }) {
                     }`}
                     style={msg.role === 'user' ? { backgroundColor: '#ff7700' } : {}}
                   >
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    {msg.imageUrl && (
+                      <img
+                        src={msg.imageUrl}
+                        alt="User uploaded"
+                        className="w-full max-w-xs rounded-lg mb-2"
+                      />
+                    )}
+                    {msg.role === 'assistant' && msg.response ? (
+                      <ResponseDisplay response={msg.response} />
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -342,19 +363,25 @@ export function ClientInterface({ shareToken }: { shareToken: string }) {
 
       <div className="bg-white border-t shadow-lg">
         <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex space-x-3">
+          <div className="flex items-end space-x-2">
+            <MultimodalInput
+              onImageCapture={(base64) => setSelectedImage(base64)}
+              onImageRemove={() => setSelectedImage(null)}
+              selectedImage={selectedImage}
+              disabled={sending}
+            />
             <input
               type="text"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="Stel je vraag over de reis..."
+              onKeyPress={(e) => e.key === 'Enter' && !sending && sendMessage()}
+              placeholder={selectedImage ? "Voeg een bericht toe (optioneel)..." : "Stel je vraag over de reis..."}
               className="flex-1 px-4 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               disabled={sending}
             />
             <button
               onClick={sendMessage}
-              disabled={!inputMessage.trim() || sending}
+              disabled={(!inputMessage.trim() && !selectedImage) || sending}
               className="w-12 h-12 rounded-full flex items-center justify-center text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               style={{ backgroundColor: '#ff7700' }}
             >

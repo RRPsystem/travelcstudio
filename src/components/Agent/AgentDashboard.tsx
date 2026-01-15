@@ -7,12 +7,13 @@ import { SocialMediaManager } from '../Brand/SocialMediaManager';
 import { TravelBroSetup } from '../TravelBro/TravelBroSetup';
 import AgentProfileEdit from './AgentProfileEdit';
 import { HelpBot } from '../shared/HelpBot';
-import { Bot, User, ChevronDown, ChevronRight, Share2, Plane, Sparkles, Import as FileImport, Map, ArrowRight, Bell, ClipboardCheck, Video, BookOpen } from 'lucide-react';
+import { Bot, User, ChevronDown, ChevronRight, Share2, Plane, Sparkles, Import as FileImport, Map, ArrowRight, Bell, ClipboardCheck, Video, BookOpen, Wallet } from 'lucide-react';
 import RoadmapBoard from '../Brand/RoadmapBoard';
 import TestDashboard from '../Testing/TestDashboard';
+import CreditWallet from '../shared/CreditWallet';
 
 export function AgentDashboard() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isOperator, impersonationContext, resetContext } = useAuth();
   const [activeSection, setActiveSection] = useState('dashboard');
   const [showAISubmenu, setShowAISubmenu] = useState(false);
   const [agentData, setAgentData] = useState<any>(null);
@@ -71,6 +72,7 @@ export function AgentDashboard() {
 
   const sidebarItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Sparkles },
+    { id: 'credits', label: 'Mijn Credits', icon: Wallet },
     { id: 'profile', label: 'Profiel', icon: User },
     { id: 'social-media', label: 'Social Media', icon: Share2 },
     { id: 'testing', label: 'Test Dashboard', icon: ClipboardCheck },
@@ -276,6 +278,15 @@ export function AgentDashboard() {
             <BookOpen size={20} />
             <span>Travel Journaal</span>
           </button>
+          {isOperator && impersonationContext?.role === 'agent' && (
+            <button
+              onClick={() => resetContext()}
+              className="w-full flex items-center space-x-3 px-3 py-2 text-orange-400 hover:text-white hover:bg-orange-600 rounded-lg transition-colors font-medium"
+            >
+              <ArrowRight size={20} className="rotate-180" />
+              <span>Terug naar Operator</span>
+            </button>
+          )}
           <button
             onClick={signOut}
             className="w-full flex items-center space-x-3 px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
@@ -291,6 +302,7 @@ export function AgentDashboard() {
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
                 {activeSection === 'dashboard' && 'Dashboard'}
+                {activeSection === 'credits' && 'Mijn Credits'}
                 {activeSection === 'profile' && 'Profiel'}
                 {activeSection === 'social-media' && 'Social Media'}
                 {activeSection === 'testing' && 'Test Dashboard'}
@@ -303,6 +315,7 @@ export function AgentDashboard() {
               </h1>
               <p className="text-gray-600 mt-1">
                 {activeSection === 'dashboard' && 'Welkom terug bij je agent dashboard'}
+                {activeSection === 'credits' && 'Beheer je credits en koop nieuwe credits'}
                 {activeSection === 'profile' && 'Beheer je profiel en instellingen'}
                 {activeSection === 'social-media' && 'Beheer je social media accounts en posts'}
                 {activeSection === 'testing' && 'Test features and provide feedback'}
@@ -415,6 +428,7 @@ export function AgentDashboard() {
             </div>
           )}
 
+          {activeSection === 'credits' && <div className="p-6"><CreditWallet /></div>}
           {activeSection === 'profile' && <AgentProfileEdit />}
           {activeSection === 'social-media' && <SocialMediaManager />}
           {activeSection === 'testing' && <TestDashboard />}

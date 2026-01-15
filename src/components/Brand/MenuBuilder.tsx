@@ -12,7 +12,7 @@ interface MenuData {
 }
 
 export function MenuBuilder() {
-  const { user } = useAuth();
+  const { user, effectiveBrandId } = useAuth();
   const [menus, setMenus] = useState<MenuData[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -32,10 +32,10 @@ export function MenuBuilder() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [user?.brand_id]);
+  }, [effectiveBrandId]);
 
   const loadMenus = async () => {
-    if (!user?.brand_id) {
+    if (!effectiveBrandId) {
       setLoading(false);
       return;
     }
@@ -44,7 +44,7 @@ export function MenuBuilder() {
       const { data, error } = await supabase
         .from('menus')
         .select('*')
-        .eq('brand_id', user.brand_id)
+        .eq('brand_id', effectiveBrandId)
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
@@ -63,11 +63,11 @@ export function MenuBuilder() {
   };
 
   const handleCreateNew = async () => {
-    if (!user?.brand_id) return;
+    if (!effectiveBrandId) return;
 
     const returnUrl = `${window.location.origin}${window.location.pathname}#/brand/menu`;
     await openBuilderSimple({
-      brand_id: user.brand_id,
+      brand_id: effectiveBrandId,
       user_id: user.id,
       mode: 'menu',
       return_url: returnUrl,
@@ -75,11 +75,11 @@ export function MenuBuilder() {
   };
 
   const handleEdit = async (menuId: string) => {
-    if (!user?.brand_id) return;
+    if (!effectiveBrandId) return;
 
     const returnUrl = `${window.location.origin}${window.location.pathname}#/brand/menu`;
     await openBuilderSimple({
-      brand_id: user.brand_id,
+      brand_id: effectiveBrandId,
       user_id: user.id,
       mode: 'menu',
       menu_id: menuId,

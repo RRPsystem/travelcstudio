@@ -9,33 +9,70 @@ import AgentProfile from './components/Agent/AgentProfile';
 import { PreviewPage } from './components/Preview/PreviewPage';
 import { NewsPreview } from './components/Preview/NewsPreview';
 import { ClientInterface } from './components/TravelBro/ClientInterface';
+import { SubdomainViewer } from './components/Website/SubdomainViewer';
+import TravelJournal from './components/TravelJournal/TravelJournal';
+import QuestionSubmission from './components/Podcast/QuestionSubmission';
+import { TripViewer } from './components/Public/TripViewer';
 
 function AppContent() {
   console.log('🚀 AppContent component rendering');
 
+  const hostname = window.location.hostname;
+  const isSubdomain = hostname !== 'ai-travelstudio.nl' &&
+                     hostname !== 'www.ai-travelstudio.nl' &&
+                     hostname.endsWith('.ai-travelstudio.nl');
+
+  if (isSubdomain) {
+    const subdomain = hostname.replace('.ai-travelstudio.nl', '');
+    console.log('[App] Subdomain detected:', subdomain);
+    return <SubdomainViewer subdomain={subdomain} />;
+  }
+
   const path = window.location.pathname;
+  console.log('[App] Current path:', path);
 
   // Match TravelBRO chat links: /travelbro/[token], /travel/[token], or just /[token]
   const travelMatch = path.match(/^\/(?:travel|travelbro)\/([a-f0-9]+)$/) ||
                       path.match(/^\/([a-f0-9]{8,})$/);
 
   if (travelMatch) {
+    console.log('[App] Matched TravelBRO route');
     return <ClientInterface shareToken={travelMatch[1]} />;
   }
 
   const agentProfileMatch = path.match(/^\/agents\/([a-z0-9-]+)$/);
   if (agentProfileMatch) {
+    console.log('[App] Matched agent profile route');
     return <AgentProfile slug={agentProfileMatch[1]} />;
   }
 
+  // Match trip viewer route: /trip/[token] (UUID or share_token)
+  const tripViewerMatch = path.match(/^\/trip\/([a-f0-9-]+)$/);
+  if (tripViewerMatch) {
+    console.log('[App] Matched trip viewer route');
+    return <TripViewer shareToken={tripViewerMatch[1]} />;
+  }
+
   const pagePreviewMatch = path.match(/^\/preview\/([a-f0-9-]+)$/);
+  console.log('[App] Page preview check:', { path, match: pagePreviewMatch });
   if (pagePreviewMatch) {
+    console.log('[App] ✅ Rendering PreviewPage with pageId:', pagePreviewMatch[1]);
     return <PreviewPage pageId={pagePreviewMatch[1]} />;
   }
 
   const newsPreviewMatch = path.match(/^\/preview\/news\/(.+)$/);
   if (newsPreviewMatch) {
     return <NewsPreview />;
+  }
+
+  if (path === '/podcast/vragen' || path === '/podcast/questions') {
+    console.log('[App] Matched podcast questions route');
+    return <QuestionSubmission />;
+  }
+
+  if (path === '/travel-journal' || path === '/travel-journaal' || path === '/podcast') {
+    console.log('[App] Matched Travel Journal/Podcast route');
+    return <TravelJournal />;
   }
 
   const params = new URLSearchParams(window.location.search);
@@ -82,6 +119,17 @@ function AppContent() {
 
 function App() {
   console.log('🚀 App component rendering');
+
+  // Check for public routes BEFORE AuthProvider
+  const path = window.location.pathname;
+
+  // Public trip viewer route
+  const tripViewMatch = path.match(/^\/trip\/([a-f0-9-]+)$/);
+  if (tripViewMatch) {
+    console.log('[App] Rendering public trip viewer (outside AuthProvider)');
+    return <TripViewer shareToken={tripViewMatch[1]} />;
+  }
+
   return (
     <AuthProvider>
       <AppContent />

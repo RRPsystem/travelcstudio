@@ -27,21 +27,21 @@ interface TripAssignment {
 }
 
 export function TripApproval() {
-  const { user } = useAuth();
+  const { user, effectiveBrandId } = useAuth();
   const [assignments, setAssignments] = useState<TripAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [isLoadingData, setIsLoadingData] = useState(false);
 
   useEffect(() => {
-    if (user?.brand_id && !isLoadingData) {
+    if (effectiveBrandId && !isLoadingData) {
       loadAssignments();
-    } else if (!user?.brand_id) {
+    } else if (!effectiveBrandId) {
       setLoading(false);
     }
-  }, [user?.brand_id]);
+  }, [effectiveBrandId]);
 
   const loadAssignments = async () => {
-    if (!user?.brand_id || isLoadingData) {
+    if (!effectiveBrandId || isLoadingData) {
       return;
     }
 
@@ -71,7 +71,7 @@ export function TripApproval() {
             published_at
           )
         `)
-        .eq('brand_id', user.brand_id)
+        .eq('brand_id', effectiveBrandId)
         .order('assigned_at', { ascending: false });
 
       if (assignmentError) throw assignmentError;
@@ -93,7 +93,7 @@ export function TripApproval() {
       const { data: brandTripsData, error: brandTripsError } = await supabase
         .from('trips')
         .select('id, title, slug, description, featured_image, price, duration_days, created_at, published_at, status, page_id')
-        .eq('brand_id', user.brand_id)
+        .eq('brand_id', effectiveBrandId)
         .order('created_at', { ascending: false });
 
       if (brandTripsError) throw brandTripsError;
@@ -203,30 +203,30 @@ export function TripApproval() {
   };
 
   const handlePreview = async (assignment: TripAssignment) => {
-    if (!user?.brand_id || !assignment.page_id) return;
+    if (!effectiveBrandId || !assignment.page_id) return;
 
     const { data: domains } = await supabase
       .from('brand_domains')
       .select('domain')
-      .eq('brand_id', user.brand_id)
+      .eq('brand_id', effectiveBrandId)
       .eq('is_verified', true)
       .maybeSingle();
 
     const previewUrl = domains?.domain
       ? `https://${domains.domain}/${assignment.trip.slug}`
-      : `/preview?brand_id=${user.brand_id}&slug=${assignment.trip.slug}`;
+      : `/preview?brand_id=${effectiveBrandId}&slug=${assignment.trip.slug}`;
 
     window.open(previewUrl, '_blank');
   };
 
   const handleEdit = async (assignment: TripAssignment) => {
-    if (!user?.brand_id || !user?.id) return;
+    if (!effectiveBrandId || !user?.id) return;
 
     try {
       const { data: tripData, error: tripError } = await supabase
         .from('trips')
         .select('id, slug, title')
-        .eq('brand_id', user.brand_id)
+        .eq('brand_id', effectiveBrandId)
         .eq('title', assignment.trip.title)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -243,34 +243,46 @@ export function TripApproval() {
 
       const correctTripId = tripData.id;
 
-      const jwtResponse = await generateBuilderJWT(user.brand_id, user.id, [
+      const jwtPayload: any = {
+        contentType: 'trips'
+      };
+
+      if (assignment.page_id) {
+        jwtPayload.pageId = assignment.page_id;
+      }
+
+      const jwtResponse = await generateBuilderJWT(effectiveBrandId, user.id, [
         'pages:read',
         'pages:write',
         'trips:read',
         'trips:write',
         'content:read',
         'content:write'
-      ], {
-        contentType: 'trips',
-        pageId: assignment.page_id
-      });
+      ], jwtPayload);
 
       const builderBaseUrl = 'https://www.ai-websitestudio.nl/builder.html';
       const apiBaseUrl = jwtResponse.api_url || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
       const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
       const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/content/trips`;
 
-      const params = new URLSearchParams({
+      const params: Record<string, string> = {
         api: apiBaseUrl,
-        brand_id: user.brand_id,
+        brand_id: effectiveBrandId,
         token: jwtResponse.token,
         apikey: apiKey,
         content_type: 'trips',
-        return_url: returnUrl,
-        id: correctTripId
-      });
+        return_url: returnUrl
+      };
 
-      const deeplink = `${builderBaseUrl}?${params.toString()}#/mode/travel`;
+      if (assignment.page_id) {
+        params.page_id = assignment.page_id;
+      } else {
+        params.id = correctTripId;
+      }
+
+      const urlParams = new URLSearchParams(params);
+
+      const deeplink = `${builderBaseUrl}?${urlParams.toString()}#/mode/travel`;
 
       console.log('🔗 Opening trip edit deeplink:', deeplink);
       console.log('Trip details:', {
@@ -297,8 +309,12 @@ export function TripApproval() {
     }
 
     try {
-      if (assignment.status === 'brand') {
+      const isBrandTrip = assignment.status === 'brand' || assignment.id.startsWith('brand-trip-');
+
+      if (isBrandTrip) {
         const tripId = assignment.trip_id || assignment.trip.id;
+
+        console.log('Deleting brand trip with ID:', tripId);
 
         const { data, error } = await supabase
           .from('trips')
@@ -314,13 +330,15 @@ export function TripApproval() {
 
         if (!data || data.length === 0) {
           console.error('No rows deleted - item not found or no permission');
-          alert('Item kon niet worden verwijderd');
+          alert('Item kon niet worden verwijderd. Check console voor details.');
           return;
         }
+
+        console.log('Successfully deleted trip:', data);
       } else {
-        const assignmentId = assignment.id.startsWith('brand-trip-')
-          ? assignment.trip_id
-          : assignment.id;
+        const assignmentId = assignment.id;
+
+        console.log('Deleting assignment with ID:', assignmentId);
 
         const { data, error } = await supabase
           .from('trip_brand_assignments')
@@ -336,9 +354,11 @@ export function TripApproval() {
 
         if (!data || data.length === 0) {
           console.error('No assignment rows deleted - not found');
-          alert('Assignment kon niet worden verwijderd');
+          alert('Assignment kon niet worden verwijderd. Check console voor details.');
           return;
         }
+
+        console.log('Successfully deleted assignment:', data);
       }
 
       await loadAssignments();
@@ -349,10 +369,10 @@ export function TripApproval() {
   };
 
   const createNewTrip = async () => {
-    if (!user?.brand_id || !user?.id) return;
+    if (!effectiveBrandId || !user?.id) return;
 
     try {
-      const jwtResponse = await generateBuilderJWT(user.brand_id, user.id, [
+      const jwtResponse = await generateBuilderJWT(effectiveBrandId, user.id, [
         'pages:read',
         'pages:write',
         'trips:read',
@@ -370,7 +390,7 @@ export function TripApproval() {
 
       const params = new URLSearchParams({
         api: apiBaseUrl,
-        brand_id: user.brand_id,
+        brand_id: effectiveBrandId,
         token: jwtResponse.token,
         apikey: apiKey,
         content_type: 'trips',
