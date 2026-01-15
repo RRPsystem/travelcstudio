@@ -48,6 +48,7 @@ export default function TestManagement() {
   const { user } = useAuth();
   const [rounds, setRounds] = useState<TestRound[]>([]);
   const [activeRound, setActiveRound] = useState<TestRound | null>(null);
+  const BUILD_VERSION = '2026-01-15-23:59';
   const [features, setFeatures] = useState<TestFeature[]>([]);
   const [feedbackByFeature, setFeedbackByFeature] = useState<Map<string, TestFeedback[]>>(new Map());
   const [statusByFeature, setStatusByFeature] = useState<Map<string, FeatureStatus>>(new Map());

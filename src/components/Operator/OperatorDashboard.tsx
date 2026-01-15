@@ -25,6 +25,7 @@ import TestManagement from './TestManagement';
 export function OperatorDashboard() {
   const { user, signOut } = useAuth();
   const [activeSection, setActiveSection] = useState('test-management');
+  const BUILD_VERSION = 'v2026-01-15-2359';
 
   const sidebarItems = [
     { id: 'test-management', label: 'Test Management', icon: ClipboardCheck },
@@ -133,7 +134,7 @@ export function OperatorDashboard() {
                 <span className="text-sm text-gray-600">System Online</span>
               </div>
               <div className="text-sm text-gray-500">
-                Last updated: {new Date().toLocaleTimeString()}
+                {BUILD_VERSION} · Last updated: {new Date().toLocaleTimeString()}
               </div>
             </div>
           </div>
