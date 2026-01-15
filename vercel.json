@@ -2,26 +2,6 @@
   "rewrites": [
     {
       "source": "/(.*)",
-      "has": [
-        {
-          "type": "host",
-          "value": "(?<subdomain>(?!www|app|api)[a-z0-9-]+)\\.ai-travelstudio\\.nl"
-        }
-      ],
-      "destination": "/api/proxy/subdomain"
-    },
-    {
-      "source": "/(.*)",
-      "has": [
-        {
-          "type": "host",
-          "value": "(?<subdomain>(?!www|app|api|bolt-versiedev-nr8)[a-z0-9-]+)\\.bolt-versiedev-nr8\\.vercel\\.app"
-        }
-      ],
-      "destination": "/api/proxy/subdomain"
-    },
-    {
-      "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
@@ -34,16 +14,10 @@
   "headers": [
     {
       "source": "/(.*)",
-      "missing": [
-        {
-          "type": "host",
-          "value": "(?<subdomain>(?!www|app|api)[a-z0-9-]+)\\.ai-travelstudio\\.nl"
-        }
-      ],
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data: https:; connect-src 'self' https://*.supabase.co https://*.supabase.net https://maps.googleapis.com https://places.googleapis.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data: https:; connect-src 'self' https://*.supabase.co https://*.supabase.net https://maps.googleapis.com https://places.googleapis.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
         },
         {
           "key": "X-Frame-Options",

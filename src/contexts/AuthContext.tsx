@@ -2,21 +2,6 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { supabase } from '../lib/supabase';
 import { User } from '../types/database';
 
-interface ImpersonationContext {
-  role: 'operator' | 'admin' | 'brand' | 'agent';
-  brandId?: string;
-  brandName?: string;
-  agentId?: string;
-  agentName?: string;
-}
-
-interface AvailableContext {
-  type: 'operator' | 'admin' | 'brand' | 'agent';
-  id?: string;
-  name: string;
-  brandId?: string;
-}
-
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -26,12 +11,6 @@ interface AuthContextType {
   isBrand: boolean;
   isOperator: boolean;
   isAgent: boolean;
-  impersonationContext: ImpersonationContext | null;
-  availableContexts: AvailableContext[];
-  switchContext: (context: ImpersonationContext) => void;
-  resetContext: () => void;
-  effectiveBrandId: string | null;
-  effectiveAgentId: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,8 +18,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [impersonationContext, setImpersonationContext] = useState<ImpersonationContext | null>(null);
-  const [availableContexts, setAvailableContexts] = useState<AvailableContext[]>([]);
 
   useEffect(() => {
     if (!supabase) {
@@ -115,13 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const { user: fetchedUser } = await response.json();
-      console.log('🔐 User profile loaded:', {
-        id: fetchedUser.id,
-        role: fetchedUser.role,
-        email: fetchedUser.email,
-        brand_id: fetchedUser.brand_id,
-        full_user: fetchedUser
-      });
+      console.log('🔐 User profile loaded:', { id: fetchedUser.id, role: fetchedUser.role, email: fetchedUser.email });
 
       setUser(prevUser => {
         if (prevUser?.id === fetchedUser.id && prevUser?.role === fetchedUser.role) {
@@ -153,85 +124,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     setUser(null);
-    setImpersonationContext(null);
     if (!supabase) return;
-
+    
     const { error } = await supabase.auth.signOut();
     if (error) console.error('Signout error:', error);
   };
 
-  useEffect(() => {
-    if (user?.role === 'operator' && supabase) {
-      loadAvailableContexts();
-    }
-  }, [user?.id]);
-
-  const loadAvailableContexts = async () => {
-    if (!supabase) return;
-
-    try {
-      const contexts: AvailableContext[] = [
-        { type: 'operator', name: 'Operator View' },
-        { type: 'admin', name: 'Admin View' }
-      ];
-
-      const { data: brands } = await supabase
-        .from('brands')
-        .select('id, name')
-        .order('name');
-
-      if (brands) {
-        brands.forEach(brand => {
-          contexts.push({
-            type: 'brand',
-            id: brand.id,
-            name: brand.name,
-            brandId: brand.id
-          });
-        });
-      }
-
-      const { data: agents } = await supabase
-        .from('agents')
-        .select('id, name, brand_id')
-        .order('name');
-
-      if (agents) {
-        agents.forEach(agent => {
-          contexts.push({
-            type: 'agent',
-            id: agent.id,
-            name: agent.name,
-            brandId: agent.brand_id
-          });
-        });
-      }
-
-      setAvailableContexts(contexts);
-    } catch (error) {
-      console.error('Error loading available contexts:', error);
-    }
-  };
-
-  const switchContext = (context: ImpersonationContext) => {
-    setImpersonationContext(context);
-    console.log('🔄 Switched context to:', context);
-  };
-
-  const resetContext = () => {
-    setImpersonationContext(null);
-    console.log('🔄 Reset to operator context');
-  };
-
-  const isAdmin = impersonationContext ? impersonationContext.role === 'admin' : user?.role === 'admin';
-  const isBrand = impersonationContext ? impersonationContext.role === 'brand' : user?.role === 'brand';
-  const isOperator = impersonationContext ? impersonationContext.role === 'operator' : user?.role === 'operator';
-  const isAgent = impersonationContext ? impersonationContext.role === 'agent' : user?.role === 'agent';
-
-  const effectiveBrandId = impersonationContext?.brandId || user?.brand_id || null;
-  const effectiveAgentId = impersonationContext?.agentId || null;
-
-  console.log('🔐 AuthContext - effectiveBrandId:', effectiveBrandId, 'user.brand_id:', user?.brand_id, 'impersonation:', impersonationContext?.brandId);
+  const isAdmin = user?.role === 'admin';
+  const isBrand = user?.role === 'brand';
+  const isOperator = user?.role === 'operator';
+  const isAgent = user?.role === 'agent';
 
   return (
     <AuthContext.Provider value={{
@@ -242,13 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin,
       isBrand,
       isOperator,
-      isAgent,
-      impersonationContext,
-      availableContexts,
-      switchContext,
-      resetContext,
-      effectiveBrandId,
-      effectiveAgentId
+      isAgent
     }}>
       {children}
     </AuthContext.Provider>

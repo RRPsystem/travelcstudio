@@ -436,30 +436,15 @@ export function APISettings() {
           throw new Error('API key is ongeldig of heeft onvoldoende rechten');
         }
       } else if (setting.provider === 'Google' && setting.service_name === 'Google Maps API') {
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (!session) {
-          throw new Error('Niet ingelogd');
-        }
-
         const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/test-google-places`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`,
-              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-            },
-            body: JSON.stringify({ test: 'geocoding' })
-          }
+          `https://maps.googleapis.com/maps/api/geocode/json?address=Amsterdam&key=${setting.api_key}`
         );
 
         const data = await response.json();
 
-        console.log('🗺️ Google Maps API test response:', data);
+        console.log('Google Maps API test response:', data);
 
-        if (data.success) {
+        if (data.status === 'OK') {
           const { error: updateError } = await supabase
             .from('api_settings')
             .update({
@@ -474,16 +459,13 @@ export function APISettings() {
             prev.map(s => s.id === setting.id ? { ...s, test_status: 'success', last_tested: new Date().toISOString() } : s)
           );
 
-          alert('✅ Google Maps API key werkt correct!\n\nHet Geocoding API antwoord is succesvol ontvangen.');
+          alert('Google Maps API key werkt correct!');
+        } else if (data.status === 'REQUEST_DENIED') {
+          throw new Error(`Google Maps API Error: ${data.error_message || 'API key is mogelijk niet geactiveerd voor Geocoding API'}`);
+        } else if (data.status === 'INVALID_REQUEST') {
+          throw new Error('Google Maps API Error: Ongeldige request parameters');
         } else {
-          const errorMsg = data.error || data.details?.error_message || 'Onbekende fout';
-          console.error('❌ Google Maps API test failed:', data);
-
-          if (errorMsg.includes('REQUEST_DENIED') || errorMsg.includes('API key not valid')) {
-            throw new Error(`Google Maps API - Toegang Geweigerd\n\n${errorMsg}\n\nControleer of deze APIs zijn geactiveerd in Google Cloud Console:\n- Geocoding API\n- Places API (New)\n- Routes API\n- Maps JavaScript API`);
-          } else {
-            throw new Error(`Google Maps API Test Mislukt\n\n${errorMsg}\n\nControleer je API key en quota in Google Cloud Console.`);
-          }
+          throw new Error(`Google Maps API Error: ${data.status} - ${data.error_message || 'Onbekende fout'}`);
         }
       } else if (setting.provider === 'Google' && setting.service_name === 'Google Custom Search') {
         const searchEngineId = setting.metadata?.search_engine_id;
@@ -569,6 +551,10 @@ export function APISettings() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">API Instellingen</h2>
+          <p className="text-gray-600 mt-1">Beheer externe API keys en configuraties</p>
+        </div>
         <button
           onClick={loadSettings}
           className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg flex items-center gap-2 transition-colors"
