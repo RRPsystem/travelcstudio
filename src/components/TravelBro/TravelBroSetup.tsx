@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db, supabase } from '../../lib/supabase';
-import { Bot, Phone, MessageSquare, Users, Settings, CheckCircle, XCircle, ExternalLink, Copy, Send, Plus, FileText, Link as LinkIcon, Trash2, Share2, Upload, Loader, Edit, Clock, Calendar, ArrowRight, MapPin, Route, Navigation, CreditCard } from 'lucide-react';
+import { Bot, Phone, MessageSquare, Users, Settings, CheckCircle, XCircle, ExternalLink, Copy, Send, Plus, FileText, Link as LinkIcon, Trash2, Share2, Upload, Loader, CreditCard as Edit, Clock, Calendar, ArrowRight, MapPin, Route, Navigation } from 'lucide-react';
 import { GooglePlacesAutocomplete } from '../shared/GooglePlacesAutocomplete';
 import { edgeAIService } from '../../lib/apiServices';
 
@@ -65,8 +65,6 @@ export function TravelBroSetup() {
   const [editPdfFile, setEditPdfFile] = useState<File | null>(null);
   const [savingTripEdit, setSavingTripEdit] = useState(false);
 
-  const [creditBalance, setCreditBalance] = useState<number | null>(null);
-
   useEffect(() => {
     loadData();
   }, []);
@@ -119,14 +117,6 @@ export function TravelBroSetup() {
         .order('created_at', { ascending: false });
 
       setActiveTravelBros(trips || []);
-
-      const { data: creditWallet } = await db.supabase
-        .from('credit_wallets')
-        .select('balance')
-        .eq('user_id', user?.id)
-        .maybeSingle();
-
-      setCreditBalance(creditWallet?.balance ?? null);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -337,37 +327,6 @@ export function TravelBroSetup() {
 
       console.log('✅ Validation passed, starting creation...');
       setCreating(true);
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Niet ingelogd');
-      }
-
-      console.log('💳 Checking credits...');
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const creditCheckResponse = await fetch(`${supabaseUrl}/functions/v1/deduct-credits`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          actionType: 'travelbro_setup',
-          description: `TravelBro aanmaken: ${newTripName}`,
-          metadata: {
-            tripName: newTripName,
-            hasPdf: !!pdfFile,
-            hasUrls: sourceUrls.filter(u => u.trim()).length > 0
-          }
-        })
-      });
-
-      if (!creditCheckResponse.ok) {
-        const errorData = await creditCheckResponse.json();
-        throw new Error(errorData.error || 'Onvoldoende credits');
-      }
-
-      console.log('✅ Credits deducted, continuing with creation...');
       console.log('📤 Uploading PDF...');
       let pdfUrl = null;
       let parsedData = null;
@@ -414,19 +373,13 @@ export function TravelBroSetup() {
         console.log('🤖 PDF URL:', pdfUrl);
 
         try {
-          const { data: { session } } = await supabase.auth.getSession();
-
-          if (!session) {
-            throw new Error('No authentication session found');
-          }
-
           const parseResponse = await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-trip-pdf`,
             {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`,
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
               },
               body: JSON.stringify({ pdfUrl }),
             }
@@ -435,28 +388,12 @@ export function TravelBroSetup() {
           console.log('🤖 Parse response status:', parseResponse.status);
 
           if (parseResponse.ok) {
-            const parseResult = await parseResponse.json();
-            console.log('📋 Parsed data:', parseResult);
-
-            parsedData = parseResult;
-
-            if (parseResult.itinerary) {
-              console.log('📅 Itinerary found, storing in metadata');
-            }
-
-            await loadData();
+            parsedData = await parseResponse.json();
+            console.log('📋 Parsed data:', parsedData);
           } else {
             const errorText = await parseResponse.text();
             console.error('❌ PDF parsing failed:', errorText);
-
-            let errorMsg = '⚠️ PDF parsing mislukt: ';
-            if (parseResponse.status === 402) {
-              errorMsg += 'Onvoldoende credits. Neem contact op met de operator om credits bij te kopen.';
-            } else {
-              errorMsg += errorText.substring(0, 200);
-            }
-            errorMsg += '\n\nDe TravelBRO wordt wel aangemaakt, maar zonder PDF data.';
-            alert(errorMsg);
+            alert(`⚠️ PDF parsing mislukt: ${errorText.substring(0, 200)}. De TravelBRO wordt wel aangemaakt, maar zonder PDF data.`);
           }
         } catch (fetchError) {
           console.error('❌ Fetch error:', fetchError);
@@ -469,16 +406,12 @@ export function TravelBroSetup() {
         ? { travelers }
         : null;
 
-      const itinerary = parsedData?.itinerary;
-      const tripMetadata = itinerary ? { itinerary } : null;
-
       console.log('💾 Inserting into database...');
       console.log('💾 Data:', {
         brand_id: user?.brand_id,
         name: newTripName,
         pdf_url: pdfUrl,
         parsed_data: parsedData || {},
-        metadata: tripMetadata,
         source_urls: filteredUrls,
         intake_template: intakeTemplate,
         custom_context: customContext,
@@ -494,7 +427,6 @@ export function TravelBroSetup() {
           name: newTripName,
           pdf_url: pdfUrl,
           parsed_data: parsedData || {},
-          metadata: tripMetadata,
           source_urls: filteredUrls,
           intake_template: intakeTemplate,
           custom_context: customContext,
@@ -575,15 +507,15 @@ export function TravelBroSetup() {
         }
 
         if (successCount > 0) {
-          alert(`✅ TravelBRO aangemaakt en ${successCount} welkomstbericht(en) gepland! (100 credits gebruikt)\n\n${failCount > 0 ? `⚠️ ${failCount} bericht(en) mislukt.` : ''}\n\nDruk op "Verwerk Geplande Berichten Nu" om de berichten direct te versturen.`);
+          alert(`✅ TravelBRO aangemaakt en ${successCount} welkomstbericht(en) gepland!\n\n${failCount > 0 ? `⚠️ ${failCount} bericht(en) mislukt.` : ''}\n\nDruk op "Verwerk Geplande Berichten Nu" om de berichten direct te versturen.`);
         } else {
-          alert('⚠️ TravelBRO aangemaakt (100 credits gebruikt), maar geen WhatsApp berichten konden worden gepland. Check de logs.');
+          alert('⚠️ TravelBRO aangemaakt, maar geen WhatsApp berichten konden worden gepland. Check de logs.');
         }
       } else if (intakeTemplate) {
         console.log('📋 TravelBRO heeft intake formulier - klant moet eerst formulier invullen');
-        alert('✅ TravelBRO aangemaakt! (100 credits gebruikt) Deel de client link met je klant zodat ze het intake formulier kunnen invullen.');
+        alert('✅ TravelBRO aangemaakt! Deel de client link met je klant zodat ze het intake formulier kunnen invullen.');
       } else {
-        alert('✅ TravelBRO aangemaakt! (100 credits gebruikt, geen telefoonnummers opgegeven)');
+        alert('✅ TravelBRO aangemaakt! (Geen telefoonnummers opgegeven)');
       }
 
       console.log('✅ TravelBRO created successfully!');
@@ -770,29 +702,25 @@ export function TravelBroSetup() {
 
       const shareLink = `https://${brandInfo?.travelbro_domain || 'travelbro.nl'}/${selectedTrip.share_token}`;
 
-      const requestPayload = {
-        to: invitePhone,
-        brandId: user?.brand_id,
-        useTemplate: true,
-        templateSid: 'HX23e0ee5840758fb35bd1bedf502fdf42',
-        templateVariables: {
-          '1': clientNameText,
-          '2': selectedTrip.destination || 'je reis'
-        },
-        tripId: selectedTrip.id,
-        sessionToken: sessionToken,
-        skipIntake: skipIntake
-      };
-
-      console.log('🚀 Sending WhatsApp invite request:', JSON.stringify(requestPayload, null, 2));
-
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
-        body: JSON.stringify(requestPayload),
+        body: JSON.stringify({
+          to: invitePhone,
+          brandId: user?.brand_id,
+          useTemplate: true,
+          templateSid: 'HX23e0ee5840758fb35bd1bedf502fdf42',
+          templateVariables: {
+            '1': clientNameText,
+            '2': selectedTrip.destination || 'je reis'
+          },
+          tripId: selectedTrip.id,
+          sessionToken: sessionToken,
+          skipIntake: skipIntake
+        }),
       });
 
       const result = await response.json();
@@ -833,32 +761,14 @@ export function TravelBroSetup() {
     <>
     <div className="p-6">
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-orange-500 to-amber-500">
-              <Bot className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">TravelBRO Assistent</h1>
-              <p className="text-gray-600">Configureer en beheer je AI reisassistent</p>
-            </div>
+        <div className="flex items-center space-x-3 mb-2">
+          <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-orange-500 to-amber-500">
+            <Bot className="w-6 h-6 text-white" />
           </div>
-          {creditBalance !== null && (
-            <div className={`px-4 py-2 rounded-lg ${creditBalance < 100 ? 'bg-red-100 border border-red-300' : 'bg-green-100 border border-green-300'}`}>
-              <div className="flex items-center space-x-2">
-                <CreditCard className={`w-5 h-5 ${creditBalance < 100 ? 'text-red-600' : 'text-green-600'}`} />
-                <div>
-                  <p className="text-xs text-gray-600">Credits</p>
-                  <p className={`font-bold ${creditBalance < 100 ? 'text-red-700' : 'text-green-700'}`}>
-                    {creditBalance.toFixed(2)}
-                  </p>
-                  {creditBalance < 100 && (
-                    <p className="text-xs text-red-600">Bijna op!</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">TravelBRO Assistent</h1>
+            <p className="text-gray-600">Configureer en beheer je AI reisassistent</p>
+          </div>
         </div>
       </div>
 
@@ -1572,32 +1482,20 @@ export function TravelBroSetup() {
 
                             newPdfUrl = publicUrl;
 
-                            const { data: { session } } = await supabase.auth.getSession();
-
-                            if (session) {
-                              const parseResponse = await fetch(
-                                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-trip-pdf`,
-                                {
-                                  method: 'POST',
-                                  headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${session.access_token}`,
-                                  },
-                                  body: JSON.stringify({ pdfUrl: newPdfUrl }),
-                                }
-                              );
-
-                              if (parseResponse.ok) {
-                                newParsedData = await parseResponse.json();
-                                await loadData();
-                                console.log('✅ PDF parsing successful:', newParsedData);
-                              } else if (parseResponse.status === 402) {
-                                throw new Error('Onvoldoende credits. Neem contact op met de operator om credits bij te kopen.');
-                              } else {
-                                const errorText = await parseResponse.text();
-                                console.error('❌ PDF parsing failed:', parseResponse.status, errorText);
-                                throw new Error(`PDF parsing mislukt (status ${parseResponse.status}): ${errorText.substring(0, 200)}`);
+                            const parseResponse = await fetch(
+                              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-trip-pdf`,
+                              {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                  'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                                },
+                                body: JSON.stringify({ pdfUrl: newPdfUrl }),
                               }
+                            );
+
+                            if (parseResponse.ok) {
+                              newParsedData = await parseResponse.json();
                             }
                           }
 
@@ -1606,16 +1504,12 @@ export function TravelBroSetup() {
                             ? { travelers: editTravelers }
                             : null;
 
-                          const itinerary = newParsedData?.itinerary;
-                          const tripMetadata = itinerary ? { itinerary } : selectedTrip.metadata;
-
                           const { error } = await db.supabase
                             .from('travel_trips')
                             .update({
                               name: editTripName,
                               pdf_url: newPdfUrl,
                               parsed_data: newParsedData || {},
-                              metadata: tripMetadata,
                               source_urls: filteredUrls,
                               intake_template: intakeTemplate,
                               custom_context: editCustomContext,

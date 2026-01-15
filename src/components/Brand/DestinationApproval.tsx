@@ -24,21 +24,21 @@ interface DestinationAssignment {
 }
 
 export function DestinationApproval() {
-  const { user, effectiveBrandId } = useAuth();
+  const { user } = useAuth();
   const [assignments, setAssignments] = useState<DestinationAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [isLoadingData, setIsLoadingData] = useState(false);
 
   useEffect(() => {
-    if (effectiveBrandId && !isLoadingData) {
+    if (user?.brand_id && !isLoadingData) {
       loadAssignments();
-    } else if (!effectiveBrandId) {
+    } else if (!user?.brand_id) {
       setLoading(false);
     }
-  }, [effectiveBrandId]);
+  }, [user?.brand_id]);
 
   const loadAssignments = async () => {
-    if (!effectiveBrandId || isLoadingData) {
+    if (!user?.brand_id || isLoadingData) {
       return;
     }
 
@@ -64,7 +64,7 @@ export function DestinationApproval() {
             published_at
           )
         `)
-        .eq('brand_id', effectiveBrandId)
+        .eq('brand_id', user.brand_id)
         .order('assigned_at', { ascending: false });
 
       if (assignmentError) throw assignmentError;
@@ -83,7 +83,7 @@ export function DestinationApproval() {
       const { data: brandDestinationsData, error: brandDestinationsError } = await supabase
         .from('destinations')
         .select('id, title, slug, description, featured_image, country, created_at, published_at, status')
-        .eq('brand_id', effectiveBrandId)
+        .eq('brand_id', user.brand_id)
         .order('created_at', { ascending: false });
 
       if (brandDestinationsError) throw brandDestinationsError;
@@ -94,7 +94,7 @@ export function DestinationApproval() {
         .from('destinations')
         .select('id, title, slug, description, featured_image, country, created_at, published_at, status, is_mandatory, enabled_for_brands, author_type')
         .eq('enabled_for_brands', true)
-        .neq('brand_id', effectiveBrandId)
+        .neq('brand_id', user.brand_id)
         .order('created_at', { ascending: false });
 
       if (availableDestinationsError) throw availableDestinationsError;
@@ -223,12 +223,12 @@ export function DestinationApproval() {
 
   const handleCreateDestination = async () => {
     try {
-      if (!user?.id || !effectiveBrandId) {
+      if (!user?.id || !user?.brand_id) {
         alert('User not authenticated or brand not found');
         return;
       }
 
-      const jwtResponse = await generateBuilderJWT(effectiveBrandId, user.id, ['content:read', 'content:write'], {
+      const jwtResponse = await generateBuilderJWT(user.brand_id, user.id, ['content:read', 'content:write'], {
         forceBrandId: true,
         authorType: 'brand',
         authorId: user.id,
@@ -263,12 +263,12 @@ export function DestinationApproval() {
 
   const handleEditDestination = async (destination: { id: string; slug: string; }, isBrand: boolean) => {
     try {
-      if (!user?.id || !effectiveBrandId) {
+      if (!user?.id || !user?.brand_id) {
         alert('User not authenticated or brand not found');
         return;
       }
 
-      const jwtResponse = await generateBuilderJWT(effectiveBrandId, user.id, ['content:read', 'content:write'], {
+      const jwtResponse = await generateBuilderJWT(user.brand_id, user.id, ['content:read', 'content:write'], {
         forceBrandId: true,
         destinationSlug: destination.slug,
         authorType: 'brand',
@@ -324,7 +324,7 @@ export function DestinationApproval() {
     return <div className="p-6">Loading...</div>;
   }
 
-  if (!effectiveBrandId) {
+  if (!user?.brand_id) {
     return (
       <div className="p-6">
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">

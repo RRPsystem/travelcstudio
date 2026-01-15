@@ -1,6 +1,4 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2";
-import { deductCredits } from '../_shared/credits.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,61 +27,12 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
-
-    const authHeader = req.headers.get('Authorization');
-    let userId: string | null = null;
-
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      const { data: { user } } = await supabase.auth.getUser(token);
-      userId = user?.id || null;
-    }
-
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ error: "Authentication required" }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    const { data: apiSettings, error: apiError } = await supabase
-      .from("api_settings")
-      .select("api_key")
-      .eq("provider", "OpenAI")
-      .eq("service_name", "OpenAI API")
-      .maybeSingle();
-
-    if (apiError || !apiSettings?.api_key) {
+    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
+    if (!openaiApiKey) {
       return new Response(
         JSON.stringify({ error: "OpenAI API key not configured" }),
         {
           status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    const openaiApiKey = apiSettings.api_key;
-
-    const creditResult = await deductCredits(
-      supabase,
-      userId,
-      'ai_travel_import',
-      `AI URL scraping: ${url.substring(0, 50)}`,
-      { url }
-    );
-
-    if (!creditResult.success) {
-      return new Response(
-        JSON.stringify({ error: creditResult.error || 'Failed to deduct credits' }),
-        {
-          status: 402,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );

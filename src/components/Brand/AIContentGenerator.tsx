@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { edgeAIService, aiTravelService } from '../../lib/apiServices';
 import { supabase } from '../../lib/supabase';
+import { APIStatusChecker } from './APIStatusChecker';
 import { GooglePlacesAutocomplete } from '../shared/GooglePlacesAutocomplete';
 import DOMPurify from 'dompurify';
 import {
@@ -82,6 +83,7 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showAPIStatus, setShowAPIStatus] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
 
   // Load chat history on mount
@@ -594,6 +596,13 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
           >
             <Plus size={16} />
             <span>Nieuwe Chat</span>
+          </button>
+          <button
+            onClick={() => setShowAPIStatus(true)}
+            className="w-full bg-orange-100 hover:bg-orange-200 text-orange-800 px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center space-x-2 transition-colors border border-orange-300"
+          >
+            <Globe size={14} />
+            <span>Check API Status</span>
           </button>
         </div>
 
@@ -1333,6 +1342,10 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
         />
       )}
 
+      {/* API Status Modal */}
+      {showAPIStatus && (
+        <APIStatusChecker onClose={() => setShowAPIStatus(false)} />
+      )}
     </div>
   );
 }

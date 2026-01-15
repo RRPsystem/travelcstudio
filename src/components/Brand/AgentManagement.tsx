@@ -13,7 +13,7 @@ interface Agent {
 }
 
 export function AgentManagement() {
-  const { user, effectiveBrandId } = useAuth();
+  const { user } = useAuth();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -28,19 +28,19 @@ export function AgentManagement() {
   });
 
   useEffect(() => {
-    if (effectiveBrandId) {
+    if (user?.brand_id) {
       loadAgents();
     }
-  }, [effectiveBrandId]);
+  }, [user?.brand_id]);
 
   const loadAgents = async () => {
-    if (!effectiveBrandId) return;
+    if (!user?.brand_id) return;
 
     try {
       const { data, error } = await supabase
         .from('agents')
         .select('*')
-        .eq('brand_id', effectiveBrandId)
+        .eq('brand_id', user.brand_id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -75,7 +75,7 @@ export function AgentManagement() {
           },
           body: JSON.stringify({
             ...formData,
-            brand_id: effectiveBrandId
+            brand_id: user?.brand_id
           })
         }
       );
@@ -214,12 +214,12 @@ export function AgentManagement() {
                         {agent.is_published ? (
                           <>
                             <Eye className="w-3 h-3" />
-                            Actief
+                            Gepubliceerd
                           </>
                         ) : (
                           <>
                             <EyeOff className="w-3 h-3" />
-                            Niet Actief
+                            Verborgen
                           </>
                         )}
                       </button>

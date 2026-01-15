@@ -50,7 +50,7 @@ const priorityConfig = {
 };
 
 export default function RoadmapBoard() {
-  const { user, effectiveBrandId } = useAuth();
+  const { user } = useAuth();
   const [items, setItems] = useState<RoadmapItem[]>([]);
   const [userVotes, setUserVotes] = useState<Set<string>>(new Set());
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -158,7 +158,7 @@ export default function RoadmapBoard() {
       description: newItem.description,
       category: newItem.category,
       created_by: user.id,
-      brand_id: effectiveBrandId
+      brand_id: user.brand_id
     });
 
     try {
@@ -169,7 +169,7 @@ export default function RoadmapBoard() {
           description: newItem.description,
           category: newItem.category,
           created_by: user.id,
-          brand_id: effectiveBrandId
+          brand_id: user.brand_id
         });
 
       if (error) {

@@ -1,16 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard as Edit, Copy, Trash2, Eye, Plus, RefreshCw, Upload, FileX, ExternalLink, Wrench, Globe } from 'lucide-react';
+import { CreditCard as Edit, Copy, Trash2, Eye, Plus, RefreshCw, Upload, FileX } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { openBuilder, generateBuilderJWT } from '../../lib/jwtHelper';
 import { useAuth } from '../../contexts/AuthContext';
-import {
-  detectPageType,
-  getPageTypeLabel,
-  getPageTypeBadgeColor,
-  generateTemplatePreviewUrl,
-  isTemplateVisibleType,
-  PageMetadata
-} from '../../lib/pageHelpers';
 
 interface Page {
   id: string;
@@ -23,65 +15,35 @@ interface Page {
   show_in_menu: boolean;
   menu_order: number;
   parent_slug: string | null;
-  metadata?: PageMetadata;
-  source?: 'ai_builder' | 'wordpress';
-  wordpress_edit_url?: string;
 }
 
 export function PageManagement() {
-  const { user, effectiveBrandId } = useAuth();
+  const { user } = useAuth();
   const [pages, setPages] = useState<Page[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingPageId, setEditingPageId] = useState<string | null>(null);
-  const [editingTitle, setEditingTitle] = useState('');
-  const [editingSlug, setEditingSlug] = useState('');
-  const [brandContentSystem, setBrandContentSystem] = useState<'ai_builder' | 'wordpress' | null>(null);
 
   useEffect(() => {
-    if (effectiveBrandId) {
-      loadBrandSettings(effectiveBrandId);
-      loadPages(effectiveBrandId);
+    if (user?.brand_id) {
+      loadPages(user.brand_id);
     }
-  }, [effectiveBrandId]);
+  }, [user?.brand_id]);
 
   useEffect(() => {
     const handleFocus = () => {
-      if (effectiveBrandId) {
-        loadPages(effectiveBrandId, false);
+      if (user?.brand_id) {
+        loadPages(user.brand_id, false);
       }
     };
 
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
-  }, [effectiveBrandId]);
-
-  const loadBrandSettings = async (brandId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('brands')
-        .select('website_type')
-        .eq('id', brandId)
-        .single();
-
-      if (error) throw error;
-
-      const websiteType = data?.website_type;
-      if (websiteType === 'wordpress') {
-        setBrandContentSystem('wordpress');
-      } else {
-        setBrandContentSystem('ai_builder');
-      }
-    } catch (error) {
-      console.error('Error loading brand settings:', error);
-      setBrandContentSystem('ai_builder');
-    }
-  };
+  }, [user?.brand_id]);
 
   const loadPages = async (brandId: string, showLoading = true) => {
     try {
       if (showLoading) setLoading(true);
 
-      const { data: aiPages, error: aiError } = await supabase
+      const { data, error } = await supabase
         .from('pages')
         .select('*')
         .eq('brand_id', brandId)
@@ -89,85 +51,12 @@ export function PageManagement() {
         .or('is_template.is.null,is_template.eq.false')
         .order('updated_at', { ascending: false });
 
-      if (aiError) {
-        console.error('Error loading AI pages:', aiError);
-        throw aiError;
+      if (error) {
+        console.error('Error loading pages:', error);
+        throw error;
       }
 
-      const aiPagesWithMetadata = (aiPages || []).map(page => {
-        if (!page.metadata || !page.metadata.type) {
-          const detectedType = detectPageType(page.slug, page.title);
-          return {
-            ...page,
-            source: 'ai_builder' as const,
-            metadata: {
-              ...page.metadata,
-              type: detectedType
-            }
-          };
-        }
-        return {
-          ...page,
-          source: 'ai_builder' as const
-        };
-      });
-
-      let allPages = aiPagesWithMetadata;
-
-      if (brandContentSystem === 'wordpress') {
-        const { data: wpTemplates, error: wpError } = await supabase
-          .from('website_page_templates')
-          .select(`
-            id,
-            template_name,
-            wp_page_id,
-            wp_page_url,
-            template_source_id,
-            created_at,
-            updated_at,
-            template_sources!inner(wordpress_url)
-          `)
-          .eq('template_type', 'wordpress')
-          .order('updated_at', { ascending: false });
-
-        if (!wpError && wpTemplates) {
-          const wpPages: Page[] = wpTemplates.map((template: any) => ({
-            id: `wp-${template.id}`,
-            title: template.template_name,
-            slug: template.wp_page_id?.toString() || '',
-            status: 'published',
-            updated_at: template.updated_at,
-            published_at: template.created_at,
-            show_in_menu: false,
-            menu_order: 0,
-            parent_slug: null,
-            source: 'wordpress' as const,
-            wordpress_edit_url: template.wp_page_url
-              ? `${template.template_sources.wordpress_url}/wp-admin/post.php?post=${template.wp_page_id}&action=edit`
-              : undefined,
-            metadata: {
-              type: 'page'
-            }
-          }));
-
-          allPages = [...aiPagesWithMetadata, ...wpPages];
-        }
-      }
-
-      setPages(allPages);
-
-      const pagesToUpdate = aiPagesWithMetadata.filter(
-        page => !aiPages?.find(p => p.id === page.id)?.metadata?.type
-      );
-
-      if (pagesToUpdate.length > 0) {
-        for (const page of pagesToUpdate) {
-          await supabase
-            .from('pages')
-            .update({ metadata: page.metadata })
-            .eq('id', page.id);
-        }
-      }
+      setPages(data || []);
     } catch (error) {
       console.error('Error loading pages:', error);
     } finally {
@@ -176,7 +65,7 @@ export function PageManagement() {
   };
 
   const openInBuilder = async (pageId: string) => {
-    if (!user || !effectiveBrandId) {
+    if (!user || !user.brand_id) {
       console.error('[PageManagement] Missing user or brand_id:', { user });
       alert('Gebruiker of brand ID ontbreekt');
       return;
@@ -186,13 +75,13 @@ export function PageManagement() {
       console.log('[PageManagement] Opening builder for page:', {
         pageId,
         userId: user.id,
-        brandId: effectiveBrandId
+        brandId: user.brand_id
       });
 
       const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/website/pages`;
       console.log('[PageManagement] Return URL:', returnUrl);
 
-      const deeplink = await openBuilder(effectiveBrandId, user.id, { pageId, returnUrl });
+      const deeplink = await openBuilder(user.brand_id, user.id, { pageId, returnUrl });
       console.log('[PageManagement] Generated deeplink:', deeplink);
 
       const newWindow = window.open(deeplink, '_blank');
@@ -208,11 +97,11 @@ export function PageManagement() {
   };
 
   const createNewPage = async () => {
-    if (!user || !effectiveBrandId) return;
+    if (!user || !user.brand_id) return;
 
     try {
       const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/website/pages`;
-      const deeplink = await openBuilder(effectiveBrandId, user.id, { returnUrl });
+      const deeplink = await openBuilder(user.brand_id, user.id, { returnUrl });
       window.open(deeplink, '_blank');
     } catch (error) {
       console.error('Error generating deeplink:', error);
@@ -220,7 +109,7 @@ export function PageManagement() {
   };
 
   const duplicatePage = async (pageId: string) => {
-    if (!effectiveBrandId) return;
+    if (!user?.brand_id) return;
 
     try {
       const { data: originalPage } = await supabase
@@ -240,7 +129,7 @@ export function PageManagement() {
           content_type: 'page',
         });
 
-        await loadPages(effectiveBrandId);
+        await loadPages(user.brand_id);
       }
     } catch (error) {
       console.error('Error duplicating page:', error);
@@ -249,14 +138,14 @@ export function PageManagement() {
 
   const deletePage = async (pageId: string) => {
     if (!confirm('Weet je zeker dat je deze pagina wilt verwijderen?')) return;
-    if (!effectiveBrandId) return;
+    if (!user?.brand_id) return;
 
     try {
       const { error } = await supabase
         .from('pages')
         .delete()
         .eq('id', pageId)
-        .eq('brand_id', effectiveBrandId);
+        .eq('brand_id', user.brand_id);
 
       if (error) {
         console.error('[PageManagement] Delete failed:', error);
@@ -264,51 +153,15 @@ export function PageManagement() {
       }
 
       console.log('[PageManagement] Page deleted successfully');
-      await loadPages(effectiveBrandId, false);
+      await loadPages(user.brand_id, false);
     } catch (error) {
       console.error('[PageManagement] Error deleting page:', error);
       alert('Kon pagina niet verwijderen: ' + error);
     }
   };
 
-  const startEditPage = (page: Page) => {
-    setEditingPageId(page.id);
-    setEditingTitle(page.title);
-    setEditingSlug(page.slug);
-  };
-
-  const cancelEdit = () => {
-    setEditingPageId(null);
-    setEditingTitle('');
-    setEditingSlug('');
-  };
-
-  const saveEdit = async () => {
-    if (!effectiveBrandId || !editingPageId) return;
-
-    try {
-      const { error } = await supabase
-        .from('pages')
-        .update({
-          title: editingTitle,
-          slug: editingSlug,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', editingPageId)
-        .eq('brand_id', effectiveBrandId);
-
-      if (error) throw error;
-
-      await loadPages(effectiveBrandId, false);
-      cancelEdit();
-    } catch (error) {
-      console.error('Error updating page:', error);
-      alert('Kon pagina niet bijwerken: ' + error);
-    }
-  };
-
   const togglePublishStatus = async (pageId: string, currentStatus: string) => {
-    if (!effectiveBrandId) return;
+    if (!user?.brand_id) return;
 
     const isPublished = currentStatus === 'published';
     const newStatus = isPublished ? 'draft' : 'published';
@@ -330,11 +183,11 @@ export function PageManagement() {
         .from('pages')
         .update(updateData)
         .eq('id', pageId)
-        .eq('brand_id', effectiveBrandId);
+        .eq('brand_id', user.brand_id);
 
       if (error) throw error;
 
-      await loadPages(effectiveBrandId, false);
+      await loadPages(user.brand_id, false);
     } catch (error) {
       console.error(`Error ${action} page:`, error);
       alert(`Kon pagina niet ${action}: ` + error);
@@ -342,7 +195,7 @@ export function PageManagement() {
   };
 
   const toggleShowInMenu = async (pageId: string, currentValue: boolean) => {
-    if (!effectiveBrandId) return;
+    if (!user?.brand_id) return;
 
     try {
       const { error } = await supabase
@@ -352,11 +205,11 @@ export function PageManagement() {
           updated_at: new Date().toISOString()
         })
         .eq('id', pageId)
-        .eq('brand_id', effectiveBrandId);
+        .eq('brand_id', user.brand_id);
 
       if (error) throw error;
 
-      await loadPages(effectiveBrandId, false);
+      await loadPages(user.brand_id, false);
     } catch (error) {
       console.error('Error updating menu settings:', error);
     }
@@ -375,25 +228,9 @@ export function PageManagement() {
 
   return (
     <div className="p-8">
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <div className="flex items-start space-x-3">
-          <Globe className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="font-semibold text-sm text-blue-900 mb-1">
-              {brandContentSystem === 'wordpress' ? 'AI Builder & WordPress Pagina Beheer' : 'AI Website Builder Pagina Beheer'}
-            </h3>
-            <p className="text-sm text-blue-700">
-              {brandContentSystem === 'wordpress'
-                ? 'Beheer hier je AI Builder pagina\'s én WordPress pagina\'s. Klik op "Bewerk in WordPress" om je WordPress pagina\'s aan te passen.'
-                : 'Beheer hier je AI Website Builder pagina\'s. Maak nieuwe pagina\'s aan of bewerk bestaande pagina\'s.'}
-            </p>
-          </div>
-        </div>
-      </div>
-
       <div className="flex items-center justify-end mb-8 space-x-3">
         <button
-          onClick={() => effectiveBrandId && loadPages(effectiveBrandId, false)}
+          onClick={() => user?.brand_id && loadPages(user.brand_id, false)}
           className="inline-flex items-center space-x-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium transition-colors hover:bg-gray-200"
           title="Ververs pagina's"
         >
@@ -406,7 +243,7 @@ export function PageManagement() {
           style={{ backgroundColor: '#0ea5e9' }}
         >
           <Plus size={20} />
-          <span>Nieuwe AI Builder Pagina</span>
+          <span>Nieuwe Pagina</span>
         </button>
       </div>
 
@@ -438,12 +275,6 @@ export function PageManagement() {
                   Slug
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Bron
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Type
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -458,58 +289,13 @@ export function PageManagement() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {pages.map((page) => {
-                const pageType = page.metadata?.type || 'page';
-                const isVisible = isTemplateVisibleType(pageType);
-                const isWordPress = page.source === 'wordpress';
-
-                return (
+              {pages.map((page) => (
                 <tr key={page.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    {editingPageId === page.id && !isWordPress ? (
-                      <input
-                        type="text"
-                        value={editingTitle}
-                        onChange={(e) => setEditingTitle(e.target.value)}
-                        className="w-full px-2 py-1 text-sm border border-orange-300 rounded focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                      />
-                    ) : (
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{page.title}</div>
-                        {isVisible && (
-                          <div className="mt-1 flex items-center gap-1 text-xs text-blue-600">
-                            <ExternalLink size={12} />
-                            <span>Zichtbaar in template</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    {editingPageId === page.id && !isWordPress ? (
-                      <input
-                        type="text"
-                        value={editingSlug}
-                        onChange={(e) => setEditingSlug(e.target.value)}
-                        className="w-full px-2 py-1 text-sm border border-orange-300 rounded font-mono focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                      />
-                    ) : (
-                      <div className="text-sm text-gray-600 font-mono">{page.slug}</div>
-                    )}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">{page.title}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      isWordPress
-                        ? 'bg-purple-100 text-purple-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {isWordPress ? 'WordPress' : 'AI Builder'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPageTypeBadgeColor(pageType)}`}>
-                      {getPageTypeLabel(pageType)}
-                    </span>
+                    <div className="text-sm text-gray-600">{page.slug}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
@@ -525,132 +311,70 @@ export function PageManagement() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
-                    {isWordPress ? (
-                      <span className="text-xs text-gray-500">-</span>
-                    ) : (
-                      <button
-                        onClick={() => toggleShowInMenu(page.id, page.show_in_menu)}
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                          page.show_in_menu
-                            ? 'bg-orange-100 text-orange-800 hover:bg-orange-200'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
-                        title={page.show_in_menu ? 'Verberg in menu' : 'Toon in menu'}
-                      >
-                        {page.show_in_menu ? 'Ja' : 'Nee'}
-                      </button>
-                    )}
+                    <button
+                      onClick={() => toggleShowInMenu(page.id, page.show_in_menu)}
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                        page.show_in_menu
+                          ? 'bg-orange-100 text-orange-800 hover:bg-orange-200'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                      title={page.show_in_menu ? 'Verberg in menu' : 'Toon in menu'}
+                    >
+                      {page.show_in_menu ? 'Ja' : 'Nee'}
+                    </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                     {formatDate(page.published_at)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end space-x-2">
-                      {isWordPress ? (
-                        <>
-                          {page.wordpress_edit_url && (
-                            <button
-                              onClick={() => window.open(page.wordpress_edit_url, '_blank')}
-                              className="inline-flex items-center space-x-1 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                              title="Bewerk in WordPress"
-                            >
-                              <ExternalLink size={16} />
-                              <span className="text-xs">Bewerk in WordPress</span>
-                            </button>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          {editingPageId === page.id ? (
-                            <>
-                              <button
-                                onClick={saveEdit}
-                                className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                                title="Opslaan"
-                              >
-                                Opslaan
-                              </button>
-                              <button
-                                onClick={cancelEdit}
-                                className="px-3 py-1 text-sm bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors"
-                                title="Annuleren"
-                              >
-                                Annuleren
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                onClick={() => startEditPage(page)}
-                                className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                                title="Titel en Slug Bewerken"
-                              >
-                                <Edit size={18} />
-                              </button>
-                              {isVisible && effectiveBrandId && (
-                                <button
-                                  onClick={() => {
-                                    const url = generateTemplatePreviewUrl(effectiveBrandId!, pageType);
-                                    window.open(url, '_blank');
-                                  }}
-                                  className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                                  title="Bekijk in Template"
-                                >
-                                  <ExternalLink size={18} />
-                                </button>
-                              )}
-                              <button
-                                onClick={() => openInBuilder(page.id)}
-                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                title="Openen in Builder"
-                              >
-                                <Wrench size={18} />
-                              </button>
-                            </>
-                          )}
-                          <button
-                            onClick={() => {
-                              window.open(`/preview/${page.id}`, '_blank');
-                            }}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Preview"
-                          >
-                            <Eye size={18} />
-                          </button>
-                          <button
-                            onClick={() => togglePublishStatus(page.id, page.status)}
-                            className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors ${
-                              page.status === 'published' ? 'bg-green-600' : 'bg-gray-300'
-                            }`}
-                            title={page.status === 'published' ? 'Depubliceren' : 'Publiceren'}
-                          >
-                            <span
-                              className={`inline-block w-4 h-4 bg-white rounded-full transition-transform ${
-                                page.status === 'published' ? 'translate-x-6' : 'translate-x-1'
-                              }`}
-                            />
-                          </button>
-                          <button
-                            onClick={() => duplicatePage(page.id)}
-                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                            title="Dupliceren"
-                          >
-                            <Copy size={18} />
-                          </button>
-                          <button
-                            onClick={() => deletePage(page.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Verwijderen"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </>
-                      )}
+                      <button
+                        onClick={() => openInBuilder(page.id)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Openen in Builder"
+                      >
+                        <Edit size={18} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          window.open(`/preview/${page.id}`, '_blank');
+                        }}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Preview"
+                      >
+                        <Eye size={18} />
+                      </button>
+                      <button
+                        onClick={() => togglePublishStatus(page.id, page.status)}
+                        className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors ${
+                          page.status === 'published' ? 'bg-green-600' : 'bg-gray-300'
+                        }`}
+                        title={page.status === 'published' ? 'Depubliceren' : 'Publiceren'}
+                      >
+                        <span
+                          className={`inline-block w-4 h-4 bg-white rounded-full transition-transform ${
+                            page.status === 'published' ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                      <button
+                        onClick={() => duplicatePage(page.id)}
+                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        title="Dupliceren"
+                      >
+                        <Copy size={18} />
+                      </button>
+                      <button
+                        onClick={() => deletePage(page.id)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Verwijderen"
+                      >
+                        <Trash2 size={18} />
+                      </button>
                     </div>
                   </td>
                 </tr>
-                );
-              })}
+              ))}
             </tbody>
           </table>
         </div>

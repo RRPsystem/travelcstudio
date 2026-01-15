@@ -6,22 +6,16 @@ import { BrandForm } from './BrandForm';
 import { NewsManagement } from './NewsManagement';
 import { DestinationManagement } from './DestinationManagement';
 import { TemplateManager } from './TemplateManager';
-import { TripCatalogManager } from './TripCatalogManager';
 import DeeplinkTester from './DeeplinkTester';
 import { HelpBot } from '../shared/HelpBot';
-import { WordPressCatalogSync } from '../Operator/WordPressCatalogSync';
-import PodcastManagement from '../Podcast/PodcastManagement';
-import { GPTManagement } from '../Operator/GPTManagement';
-import { AIContentGenerator } from '../Brand/AIContentGenerator';
-import { Users, Building2, FileText, Settings, Plus, Search, Filter, CreditCard as Edit, Trash2, LayoutGrid as Layout, Menu, Globe, Newspaper, MapPin, Plane, Link, Key, X, Lock, BookOpen, Mic, Bot, Wand2 } from 'lucide-react'
+import { Users, Building2, FileText, Settings, Plus, Search, Filter, CreditCard as Edit, Trash2, LayoutGrid as Layout, Menu, Globe, Newspaper, MapPin, Plane, Link, Key, X, Lock, BookOpen } from 'lucide-react'
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 export function AdminDashboard() {
-  const { user, signOut, impersonationContext, resetContext } = useAuth();
+  const { user, signOut } = useAuth();
   const [activeSection, setActiveSection] = useState('dashboard');
   const [showWebsiteSubmenu, setShowWebsiteSubmenu] = useState(false);
   const [showContentSubmenu, setShowContentSubmenu] = useState(false);
-  const [showAIToolsSubmenu, setShowAIToolsSubmenu] = useState(false);
   const [showBrandForm, setShowBrandForm] = useState(false);
   const [editingBrand, setEditingBrand] = useState<any>(null);
   const [brands, setBrands] = useState<any[]>([]);
@@ -43,11 +37,8 @@ export function AdminDashboard() {
     if (['template-manager'].includes(activeSection)) {
       setShowWebsiteSubmenu(true);
     }
-    if (['admin-news', 'destinations', 'trips', 'trip-catalog', 'wordpress-catalog'].includes(activeSection)) {
+    if (['admin-news', 'destinations', 'trips'].includes(activeSection)) {
       setShowContentSubmenu(true);
-    }
-    if (['gpt-management', 'ai-content-generator'].includes(activeSection)) {
-      setShowAIToolsSubmenu(true);
     }
   }, [activeSection]);
 
@@ -181,7 +172,6 @@ export function AdminDashboard() {
     { id: 'brands', label: 'Brand Management', icon: Building2 },
     { id: 'agents', label: 'Agent Management', icon: Users },
     { id: 'deeplink-tester', label: 'Deeplink Tester', icon: Link },
-    { id: 'podcast', label: 'Podcast Beheer', icon: Mic },
   ];
 
   const websiteItems = [
@@ -192,13 +182,6 @@ export function AdminDashboard() {
     { id: 'admin-news', label: 'Nieuwsbeheer', icon: Newspaper },
     { id: 'destinations', label: 'Bestemmingen', icon: MapPin },
     { id: 'trips', label: 'Reizen', icon: Plane },
-    { id: 'trip-catalog', label: 'Reizen Catalogus', icon: BookOpen },
-    { id: 'wordpress-catalog', label: 'WordPress Catalogus', icon: Globe },
-  ];
-
-  const aiToolsItems = [
-    { id: 'gpt-management', label: 'GPT Management', icon: Bot },
-    { id: 'ai-content-generator', label: 'AI Content Generator', icon: Wand2 },
   ];
 
   const handleTravelStudioClick = () => {
@@ -260,47 +243,6 @@ export function AdminDashboard() {
                 {showWebsiteSubmenu && (
                   <ul className="mt-2 ml-6 space-y-1">
                     {websiteItems.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <li key={item.id}>
-                          <button
-                            onClick={() => setActiveSection(item.id)}
-                            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors text-sm ${
-                              activeSection === item.id
-                                ? 'bg-slate-700 text-white'
-                                : 'text-slate-400 hover:text-white hover:bg-slate-700'
-                            }`}
-                          >
-                            <Icon size={16} />
-                            <span>{item.label}</span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </li>
-
-              {/* AI Tools Menu */}
-              <li>
-                <button
-                  onClick={() => setShowAIToolsSubmenu(!showAIToolsSubmenu)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                    ['gpt-management', 'ai-content-generator'].includes(activeSection)
-                      ? 'bg-slate-700 text-white'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <Bot size={20} />
-                    <span>AI Tools</span>
-                  </div>
-                  {showAIToolsSubmenu ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                </button>
-
-                {showAIToolsSubmenu && (
-                  <ul className="mt-2 ml-6 space-y-1">
-                    {aiToolsItems.map((item) => {
                       const Icon = item.icon;
                       return (
                         <li key={item.id}>
@@ -442,7 +384,7 @@ export function AdminDashboard() {
               <button
                 onClick={() => setShowContentSubmenu(!showContentSubmenu)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                  ['admin-news', 'destinations', 'trips', 'trip-catalog', 'wordpress-catalog'].includes(activeSection)
+                  ['admin-news', 'destinations', 'trips'].includes(activeSection)
                     ? 'bg-slate-700 text-white'
                     : 'text-slate-300 hover:text-white hover:bg-slate-700'
                 }`}
@@ -478,47 +420,6 @@ export function AdminDashboard() {
               )}
             </li>
 
-            {/* AI Tools Menu */}
-            <li>
-              <button
-                onClick={() => setShowAIToolsSubmenu(!showAIToolsSubmenu)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                  ['gpt-management', 'ai-content-generator'].includes(activeSection)
-                    ? 'bg-slate-700 text-white'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700'
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <Bot size={20} />
-                  <span>AI Tools</span>
-                </div>
-                {showAIToolsSubmenu ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-              </button>
-
-              {showAIToolsSubmenu && (
-                <ul className="mt-2 ml-6 space-y-1">
-                  {aiToolsItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <li key={item.id}>
-                        <button
-                          onClick={() => setActiveSection(item.id)}
-                          className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors text-sm ${
-                            activeSection === item.id
-                              ? 'bg-slate-700 text-white'
-                              : 'text-slate-400 hover:text-white hover:bg-slate-700'
-                          }`}
-                        >
-                          <Icon size={16} />
-                          <span>{item.label}</span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </li>
-
             {/* Travel Studio Link */}
             <li>
               <button
@@ -533,15 +434,6 @@ export function AdminDashboard() {
         </nav>
 
         <div className="p-4 border-t border-slate-700 space-y-2">
-          {impersonationContext?.role === 'admin' && user?.role === 'operator' && (
-            <button
-              onClick={resetContext}
-              className="w-full flex items-center space-x-3 px-3 py-2 bg-orange-600 text-white hover:bg-orange-700 rounded-lg transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
-              <span>Terug naar Operator</span>
-            </button>
-          )}
           <button
             onClick={() => setActiveSection('settings')}
             className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
@@ -585,13 +477,8 @@ export function AdminDashboard() {
                 {activeSection === 'agents' && 'Agent Management'}
                 {activeSection === 'admin-news' && 'Admin News Management'}
                 {activeSection === 'destinations' && 'Bestemmingen Beheer'}
-                {activeSection === 'trip-catalog' && 'Reizen Catalogus'}
-                {activeSection === 'wordpress-catalog' && 'WordPress Catalogus'}
-                {activeSection === 'podcast' && 'Podcast Beheer'}
                 {activeSection === 'deeplink-tester' && 'Deeplink Tester'}
                 {activeSection === 'template-manager' && 'Template Manager'}
-                {activeSection === 'gpt-management' && 'GPT Management'}
-                {activeSection === 'ai-content-generator' && 'AI Content Generator'}
                 {activeSection === 'settings' && 'Settings'}
                 {activeSection === 'travel-journal' && 'Travel Journaal'}
               </h1>
@@ -600,13 +487,8 @@ export function AdminDashboard() {
                 {activeSection === 'dashboard' && 'System overview and statistics'}
                 {activeSection === 'admin-news' && 'Create and manage news items for all brands'}
                 {activeSection === 'destinations' && 'Beheer bestemmingen voor alle brands'}
-                {activeSection === 'trip-catalog' && 'Beoordeel tour operator reizen en wijs ze toe aan brands'}
-                {activeSection === 'wordpress-catalog' && 'Import reizen vanuit WordPress RBS Travel catalogus'}
-                {activeSection === 'podcast' && 'Plan en beheer podcast afleveringen, vragen en host notities'}
                 {activeSection === 'deeplink-tester' && 'Test external builder integration'}
                 {activeSection === 'template-manager' && 'Maak en beheer pagina templates voor brands'}
-                {activeSection === 'gpt-management' && 'Configureer custom GPTs en content generatie instellingen'}
-                {activeSection === 'ai-content-generator' && 'Genereer AI content voor bestemmingen, reizen en nieuws'}
                 {activeSection === 'settings' && 'Systeeminstellingen en configuratie'}
                 {activeSection === 'travel-journal' && 'Houd een dagboek bij van je reizen en deel je ervaringen'}
               </p>
@@ -630,13 +512,8 @@ export function AdminDashboard() {
           {activeSection === 'agents' && <AgentManagement />}
           {activeSection === 'admin-news' && <NewsManagement />}
           {activeSection === 'destinations' && <DestinationManagement />}
-          {activeSection === 'trip-catalog' && <TripCatalogManager />}
-          {activeSection === 'wordpress-catalog' && <WordPressCatalogSync />}
-          {activeSection === 'podcast' && <PodcastManagement />}
           {activeSection === 'deeplink-tester' && <DeeplinkTester />}
           {activeSection === 'template-manager' && <TemplateManager />}
-          {activeSection === 'gpt-management' && <GPTManagement />}
-          {activeSection === 'ai-content-generator' && <AIContentGenerator />}
           {activeSection === 'settings' && (
             <div className="max-w-6xl mx-auto">
               <div className="bg-white rounded-lg shadow-md p-6">
