@@ -164,9 +164,9 @@ export default function RoadmapManagement() {
       setNewItem({
         title: '',
         description: '',
-        category: 'feature',
+        category: 'ai_tools',
         priority: 'medium',
-        status: 'planned'
+        status: 'take_off'
       });
       setShowNewForm(false);
       await loadData();
@@ -307,9 +307,9 @@ export default function RoadmapManagement() {
           </div>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="text-sm text-gray-600">Completed</div>
+          <div className="text-sm text-gray-600">Afgerond</div>
           <div className="text-2xl font-bold text-green-600 mt-1">
-            {items.filter(i => i.status === 'completed').length}
+            {items.filter(i => i.status === 'afgerond').length}
           </div>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">

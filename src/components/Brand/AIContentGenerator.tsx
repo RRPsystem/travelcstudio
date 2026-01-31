@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { edgeAIService, aiTravelService } from '../../lib/apiServices';
 import { supabase } from '../../lib/supabase';
-import { APIStatusChecker } from './APIStatusChecker';
 import { GooglePlacesAutocomplete } from '../shared/GooglePlacesAutocomplete';
 import DOMPurify from 'dompurify';
 import {
@@ -83,7 +82,6 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [showAPIStatus, setShowAPIStatus] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
 
   // Load chat history on mount
@@ -260,9 +258,6 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
   ];
 
   const moreSettings = [
-    { id: 'rondreis', label: 'Rondreis', icon: '🗺️', description: 'Meerdere bestemmingen' },
-    { id: 'strandvakantie', label: 'Strandvakantie', icon: '🏖️', description: 'Zon, zee en strand' },
-    { id: 'offerte', label: 'Offerte', icon: '💰', description: 'Zakelijk met prijzen' },
     { id: 'roadbook', label: 'Roadbook', icon: '📋', description: 'Reis al geboekt' },
     { id: 'webtekst', label: 'Webtekst', icon: '🌐', description: 'SEO geoptimaliseerd' },
     { id: 'social-media', label: 'Social Media', icon: '📱', description: 'Kort en catchy' },
@@ -301,7 +296,7 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
       additionalData = { from: routeFrom, to: routeTo, routeType: selectedRouteType };
     } else if (selectedContentType === 'planning') {
       chatTitle = `Dagplanning (${selectedDays}) - ${currentInput}...`;
-      userMessage = `Dagplanning voor ${selectedDays} in ${currentInput}`;
+      userMessage = `Maak een complete ${selectedDays} dagplanning voor ${currentInput}. Geef concrete bezienswaardigheden, restaurants en activiteiten met tijden per dag.`;
     } else if (selectedContentType === 'hotel') {
       chatTitle = `Hotel zoeker - ${currentInput}...`;
       userMessage = currentInput;
@@ -311,15 +306,21 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
       userMessage = `Genereer afbeelding: ${currentInput} (${styleLabel})`;
     }
 
+    // Get labels for all selected options
+    const writingStyleLabel = writingStyles.find(w => w.id === selectedWritingStyle)?.label || selectedWritingStyle;
+    const vacationTypeLabel = moreSettings.find(s => s.id === selectedMoreSetting)?.label || selectedMoreSetting;
+    const routeTypeLabel = routeTypes.find(r => r.id === selectedRouteType)?.label || selectedRouteType;
+    const daysLabel = dayOptions.find(d => d.id === selectedDays)?.label || selectedDays;
+
     const newChat: ChatSession = {
       id: newChatId,
       title: chatTitle,
       contentType: contentTypes.find(c => c.id === selectedContentType)?.label || '',
       lastActivity: new Date(),
-      writingStyle: selectedWritingStyle,
-      vacationType: selectedMoreSetting,
-      routeType: selectedRouteType,
-      days: selectedDays,
+      writingStyle: writingStyleLabel,
+      vacationType: vacationTypeLabel,
+      routeType: routeTypeLabel,
+      days: daysLabel,
       messages: [
         {
           id: '1',
@@ -389,11 +390,18 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
             const vacationTypeObj = moreSettings.find(s => s.id === selectedMoreSetting);
             const routeTypeObj = routeTypes.find(r => r.id === selectedRouteType);
             const daysObj = dayOptions.find(d => d.id === selectedDays);
+            const writingStyleObj = writingStyles.find(w => w.id === selectedWritingStyle);
+
+            // Check if "Meer Instelling" should override content type
+            const specialContentTypes = ['roadbook', 'webtekst', 'social-media', 'nieuwsbrief'];
+            const contentTypeToUse = selectedMoreSetting && specialContentTypes.includes(selectedMoreSetting)
+              ? selectedMoreSetting
+              : 'route';
 
             response = await edgeAIService.generateContent(
-              'route',
+              contentTypeToUse,
               `Route van ${routeFrom} naar ${routeTo}`,
-              selectedWritingStyle || 'zakelijk',
+              writingStyleObj?.label || selectedWritingStyle || 'zakelijk',
               {
                 from: routeFrom,
                 to: routeTo,
@@ -404,11 +412,11 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
                 eateriesAtArrival: routeData.eateriesAtArrival || []
               },
               {
-                vacationType: selectedMoreSetting || 'algemene',
+                vacationType: vacationTypeObj?.label || selectedMoreSetting || 'algemene',
                 vacationTypeDescription: vacationTypeObj?.description,
-                routeType: selectedRouteType,
+                routeType: routeTypeObj?.label || selectedRouteType,
                 routeTypeDescription: routeTypeObj?.description,
-                days: selectedDays,
+                days: daysObj?.label || selectedDays,
                 daysDescription: daysObj?.description,
                 destination: routeTo
               }
@@ -417,22 +425,30 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
             response = `Kon geen route vinden: ${routeResult.error || 'Onbekende fout'}`;
           }
         } else {
-          // Find descriptions for selected options
+          // Find descriptions and labels for selected options
           const vacationTypeObj = moreSettings.find(s => s.id === selectedMoreSetting);
           const routeTypeObj = routeTypes.find(r => r.id === selectedRouteType);
           const daysObj = dayOptions.find(d => d.id === selectedDays);
+          const writingStyleObj = writingStyles.find(w => w.id === selectedWritingStyle);
+
+          // Check if "Meer Instelling" should override content type
+          // Roadbook, Webtekst, Social Media, Nieuwsbrief have their own GPT prompts
+          const specialContentTypes = ['roadbook', 'webtekst', 'social-media', 'nieuwsbrief'];
+          const contentTypeToUse = selectedMoreSetting && specialContentTypes.includes(selectedMoreSetting)
+            ? selectedMoreSetting
+            : selectedContentType;
 
           response = await edgeAIService.generateContent(
-            selectedContentType,
+            contentTypeToUse,
             currentInput,
-            selectedWritingStyle || 'professional',
+            writingStyleObj?.label || selectedWritingStyle || 'zakelijk',
             additionalData,
             {
-              vacationType: selectedMoreSetting || 'algemene',
+              vacationType: vacationTypeObj?.label || selectedMoreSetting || 'algemene',
               vacationTypeDescription: vacationTypeObj?.description,
-              routeType: selectedRouteType,
+              routeType: routeTypeObj?.label || selectedRouteType,
               routeTypeDescription: routeTypeObj?.description,
-              days: selectedDays,
+              days: daysObj?.label || selectedDays,
               daysDescription: daysObj?.description,
               destination: currentInput
             }
@@ -597,13 +613,6 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
             <Plus size={16} />
             <span>Nieuwe Chat</span>
           </button>
-          <button
-            onClick={() => setShowAPIStatus(true)}
-            className="w-full bg-orange-100 hover:bg-orange-200 text-orange-800 px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center space-x-2 transition-colors border border-orange-300"
-          >
-            <Globe size={14} />
-            <span>Check API Status</span>
-          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -689,7 +698,7 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
                   <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`${message.type === 'user' ? 'max-w-3xl' : 'w-full'} p-4 rounded-lg ${
                       message.type === 'user'
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-blue-600'
                         : 'bg-white border border-gray-200'
                     }`}>
                       {message.type === 'assistant' && (
@@ -700,7 +709,7 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
                         </div>
                       )}
                       <div
-                        className={`${message.type === 'user' ? 'text-white' : 'text-gray-900'}`}
+                        className={`${message.type === 'user' ? 'text-white' : 'text-gray-900'} ${message.type === 'user' ? '[&_*]:text-white' : ''}`}
                         style={{ lineHeight: '1.6' }}
                       >
                         {message.routeData ? (
@@ -867,13 +876,24 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
                                 />
                               );
                             })()}
-                            {message.type === 'assistant' && (
+                            {message.type === 'assistant' ? (
                               <button
                                 onClick={() => {
                                   navigator.clipboard.writeText(message.content);
                                   alert('Tekst gekopieerd!');
                                 }}
                                 className="flex items-center space-x-1 text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                              >
+                                <Copy size={14} />
+                                <span>Kopieer tekst</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(message.content);
+                                  alert('Tekst gekopieerd!');
+                                }}
+                                className="flex items-center space-x-1 text-sm text-white hover:text-blue-100 transition-colors"
                               >
                                 <Copy size={14} />
                                 <span>Kopieer tekst</span>
@@ -1084,7 +1104,7 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
             {selectedContentType !== 'route' && selectedContentType !== 'image' && (
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Meer Instellingen:</h3>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-3">
                   {moreSettings.map((setting) => (
                     <button
                       key={setting.id}
@@ -1239,7 +1259,7 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
                 )}
 
                 {/* Planning Input */}
-                {selectedContentType === 'planning' && selectedDays && (
+                {selectedContentType === 'planning' && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Stad/Bestemming:</label>
                     <div className="relative">
@@ -1342,10 +1362,6 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
         />
       )}
 
-      {/* API Status Modal */}
-      {showAPIStatus && (
-        <APIStatusChecker onClose={() => setShowAPIStatus(false)} />
-      )}
     </div>
   );
 }

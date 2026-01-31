@@ -140,7 +140,21 @@ export function generateBuilderDeeplink({
   newsSlug?: string;
   destinationSlug?: string;
 }): string {
-  const builderBaseUrl = baseUrl || 'https://www.ai-websitestudio.nl';
+  // Determine the correct base URL and hash routing based on content type
+  let builderBaseUrl = baseUrl || 'https://www.ai-websitestudio.nl/simple-template-editor.html';
+  let hashRoute = '';
+
+  if (contentType === 'news' || contentType === 'news_items') {
+    builderBaseUrl = 'https://www.ai-websitestudio.nl/';
+    hashRoute = '#/mode/news';
+  } else if (contentType === 'destinations') {
+    builderBaseUrl = 'https://www.ai-websitestudio.nl/';
+    hashRoute = '#/mode/destinations';
+  } else if (contentType === 'trips') {
+    builderBaseUrl = 'https://www.ai-websitestudio.nl/';
+    hashRoute = '#/mode/trips';
+  }
+
   const apiBaseUrl = jwtResponse.api_url || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
   const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
@@ -157,16 +171,28 @@ export function generateBuilderDeeplink({
   if (headerId) params.append('header_id', headerId);
   if (footerId) params.append('footer_id', footerId);
   if (returnUrl) params.append('return_url', returnUrl);
-  if (mode) params.append('mode', mode);
+
+  // Only add mode parameter for non-content types (pages, templates, etc)
+  // For news/destinations/trips, mode is determined by presence of slug
+  if (mode && !contentType) {
+    params.append('mode', mode);
+  }
+
   if (authorType) params.append('author_type', authorType);
   if (authorId) params.append('author_id', authorId);
-  if (contentType) params.append('content_type', contentType);
+
+  // Use 'news_items' as content_type for news (as per API spec)
+  if (contentType === 'news') {
+    params.append('content_type', 'news_items');
+  } else if (contentType) {
+    params.append('content_type', contentType);
+  }
 
   // Use 'slug' for both news and destinations (builder expects 'slug' parameter)
   if (newsSlug) params.append('slug', newsSlug);
   if (destinationSlug) params.append('slug', destinationSlug);
 
-  return `${builderBaseUrl}/?${params.toString()}`;
+  return `${builderBaseUrl}?${params.toString()}${hashRoute}`;
 }
 
 /**
@@ -184,6 +210,7 @@ export async function openBuilder(
     footerId?: string;
     returnUrl?: string;
     scopes?: string[];
+    mode?: string;
   } = {}
 ): Promise<string> {
   const scopes = options.scopes || [
@@ -218,6 +245,7 @@ export async function openBuilder(
   if (options.headerId) deeplinkOptions.headerId = options.headerId;
   if (options.footerId) deeplinkOptions.footerId = options.footerId;
   if (options.returnUrl) deeplinkOptions.returnUrl = options.returnUrl;
+  if (options.mode) deeplinkOptions.mode = options.mode;
 
   return generateBuilderDeeplink(deeplinkOptions);
 }
@@ -349,14 +377,20 @@ export async function openVideoGenerator(
   brandId: string,
   userId: string,
   options: {
+    mode?: 'new' | 'edit' | 'trip';
+    videoSlug?: string;
+    videoId?: string;
+    agentId?: string;
+    tripId?: string;
+    tripTitle?: string;
     returnUrl?: string;
   } = {}
 ): Promise<string> {
+  // Video-specific scopes
   const scopes = [
-    'pages:read',
-    'pages:write',
-    'content:read',
-    'content:write'
+    'videos:read',
+    'videos:write',
+    'videos:generate'
   ];
 
   const jwtOptions: any = {};
@@ -364,20 +398,33 @@ export async function openVideoGenerator(
 
   const jwtResponse = await generateBuilderJWT(brandId, userId, scopes, jwtOptions);
 
-  const builderBaseUrl = 'https://www.ai-websitestudio.nl';
+  const builderBaseUrl = 'https://www.ai-websitestudio.nl/generator.html';
   const apiBaseUrl = jwtResponse.api_url || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
   const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
   const params = new URLSearchParams({
-    api: apiBaseUrl,
     brand_id: jwtResponse.brand_id,
     token: jwtResponse.token,
     apikey: apiKey
   });
 
+  // Add mode-specific parameters
+  const mode = options.mode || 'new';
+
+  if (mode === 'edit') {
+    if (options.videoSlug) params.append('slug', options.videoSlug);
+    if (options.videoId) params.append('video_id', options.videoId);
+  }
+
+  if (mode === 'trip' && options.tripId) {
+    params.append('trip_id', options.tripId);
+    if (options.tripTitle) params.append('title', options.tripTitle);
+    if (options.agentId) params.append('agent_id', options.agentId);
+  }
+
   if (options.returnUrl) params.append('return_url', options.returnUrl);
 
-  return `${builderBaseUrl}/?${params.toString()}#/mode/video-generator`;
+  return `${builderBaseUrl}?${params.toString()}`;
 }
 
 /**
@@ -416,6 +463,51 @@ export async function openTravelImport(
   if (options.returnUrl) params.append('return_url', options.returnUrl);
 
   return `${builderBaseUrl}/?${params.toString()}#/mode/travel`;
+}
+
+/**
+ * Helper function to open the Trip Builder (Roadbooks, Offertes, etc)
+ */
+export async function openTripBuilder(
+  brandId: string,
+  userId: string,
+  options: {
+    tripType?: 'roadbook' | 'offerte' | 'catalog' | 'custom';
+    tripId?: string;
+    returnUrl?: string;
+  } = {}
+): Promise<string> {
+  const scopes = [
+    'pages:read',
+    'pages:write',
+    'content:read',
+    'content:write'
+  ];
+
+  const jwtOptions: any = {
+    contentType: 'trips',
+  };
+  if (options.returnUrl) jwtOptions.returnUrl = options.returnUrl;
+
+  const jwtResponse = await generateBuilderJWT(brandId, userId, scopes, jwtOptions);
+
+  const builderBaseUrl = 'https://www.ai-websitestudio.nl';
+  const apiBaseUrl = jwtResponse.api_url || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+  const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+  const params = new URLSearchParams({
+    api: apiBaseUrl,
+    brand_id: jwtResponse.brand_id,
+    token: jwtResponse.token,
+    apikey: apiKey,
+    content_type: 'trips'
+  });
+
+  if (options.tripType) params.append('trip_type', options.tripType);
+  if (options.tripId) params.append('trip_id', options.tripId);
+  if (options.returnUrl) params.append('return_url', options.returnUrl);
+
+  return `${builderBaseUrl}/?${params.toString()}#/mode/trips`;
 }
 
 /**

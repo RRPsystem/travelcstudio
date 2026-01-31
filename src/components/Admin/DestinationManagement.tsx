@@ -3,6 +3,7 @@ import { MapPin, Plus, Edit2, Trash2, Eye } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { generateBuilderJWT, generateBuilderDeeplink } from '../../lib/jwtHelper';
+import AIContentGenerator from '../shared/AIContentGenerator';
 
 interface Destination {
   id: string;
@@ -338,6 +339,44 @@ export function DestinationManagement() {
     }
   };
 
+  const handleAIGenerated = async (content: any) => {
+    try {
+      if (!user?.id) {
+        alert('User not authenticated');
+        return;
+      }
+
+      const slug = content.intro.toLowerCase()
+        .substring(0, 50)
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-');
+
+      const { data: newDestination, error } = await supabase
+        .from('destinations')
+        .insert({
+          title: content.intro.split('.')[0].substring(0, 100),
+          slug,
+          author_type: 'admin',
+          author_id: user.id,
+          content: content,
+          enabled_for_brands: false,
+          enabled_for_franchise: false,
+          is_mandatory: false
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      alert('Bestemming succesvol aangemaakt met AI! Je kunt deze nu bewerken.');
+      loadDestinations();
+    } catch (error) {
+      console.error('Error creating AI destination:', error);
+      alert('Fout bij aanmaken bestemming');
+    }
+  };
+
   if (loading) {
     return <div className="p-6">Loading...</div>;
   }
@@ -356,13 +395,20 @@ export function DestinationManagement() {
                 {destinations.length} bestemming(en)
               </p>
             </div>
-            <button
-              onClick={handleCreateDestination}
-              className="bg-black text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-800 transition-colors"
-            >
-              <Plus size={16} />
-              <span>Nieuwe Bestemming</span>
-            </button>
+            <div className="flex gap-3">
+              <AIContentGenerator
+                contentType="destination"
+                onGenerated={handleAIGenerated}
+                brandId={SYSTEM_BRAND_ID}
+              />
+              <button
+                onClick={handleCreateDestination}
+                className="bg-black text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-800 transition-colors"
+              >
+                <Plus size={16} />
+                <span>Handmatig Aanmaken</span>
+              </button>
+            </div>
           </div>
         </div>
 

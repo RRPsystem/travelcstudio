@@ -119,7 +119,15 @@ export class OpenAIService {
       const basePrompts = {
         destination: `Je bent een professionele reisschrijver die boeiende bestemmingsteksten schrijft over {DESTINATION}. Schrijf in {WRITING_STYLE} stijl voor {VACATION_TYPE} reizigers. Gebruik actuele informatie en maak de tekst aantrekkelijk.`,
         route: `Je bent een routeplanner die gedetailleerde routebeschrijvingen maakt. {ROUTE_TYPE_INSTRUCTION} Geef praktische informatie over de route, bezienswaardigheden onderweg, en reistips. Schrijf in {WRITING_STYLE} stijl voor {VACATION_TYPE} reizigers.`,
-        planning: `Je bent een reisplanner die {DAYS} dagplanningen maakt voor {DESTINATION}. Geef een praktische planning met tijden, activiteiten, en tips. Schrijf in {WRITING_STYLE} stijl voor {VACATION_TYPE} reizigers.`,
+        planning: `Je bent een professionele reisplanner. Maak NU DIRECT een complete {DAYS} dagplanning voor {DESTINATION}.
+
+BELANGRIJK: Stel GEEN vragen. Genereer DIRECT een volledige dagplanning met:
+- Dag 1, Dag 2, etc. als kopjes
+- Voor elke dag: ochtend, middag, avond activiteiten met tijden (bijv. 09:00-12:00)
+- Concrete bezienswaardigheden, restaurants en activiteiten met echte namen
+- Praktische tips en vervoersadvies
+
+Schrijf in {WRITING_STYLE} stijl voor {VACATION_TYPE} reizigers. Begin DIRECT met "Dag 1:" - geen inleiding of vragen!`,
         hotel: `Je bent een hotelexpert die hotelzoekresultaten presenteert voor {VACATION_TYPE} reizigers. Geef gedetailleerde informatie over hotels, voorzieningen, en boekingsadvies. Schrijf in {WRITING_STYLE} stijl.`,
         image: `Je bent een AI die afbeeldingsbeschrijvingen genereert voor DALL-E. Maak een gedetailleerde, visuele beschrijving voor een {VACATION_TYPE} reisafbeelding in {WRITING_STYLE} stijl.`
       };
@@ -992,6 +1000,110 @@ Schrijf het in een gezellige, persoonlijke toon alsof je een vriend helpt. Gebru
   }
 }
 
+// WordPress Service
+export class WordPressService {
+  private apiKeyPromise: Promise<string> | null = null;
+  private wordpressUrl: string = '';
+
+  async getWordPressSource(): Promise<{ url: string; api_key?: string } | null> {
+    if (this.wordpressUrl) {
+      return { url: this.wordpressUrl };
+    }
+
+    if (!this.apiKeyPromise) {
+      this.apiKeyPromise = (async () => {
+        try {
+          const { data, error } = await supabase
+            .from('wordpress_sources')
+            .select('url, api_key')
+            .eq('is_active', true)
+            .single();
+
+          if (error) throw error;
+
+          this.wordpressUrl = data.url;
+          return data;
+        } catch (error) {
+          console.error('Error loading WordPress source:', error);
+          return null;
+        }
+      })();
+    }
+
+    return this.apiKeyPromise;
+  }
+
+  async fetchTemplate(wpPageId: string): Promise<any> {
+    const source = await this.getWordPressSource();
+    if (!source) {
+      throw new Error('WordPress source not configured');
+    }
+
+    const url = `${source.url}/wp-json/wp/v2/pages/${wpPageId}`;
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json'
+    };
+
+    if (source.api_key) {
+      headers['Authorization'] = `Bearer ${source.api_key}`;
+    }
+
+    const response = await fetch(url, { headers });
+
+    if (!response.ok) {
+      throw new Error(`WordPress API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    return {
+      id: data.id,
+      title: data.title.rendered,
+      content: data.content.rendered,
+      excerpt: data.excerpt?.rendered,
+      featured_media_url: data.featured_media_url,
+      link: data.link
+    };
+  }
+
+  async fetchAllTemplates(category?: string): Promise<any[]> {
+    const source = await this.getWordPressSource();
+    if (!source) {
+      throw new Error('WordPress source not configured');
+    }
+
+    let url = `${source.url}/wp-json/wp/v2/pages?per_page=100`;
+    if (category) {
+      url += `&categories=${category}`;
+    }
+
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json'
+    };
+
+    if (source.api_key) {
+      headers['Authorization'] = `Bearer ${source.api_key}`;
+    }
+
+    const response = await fetch(url, { headers });
+
+    if (!response.ok) {
+      throw new Error(`WordPress API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    return data.map((page: any) => ({
+      id: page.id,
+      title: page.title.rendered,
+      excerpt: page.excerpt?.rendered,
+      featured_media_url: page.featured_media_url,
+      link: page.link
+    }));
+  }
+}
+
 // Export singleton instances
 export const aiTravelService = new AITravelService();
 export const edgeAIService = new EdgeFunctionAIService();
+export const wordpressService = new WordPressService();

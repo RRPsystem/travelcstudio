@@ -7,21 +7,26 @@ import { SocialMediaManager } from '../Brand/SocialMediaManager';
 import { TravelBroSetup } from '../TravelBro/TravelBroSetup';
 import AgentProfileEdit from './AgentProfileEdit';
 import { HelpBot } from '../shared/HelpBot';
-import { Bot, User, ChevronDown, ChevronRight, Share2, Plane, Sparkles, Import as FileImport, Map, ArrowRight, Bell, ClipboardCheck, Video, BookOpen } from 'lucide-react';
+import { Bot, User, ChevronDown, ChevronRight, Share2, Plane, Sparkles, Import as FileImport, Map, ArrowRight, Bell, ClipboardCheck, Video, BookOpen, Wallet } from 'lucide-react';
 import RoadmapBoard from '../Brand/RoadmapBoard';
 import TestDashboard from '../Testing/TestDashboard';
+import CreditWallet from '../shared/CreditWallet';
+import AgentPodcastViewer from '../Podcast/AgentPodcastViewer';
+import VideoLibrary from '../Brand/VideoLibrary';
 
 export function AgentDashboard() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isOperator, impersonationContext, resetContext } = useAuth();
   const [activeSection, setActiveSection] = useState('dashboard');
   const [showAISubmenu, setShowAISubmenu] = useState(false);
   const [agentData, setAgentData] = useState<any>(null);
   const [newRoadmapCount, setNewRoadmapCount] = useState(0);
+  const [newPodcastCount, setNewPodcastCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadAgentData();
     loadRoadmapNotifications();
+    loadPodcastNotifications();
   }, [user]);
 
   const loadAgentData = async () => {
@@ -63,14 +68,34 @@ export function AgentDashboard() {
     }
   };
 
+  const loadPodcastNotifications = async () => {
+    try {
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+      const { data, error } = await db.supabase
+        .from('podcast_episodes_planning')
+        .select('id')
+        .eq('status', 'published')
+        .gte('created_at', oneWeekAgo.toISOString());
+
+      if (data) {
+        setNewPodcastCount(data.length);
+      }
+    } catch (error) {
+      console.error('Error loading podcast notifications:', error);
+    }
+  };
+
   React.useEffect(() => {
-    if (['ai-content', 'ai-travelbro', 'ai-import'].includes(activeSection)) {
+    if (['ai-content', 'ai-travelbro', 'ai-import', 'ai-video'].includes(activeSection)) {
       setShowAISubmenu(true);
     }
   }, [activeSection]);
 
   const sidebarItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Sparkles },
+    { id: 'credits', label: 'Mijn Credits', icon: Wallet },
     { id: 'profile', label: 'Profiel', icon: User },
     { id: 'social-media', label: 'Social Media', icon: Share2 },
     { id: 'testing', label: 'Test Dashboard', icon: ClipboardCheck },
@@ -206,26 +231,35 @@ export function AgentDashboard() {
                 <ul className="mt-2 ml-6 space-y-1">
                   {aiToolsItems.map((item) => {
                     const Icon = item.icon;
+                    const isComingSoon = item.id === 'ai-import';
                     return (
                       <li key={item.id}>
                         <button
                           onClick={() => {
-                            if (item.id === 'ai-video') {
-                              handleVideoGeneratorClick();
-                            } else if (item.id === 'ai-import') {
-                              handleTravelImportClick();
+                            if (isComingSoon) {
+                              return;
                             } else {
                               setActiveSection(item.id);
                             }
                           }}
-                          className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors text-sm ${
-                            activeSection === item.id
+                          disabled={isComingSoon}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors text-sm ${
+                            isComingSoon
+                              ? 'text-gray-500 cursor-not-allowed opacity-60'
+                              : activeSection === item.id
                               ? 'bg-gray-700 text-white'
                               : 'text-gray-400 hover:text-white hover:bg-gray-700'
                           }`}
                         >
-                          <Icon size={16} />
-                          <span>{item.label}</span>
+                          <div className="flex items-center space-x-3">
+                            <Icon size={16} />
+                            <span>{item.label}</span>
+                          </div>
+                          {isComingSoon && (
+                            <span className="text-xs bg-orange-600 text-white px-2 py-0.5 rounded-full">
+                              Soon
+                            </span>
+                          )}
                         </button>
                       </li>
                     );
@@ -267,15 +301,31 @@ export function AgentDashboard() {
           </button>
           <button
             onClick={() => setActiveSection('travel-journal')}
-            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
               activeSection === 'travel-journal'
                 ? 'bg-gray-700 text-white'
                 : 'text-gray-300 hover:text-white hover:bg-gray-700'
             }`}
           >
-            <BookOpen size={20} />
-            <span>Travel Journaal</span>
+            <div className="flex items-center space-x-3">
+              <BookOpen size={20} />
+              <span>TravelC Talk</span>
+            </div>
+            {newPodcastCount > 0 && (
+              <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {newPodcastCount}
+              </span>
+            )}
           </button>
+          {isOperator && impersonationContext?.role === 'agent' && (
+            <button
+              onClick={() => resetContext()}
+              className="w-full flex items-center space-x-3 px-3 py-2 text-orange-400 hover:text-white hover:bg-orange-600 rounded-lg transition-colors font-medium"
+            >
+              <ArrowRight size={20} className="rotate-180" />
+              <span>Terug naar Operator</span>
+            </button>
+          )}
           <button
             onClick={signOut}
             className="w-full flex items-center space-x-3 px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
@@ -291,6 +341,7 @@ export function AgentDashboard() {
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
                 {activeSection === 'dashboard' && 'Dashboard'}
+                {activeSection === 'credits' && 'Mijn Credits'}
                 {activeSection === 'profile' && 'Profiel'}
                 {activeSection === 'social-media' && 'Social Media'}
                 {activeSection === 'testing' && 'Test Dashboard'}
@@ -299,10 +350,11 @@ export function AgentDashboard() {
                 {activeSection === 'ai-travelbro' && 'AI TravelBRO'}
                 {activeSection === 'ai-video' && 'AI Travel Video'}
                 {activeSection === 'roadmap' && 'Roadmap'}
-                {activeSection === 'travel-journal' && 'Travel Journaal'}
+                {activeSection === 'travel-journal' && 'TravelC Talk'}
               </h1>
               <p className="text-gray-600 mt-1">
                 {activeSection === 'dashboard' && 'Welkom terug bij je agent dashboard'}
+                {activeSection === 'credits' && 'Beheer je credits en koop nieuwe credits'}
                 {activeSection === 'profile' && 'Beheer je profiel en instellingen'}
                 {activeSection === 'social-media' && 'Beheer je social media accounts en posts'}
                 {activeSection === 'testing' && 'Test features and provide feedback'}
@@ -311,7 +363,7 @@ export function AgentDashboard() {
                 {activeSection === 'ai-travelbro' && 'Your AI travel assistant'}
                 {activeSection === 'ai-video' && 'Create engaging travel videos with AI'}
                 {activeSection === 'roadmap' && 'Vote on features and track development progress'}
-                {activeSection === 'travel-journal' && 'Houd een dagboek bij van je reizen en deel je ervaringen'}
+                {activeSection === 'travel-journal' && 'Beheer podcast episodes, vragen en planning'}
               </p>
             </div>
           </div>
@@ -415,22 +467,15 @@ export function AgentDashboard() {
             </div>
           )}
 
+          {activeSection === 'credits' && <div className="p-6"><CreditWallet /></div>}
           {activeSection === 'profile' && <AgentProfileEdit />}
           {activeSection === 'social-media' && <SocialMediaManager />}
           {activeSection === 'testing' && <TestDashboard />}
           {activeSection === 'ai-content' && <AIContentGenerator />}
+          {activeSection === 'ai-video' && <VideoLibrary />}
           {activeSection === 'ai-travelbro' && <TravelBroSetup />}
           {activeSection === 'roadmap' && <RoadmapBoard />}
-          {activeSection === 'travel-journal' && (
-            <div className="p-6">
-              <div className="max-w-6xl mx-auto">
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Travel Journaal</h2>
-                  <p className="text-gray-600">Coming soon: Houd een dagboek bij van je reizen en deel je ervaringen.</p>
-                </div>
-              </div>
-            </div>
-          )}
+          {activeSection === 'travel-journal' && <AgentPodcastViewer />}
           {activeSection === 'ai-import' && (
             <div className="p-6">
               <div className="bg-white rounded-lg shadow-sm border p-8 text-center max-w-2xl mx-auto">

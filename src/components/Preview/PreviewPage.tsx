@@ -25,7 +25,10 @@ export function PreviewPage({ pageId: propPageId }: PreviewPageProps = {}) {
         const slug = params.get('slug');
         const pageId = propPageId || params.get('page_id');
 
+        console.log('[PreviewPage] Loading with:', { brandId, slug, pageId });
+
         if (!brandId && !pageId) {
+          console.error('[PreviewPage] No brand_id or page_id provided');
           setError('Geen brand_id of page_id opgegeven');
           setLoading(false);
           return;
@@ -34,6 +37,7 @@ export function PreviewPage({ pageId: propPageId }: PreviewPageProps = {}) {
         let data, error;
 
         if (brandId && slug) {
+          console.log('[PreviewPage] Loading by brand_id + slug');
           const result = await supabase
             .from('pages')
             .select('title, content_json, body_html, status')
@@ -44,6 +48,7 @@ export function PreviewPage({ pageId: propPageId }: PreviewPageProps = {}) {
           data = result.data;
           error = result.error;
         } else if (pageId) {
+          console.log('[PreviewPage] Loading by page_id:', pageId);
           const result = await supabase
             .from('pages')
             .select('title, content_json, body_html, status')
@@ -54,15 +59,27 @@ export function PreviewPage({ pageId: propPageId }: PreviewPageProps = {}) {
           error = result.error;
         }
 
-        if (error) throw error;
+        if (error) {
+          console.error('[PreviewPage] Query error:', error);
+          throw error;
+        }
 
         if (!data) {
+          console.error('[PreviewPage] Page not found');
           setError('Pagina niet gevonden');
           setLoading(false);
           return;
         }
 
+        console.log('[PreviewPage] Page loaded:', {
+          title: data.title,
+          hasContentJson: !!data.content_json,
+          hasBodyHtml: !!data.body_html,
+          bodyHtmlLength: data.body_html?.length
+        });
+
         if (!data.content_json && !data.body_html) {
+          console.error('[PreviewPage] Page has no content');
           setError('Deze pagina heeft nog geen inhoud');
           setLoading(false);
           return;
@@ -71,6 +88,7 @@ export function PreviewPage({ pageId: propPageId }: PreviewPageProps = {}) {
         setPageData(data);
         setLoading(false);
       } catch (err: any) {
+        console.error('[PreviewPage] Error:', err);
         setError(err.message || 'Fout bij laden van pagina');
         setLoading(false);
       }
@@ -154,14 +172,58 @@ export function PreviewPage({ pageId: propPageId }: PreviewPageProps = {}) {
       .replace(/<button[^>]*class="[^"]*toolbar-btn[^"]*"[^>]*>[\s\S]*?<\/button>/g, '')
       .replace(/<button[^>]*data-tag-del[^>]*>[\s\S]*?<\/button>/g, '');
 
-    if (!cleanHtml.includes('<html') && !cleanHtml.includes('<!DOCTYPE')) {
-      cleanHtml = cleanHtml;
-    } else {
-      const bodyMatch = cleanHtml.match(/<body[^>]*>([\s\S]*)<\/body>/);
-      if (bodyMatch) {
-        cleanHtml = bodyMatch[1];
+    const isFullHtmlDocument = cleanHtml.includes('<html') || cleanHtml.includes('<!DOCTYPE');
+
+    console.log('[PreviewPage] Rendering:', {
+      isFullHtmlDocument,
+      cleanHtmlLength: cleanHtml.length,
+      cleanHtmlPreview: cleanHtml.substring(0, 200)
+    });
+
+    if (isFullHtmlDocument) {
+      console.log('[PreviewPage] Using full HTML document mode');
+
+      let modifiedHtml = cleanHtml;
+
+      if (!cleanHtml.includes('Content-Security-Policy')) {
+        const cspMetaTag = '<meta http-equiv="Content-Security-Policy" content="default-src * \'unsafe-inline\' \'unsafe-eval\' data: blob:;">';
+
+        if (cleanHtml.includes('<head>')) {
+          modifiedHtml = cleanHtml.replace('<head>', '<head>' + cspMetaTag);
+        } else if (cleanHtml.includes('<head ')) {
+          modifiedHtml = cleanHtml.replace(/<head\s/, '<head>' + cspMetaTag + '<head ');
+        } else if (cleanHtml.includes('<html>')) {
+          modifiedHtml = cleanHtml.replace('<html>', '<html><head>' + cspMetaTag + '</head>');
+        } else if (cleanHtml.includes('<!DOCTYPE')) {
+          const doctypeEnd = cleanHtml.indexOf('>') + 1;
+          modifiedHtml = cleanHtml.slice(0, doctypeEnd) + '<html><head>' + cspMetaTag + '</head><body>' + cleanHtml.slice(doctypeEnd) + '</body></html>';
+        }
       }
+
+      const blob = new Blob([modifiedHtml], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
+
+      return (
+        <iframe
+          src={blobUrl}
+          className="w-full"
+          style={{
+            height: '100vh',
+            border: 'none',
+            display: 'block'
+          }}
+          title="Page Preview"
+          sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+          onLoad={() => {
+            console.log('[PreviewPage] iframe loaded');
+            URL.revokeObjectURL(blobUrl);
+          }}
+          onError={(e) => console.error('[PreviewPage] iframe error:', e)}
+        />
+      );
     }
+
+    console.log('[PreviewPage] Using custom HTML wrapper mode');
 
     return (
       <iframe

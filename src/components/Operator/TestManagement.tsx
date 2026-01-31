@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   CheckCircle, XCircle, AlertCircle, Clock, ThumbsUp, Users,
   RefreshCw, Play, Pause, ChevronDown, ChevronRight, MessageSquare,
-  Star, Save
+  Star, Save, UserPlus, Mail, Trash2
 } from 'lucide-react';
 
 interface TestFeature {
@@ -44,21 +44,240 @@ interface FeatureStatus {
   operator_notes: string;
 }
 
+interface User {
+  id: string;
+  email: string;
+  role: string;
+  brand_id?: string;
+}
+
+interface Tester {
+  user_id: string;
+  email: string;
+  role: string;
+  assignments_count: number;
+  approved: number;
+  needs_fix: number;
+  in_test: number;
+  fixed: number;
+}
+
 export default function TestManagement() {
   const { user } = useAuth();
   const [rounds, setRounds] = useState<TestRound[]>([]);
   const [activeRound, setActiveRound] = useState<TestRound | null>(null);
-  const BUILD_VERSION = '2026-01-15-23:59';
   const [features, setFeatures] = useState<TestFeature[]>([]);
   const [feedbackByFeature, setFeedbackByFeature] = useState<Map<string, TestFeedback[]>>(new Map());
   const [statusByFeature, setStatusByFeature] = useState<Map<string, FeatureStatus>>(new Map());
   const [expandedFeatures, setExpandedFeatures] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState<User[]>([]);
+  const [currentTesters, setCurrentTesters] = useState<Tester[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
+  const [inviting, setInviting] = useState(false);
 
   useEffect(() => {
     loadTestData();
   }, []);
+
+  useEffect(() => {
+    if (activeRound) {
+      loadTesters();
+    }
+  }, [activeRound]);
+
+  const loadTesters = async () => {
+    if (!activeRound) return;
+
+    try {
+      const { data: assignmentsData, error: assignmentsError } = await supabase
+        .from('test_assignments')
+        .select('user_id, feature_id')
+        .eq('round_id', activeRound.id);
+
+      if (assignmentsError) {
+        console.error('Error loading assignments:', assignmentsError);
+        return;
+      }
+
+      if (assignmentsData && assignmentsData.length > 0) {
+        const userIds = [...new Set(assignmentsData.map(a => a.user_id))];
+
+        const { data: usersData, error: usersError } = await supabase
+          .from('users')
+          .select('id, email, role')
+          .in('id', userIds);
+
+        if (usersError) {
+          console.error('Error loading users:', usersError);
+          return;
+        }
+
+        const { data: statusesData } = await supabase
+          .from('test_feature_status')
+          .select('feature_id, operator_status')
+          .eq('round_id', activeRound.id);
+
+        const statusMap = new Map<string, string>();
+        statusesData?.forEach((status: any) => {
+          statusMap.set(status.feature_id, status.operator_status);
+        });
+
+        const testerMap = new Map<string, {
+          email: string;
+          role: string;
+          count: number;
+          approved: number;
+          needs_fix: number;
+          in_test: number;
+          fixed: number;
+        }>();
+
+        assignmentsData.forEach((assignment: any) => {
+          const userId = assignment.user_id;
+          const user = usersData?.find(u => u.id === userId);
+          const status = statusMap.get(assignment.feature_id) || 'in_test';
+
+          const existing = testerMap.get(userId);
+          if (existing) {
+            existing.count++;
+            if (status === 'approved') existing.approved++;
+            else if (status === 'needs_fix') existing.needs_fix++;
+            else if (status === 'fixed') existing.fixed++;
+            else existing.in_test++;
+          } else if (user) {
+            testerMap.set(userId, {
+              email: user.email,
+              role: user.role,
+              count: 1,
+              approved: status === 'approved' ? 1 : 0,
+              needs_fix: status === 'needs_fix' ? 1 : 0,
+              fixed: status === 'fixed' ? 1 : 0,
+              in_test: status === 'in_test' ? 1 : 0
+            });
+          }
+        });
+
+        const testers: Tester[] = Array.from(testerMap.entries()).map(([userId, data]) => ({
+          user_id: userId,
+          email: data.email,
+          role: data.role,
+          assignments_count: data.count,
+          approved: data.approved,
+          needs_fix: data.needs_fix,
+          fixed: data.fixed,
+          in_test: data.in_test
+        }));
+
+        setCurrentTesters(testers);
+      } else {
+        setCurrentTesters([]);
+      }
+    } catch (error) {
+      console.error('Error loading testers:', error);
+    }
+  };
+
+  const loadAvailableUsers = async () => {
+    if (!activeRound) return;
+
+    try {
+      const { data: usersData } = await supabase
+        .from('users')
+        .select('id, email, role, brand_id')
+        .in('role', ['brand', 'agent']);
+
+      if (usersData) {
+        const { data: assignedUsers } = await supabase
+          .from('test_assignments')
+          .select('user_id')
+          .eq('round_id', activeRound.id);
+
+        const assignedUserIds = new Set(assignedUsers?.map(a => a.user_id) || []);
+        const available = usersData.filter(u => !assignedUserIds.has(u.id));
+        setAvailableUsers(available);
+      }
+    } catch (error) {
+      console.error('Error loading users:', error);
+    }
+  };
+
+  const inviteUsers = async () => {
+    if (!activeRound || selectedUsers.size === 0) return;
+
+    setInviting(true);
+
+    try {
+      const assignments: any[] = [];
+
+      features.forEach(feature => {
+        selectedUsers.forEach(userId => {
+          const user = availableUsers.find(u => u.id === userId);
+          if (!user) return;
+
+          if (
+            feature.category === 'shared' ||
+            (feature.category === 'brand' && user.role === 'brand') ||
+            (feature.category === 'agent' && user.role === 'agent')
+          ) {
+            assignments.push({
+              feature_id: feature.id,
+              user_id: userId,
+              round_id: activeRound.id,
+              status: 'pending'
+            });
+          }
+        });
+      });
+
+      if (assignments.length > 0) {
+        const { error } = await supabase
+          .from('test_assignments')
+          .insert(assignments);
+
+        if (error) throw error;
+
+        alert(`${selectedUsers.size} gebruikers uitgenodigd met ${assignments.length} test assignments!`);
+        setSelectedUsers(new Set());
+        setShowInviteModal(false);
+        await loadTesters();
+      }
+    } catch (error) {
+      console.error('Error inviting users:', error);
+      alert('Er ging iets mis bij het uitnodigen van gebruikers');
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const removeTester = async (userId: string) => {
+    if (!activeRound) return;
+
+    const tester = currentTesters.find(t => t.user_id === userId);
+    if (!tester) return;
+
+    if (!confirm(`Weet je zeker dat je ${tester.email} wilt verwijderen uit deze test ronde? Alle assignments worden verwijderd.`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('test_assignments')
+        .delete()
+        .eq('user_id', userId)
+        .eq('round_id', activeRound.id);
+
+      if (error) throw error;
+
+      alert('Tester succesvol verwijderd uit deze ronde');
+      await loadTesters();
+    } catch (error) {
+      console.error('Error removing tester:', error);
+      alert('Er ging iets mis bij het verwijderen van de tester');
+    }
+  };
 
   const loadTestData = async () => {
     try {
@@ -292,10 +511,6 @@ export default function TestManagement() {
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Test Management</h1>
-            <p className="text-gray-600 mt-1">Overzicht van alle test rondes en feedback</p>
-          </div>
           <button
             onClick={loadTestData}
             className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -334,6 +549,111 @@ export default function TestManagement() {
             </div>
             <p className="text-2xl font-bold text-gray-700">{stats.total}</p>
           </div>
+        </div>
+
+        <div className="border-t pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-gray-900">Testers ({currentTesters.length})</h3>
+            {activeRound && (
+              <button
+                onClick={() => {
+                  setShowInviteModal(true);
+                  loadAvailableUsers();
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              >
+                <UserPlus className="w-4 h-4" />
+                Nodig Testers Uit
+              </button>
+            )}
+          </div>
+
+          {currentTesters.length > 0 ? (
+            <div className="space-y-3 mb-4">
+              {currentTesters.map(tester => {
+                const progressPercentage = tester.assignments_count > 0
+                  ? Math.round(((tester.approved + tester.needs_fix + tester.fixed) / tester.assignments_count) * 100)
+                  : 0;
+
+                return (
+                  <div key={tester.user_id} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm font-medium text-gray-900">{tester.email}</span>
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">{tester.role}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-gray-700">{tester.assignments_count} tests</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeTester(tester.user_id);
+                          }}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Verwijder tester"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2 mb-2">
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                        <span className="text-gray-600">Goedgekeurd:</span>
+                        <span className="font-semibold text-green-600">{tester.approved}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <XCircle className="w-4 h-4 text-red-500" />
+                        <span className="text-gray-600">Moet gefixed:</span>
+                        <span className="font-semibold text-red-600">{tester.needs_fix}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <RefreshCw className="w-4 h-4 text-orange-500" />
+                        <span className="text-gray-600">Gefixed:</span>
+                        <span className="font-semibold text-orange-600">{tester.fixed}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <Clock className="w-4 h-4 text-blue-500" />
+                        <span className="text-gray-600">In test:</span>
+                        <span className="font-semibold text-blue-600">{tester.in_test}</span>
+                      </div>
+                    </div>
+
+                    <div className="relative pt-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-gray-600">Voortgang</span>
+                        <span className="text-xs font-semibold text-gray-700">{progressPercentage}%</span>
+                      </div>
+                      <div className="overflow-hidden h-2 text-xs flex rounded bg-gray-200">
+                        {tester.approved > 0 && (
+                          <div
+                            style={{ width: `${(tester.approved / tester.assignments_count) * 100}%` }}
+                            className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-500"
+                          />
+                        )}
+                        {tester.fixed > 0 && (
+                          <div
+                            style={{ width: `${(tester.fixed / tester.assignments_count) * 100}%` }}
+                            className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-orange-500"
+                          />
+                        )}
+                        {tester.needs_fix > 0 && (
+                          <div
+                            style={{ width: `${(tester.needs_fix / tester.assignments_count) * 100}%` }}
+                            className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-red-500"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 italic mb-4">Nog geen testers uitgenodigd</p>
+          )}
         </div>
 
         <div className="border-t pt-4">
@@ -433,6 +753,95 @@ export default function TestManagement() {
             />
           )}
         </>
+      )}
+
+      {showInviteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+            <div className="p-6 border-b">
+              <h2 className="text-xl font-bold text-gray-900">Testers Uitnodigen</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Selecteer gebruikers om uit te nodigen voor deze test ronde
+              </p>
+            </div>
+
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              {availableUsers.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">
+                  Alle beschikbare gebruikers zijn al uitgenodigd
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {availableUsers.map(user => (
+                    <div
+                      key={user.id}
+                      onClick={() => {
+                        const newSelected = new Set(selectedUsers);
+                        if (newSelected.has(user.id)) {
+                          newSelected.delete(user.id);
+                        } else {
+                          newSelected.add(user.id);
+                        }
+                        setSelectedUsers(newSelected);
+                      }}
+                      className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${
+                        selectedUsers.has(user.id)
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-blue-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedUsers.has(user.id)}
+                            onChange={() => {}}
+                            className="w-4 h-4"
+                          />
+                          <div>
+                            <div className="font-medium text-gray-900">{user.email}</div>
+                            <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded">
+                              {user.role}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t bg-gray-50 flex items-center justify-between">
+              <span className="text-sm text-gray-600">
+                {selectedUsers.size} gebruiker(s) geselecteerd
+              </span>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowInviteModal(false);
+                    setSelectedUsers(new Set());
+                  }}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Annuleren
+                </button>
+                <button
+                  onClick={inviteUsers}
+                  disabled={inviting || selectedUsers.size === 0}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400"
+                >
+                  {inviting ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <UserPlus className="w-4 h-4" />
+                  )}
+                  {inviting ? 'Uitnodigen...' : 'Uitnodigen'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

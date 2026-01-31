@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Newspaper, Plus, Edit2, Trash2, Eye } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { generateBuilderJWT } from '../../lib/jwtHelper';
+import { NewsEditor } from './NewsEditor';
 
 interface NewsItem {
   id: string;
@@ -13,6 +13,12 @@ interface NewsItem {
   enabled_for_franchise: boolean;
   is_mandatory: boolean;
   tags: string[];
+  content: any;
+  excerpt: string;
+  featured_image: string;
+  status: 'draft' | 'published';
+  author_type: string;
+  author_id: string;
 }
 
 interface Brand {
@@ -26,6 +32,8 @@ export function NewsManagement() {
   const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editingNews, setEditingNews] = useState<NewsItem | null>(null);
 
   useEffect(() => {
     loadNewsItems();
@@ -36,7 +44,7 @@ export function NewsManagement() {
     try {
       const { data, error } = await supabase
         .from('news_items')
-        .select('id, title, slug, created_at, enabled_for_brands, enabled_for_franchise, is_mandatory, tags')
+        .select('*')
         .eq('author_type', 'admin')
         .order('created_at', { ascending: false });
 
@@ -63,116 +71,23 @@ export function NewsManagement() {
     }
   };
 
-  const SYSTEM_BRAND_ID = '00000000-0000-0000-0000-000000000999';
-
-  const handleCreateNews = async () => {
-    try {
-      if (!user?.id) {
-        alert('User not authenticated');
-        return;
-      }
-
-      const jwtResponse = await generateBuilderJWT(SYSTEM_BRAND_ID, user.id, ['content:read', 'content:write'], {
-        forceBrandId: true,
-        authorType: 'admin',
-        authorId: user.id,
-        mode: 'news',
-      });
-
-      const builderBaseUrl = 'https://www.ai-websitestudio.nl';
-      const apiBaseUrl = jwtResponse.api_url || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
-      const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/admin/news`;
-
-      const params = new URLSearchParams({
-        api: apiBaseUrl,
-        brand_id: SYSTEM_BRAND_ID,
-        token: jwtResponse.token,
-        apikey: apiKey,
-        author_type: 'admin',
-        author_id: user.id,
-        content_type: 'news_items',
-        return_url: returnUrl,
-        mode: 'news'
-      });
-
-      const deeplink = `${builderBaseUrl}/?${params.toString()}#/mode/news`;
-      console.log('🔗 Opening news builder deeplink:', deeplink);
-
-      const newWindow = window.open(deeplink, '_blank');
-      if (!newWindow) {
-        try {
-          await navigator.clipboard.writeText(deeplink);
-          alert('Pop-up geblokkeerd! URL is gekopieerd naar clipboard. Plak in nieuwe tab.');
-        } catch (clipboardError) {
-          console.error('Clipboard error:', clipboardError);
-          alert(`Pop-up geblokkeerd! Open deze URL handmatig: ${deeplink}`);
-        }
-      }
-    } catch (err) {
-      console.error('Error generating deeplink:', err);
-      alert('Failed to generate builder link');
-    }
+  const handleCreateNews = () => {
+    setEditingNews(null);
+    setIsEditorOpen(true);
   };
 
-  const handleEditNews = async (news: NewsItem) => {
-    try {
-      if (!user?.id) {
-        alert('User not authenticated');
-        return;
-      }
+  const handleEditNews = (news: NewsItem) => {
+    setEditingNews(news);
+    setIsEditorOpen(true);
+  };
 
-      if (!news.slug) {
-        alert('News item has no slug. Cannot edit.');
-        return;
-      }
+  const handleCloseEditor = () => {
+    setIsEditorOpen(false);
+    setEditingNews(null);
+  };
 
-      const jwtResponse = await generateBuilderJWT(SYSTEM_BRAND_ID, user.id, ['content:read', 'content:write'], {
-        forceBrandId: true,
-        newsSlug: news.slug,
-        authorType: 'admin',
-        authorId: user.id,
-        mode: 'news',
-      });
-
-      const builderBaseUrl = 'https://www.ai-websitestudio.nl';
-      const apiBaseUrl = jwtResponse.api_url || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
-      const apiKey = jwtResponse.api_key || import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/admin/news`;
-
-      const params = new URLSearchParams({
-        api: apiBaseUrl,
-        brand_id: SYSTEM_BRAND_ID,
-        token: jwtResponse.token,
-        apikey: apiKey,
-        news_slug: news.slug,
-        author_type: 'admin',
-        author_id: user.id,
-        content_type: 'news_items',
-        return_url: returnUrl,
-        mode: 'news'
-      });
-
-      const deeplink = `${builderBaseUrl}?${params.toString()}`;
-
-      console.log('🔗 Opening news edit deeplink:', deeplink);
-
-      const newWindow = window.open(deeplink, '_blank');
-      if (!newWindow) {
-        try {
-          await navigator.clipboard.writeText(deeplink);
-          alert('Pop-up geblokkeerd! URL is gekopieerd naar clipboard. Plak in nieuwe tab.');
-        } catch (clipboardError) {
-          console.error('Clipboard error:', clipboardError);
-          alert(`Pop-up geblokkeerd! Open deze URL handmatig: ${deeplink}`);
-        }
-      }
-    } catch (err) {
-      console.error('Error generating deeplink:', err);
-      alert('Failed to generate builder link');
-    }
+  const handleSaveNews = () => {
+    loadNewsItems();
   };
 
   const handleToggleBrands = async (newsId: string, currentValue: boolean) => {
@@ -305,6 +220,14 @@ export function NewsManagement() {
 
   return (
     <div className="p-8">
+      {isEditorOpen && (
+        <NewsEditor
+          newsItem={editingNews}
+          onClose={handleCloseEditor}
+          onSave={handleSaveNews}
+        />
+      )}
+
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Newspaper className="w-8 h-8 text-orange-600" />

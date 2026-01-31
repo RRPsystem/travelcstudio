@@ -1,9 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db, supabase } from '../../lib/supabase';
-import { Bot, Phone, MessageSquare, Users, Settings, CheckCircle, XCircle, ExternalLink, Copy, Send, Plus, FileText, Link as LinkIcon, Trash2, Share2, Upload, Loader, CreditCard as Edit, Clock, Calendar, ArrowRight, MapPin, Route, Navigation } from 'lucide-react';
+import { Bot, Phone, MessageSquare, Users, Settings, CheckCircle, XCircle, ExternalLink, Copy, Send, Plus, FileText, Link as LinkIcon, Trash2, Share2, Upload, Loader, CreditCard as Edit, Clock, Calendar, ArrowRight, MapPin, Route, Navigation, CreditCard } from 'lucide-react';
 import { GooglePlacesAutocomplete } from '../shared/GooglePlacesAutocomplete';
 import { edgeAIService } from '../../lib/apiServices';
+
+const DEFAULT_CUSTOM_CONTEXT = `FOTO HERKENNING:
+- Wanneer de reiziger een foto stuurt van een landmark of locatie, gebruik DIE herkende locatie als vertrekpunt voor route-vragen
+- Leg uit wat je op de foto ziet voordat je antwoord geeft
+- Bij route vragen: altijd vanaf de laatst herkende locatie starten
+
+COMMUNICATIE STIJL:
+- Wees enthousiast en persoonlijk, alsof je een goede vriend bent die meereist
+- Gebruik lokale tips en insider informatie waar mogelijk
+- Stem je antwoorden af op het type reis en de reizigers
+
+PRAKTISCH:
+- Geef concrete tijden, afstanden en transportopties
+- Waarschuw voor praktische zaken (openingstijden, drukte, weer)
+- Vraag door als iets onduidelijk is over hun voorkeuren`;
+
+function normalizePhoneNumber(phone: string): string {
+  let normalized = phone.trim().replace(/\s+/g, '');
+
+  if (normalized.startsWith('00')) {
+    normalized = '+' + normalized.substring(2);
+  } else if (normalized.startsWith('0') && !normalized.startsWith('00')) {
+    normalized = '+31' + normalized.substring(1);
+  } else if (!normalized.startsWith('+')) {
+    normalized = '+' + normalized;
+  }
+
+  return normalized;
+}
 
 export function TravelBroSetup() {
   const { user } = useAuth();
@@ -18,10 +47,16 @@ export function TravelBroSetup() {
   const [loadingTripDetails, setLoadingTripDetails] = useState(false);
 
   const [newTripName, setNewTripName] = useState('');
+  const [compositorBookingId, setCompositorBookingId] = useState('');
+  const [micrositeId, setMicrositeId] = useState('rondreis-planner');
+  const [microsites, setMicrosites] = useState<Array<{id: string, name: string, hasCredentials: boolean}>>([]);
+  const [loadingMicrosites, setLoadingMicrosites] = useState(false);
+  const [syncingCompositor, setSyncingCompositor] = useState(false);
+  const [compositorData, setCompositorData] = useState<any>(null);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [sourceUrls, setSourceUrls] = useState<string[]>(['']);
   const [travelers, setTravelers] = useState([{ name: '', age: '', relation: 'adult', phone: '' }]);
-  const [customContext, setCustomContext] = useState('');
+  const [customContext, setCustomContext] = useState(DEFAULT_CUSTOM_CONTEXT);
   const [gptModel, setGptModel] = useState('gpt-4o');
   const [gptTemperature, setGptTemperature] = useState(0.7);
   const [creating, setCreating] = useState(false);
@@ -59,14 +94,18 @@ export function TravelBroSetup() {
   const [editTripName, setEditTripName] = useState('');
   const [editSourceUrls, setEditSourceUrls] = useState<string[]>(['']);
   const [editTravelers, setEditTravelers] = useState<any[]>([]);
-  const [editCustomContext, setEditCustomContext] = useState('');
+  const [editCustomContext, setEditCustomContext] = useState(DEFAULT_CUSTOM_CONTEXT);
   const [editGptModel, setEditGptModel] = useState('gpt-4o');
   const [editGptTemperature, setEditGptTemperature] = useState(0.7);
   const [editPdfFile, setEditPdfFile] = useState<File | null>(null);
+  const [editCompositorId, setEditCompositorId] = useState('');
   const [savingTripEdit, setSavingTripEdit] = useState(false);
+
+  const [creditBalance, setCreditBalance] = useState<number | null>(null);
 
   useEffect(() => {
     loadData();
+    loadMicrosites();
   }, []);
 
   const loadData = async () => {
@@ -117,10 +156,55 @@ export function TravelBroSetup() {
         .order('created_at', { ascending: false });
 
       setActiveTravelBros(trips || []);
+
+      const { data: creditWallet } = await db.supabase
+        .from('credit_wallets')
+        .select('balance')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+
+      setCreditBalance(creditWallet?.balance ?? null);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMicrosites = async () => {
+    setLoadingMicrosites(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-external-api`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url: 'https://www.ai-websitestudio.nl/api/config/microsites',
+          method: 'GET'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Kon microsites niet ophalen');
+      }
+
+      const result = await response.json();
+      if (result.success && result.data) {
+        setMicrosites(result.data.microsites || []);
+        if (result.data.microsites && result.data.microsites.length > 0) {
+          setMicrositeId(result.data.microsites[0].id);
+        }
+      } else {
+        throw new Error(result.error || 'Geen data ontvangen');
+      }
+    } catch (error) {
+      console.log('ℹ️ Using default microsite (external API not available)');
+      setMicrosites([{ id: 'rondreis-planner', name: 'Rondreis Planner', hasCredentials: true }]);
+    } finally {
+      setLoadingMicrosites(false);
     }
   };
 
@@ -327,6 +411,37 @@ export function TravelBroSetup() {
 
       console.log('✅ Validation passed, starting creation...');
       setCreating(true);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Niet ingelogd');
+      }
+
+      console.log('💳 Checking credits...');
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const creditCheckResponse = await fetch(`${supabaseUrl}/functions/v1/deduct-credits`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          actionType: 'travelbro_setup',
+          description: `TravelBro aanmaken: ${newTripName}`,
+          metadata: {
+            tripName: newTripName,
+            hasPdf: !!pdfFile,
+            hasUrls: sourceUrls.filter(u => u.trim()).length > 0
+          }
+        })
+      });
+
+      if (!creditCheckResponse.ok) {
+        const errorData = await creditCheckResponse.json();
+        throw new Error(errorData.error || 'Onvoldoende credits');
+      }
+
+      console.log('✅ Credits deducted, continuing with creation...');
       console.log('📤 Uploading PDF...');
       let pdfUrl = null;
       let parsedData = null;
@@ -373,13 +488,19 @@ export function TravelBroSetup() {
         console.log('🤖 PDF URL:', pdfUrl);
 
         try {
+          const { data: { session } } = await supabase.auth.getSession();
+
+          if (!session) {
+            throw new Error('No authentication session found');
+          }
+
           const parseResponse = await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-trip-pdf`,
             {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                'Authorization': `Bearer ${session.access_token}`,
               },
               body: JSON.stringify({ pdfUrl }),
             }
@@ -388,12 +509,28 @@ export function TravelBroSetup() {
           console.log('🤖 Parse response status:', parseResponse.status);
 
           if (parseResponse.ok) {
-            parsedData = await parseResponse.json();
-            console.log('📋 Parsed data:', parsedData);
+            const parseResult = await parseResponse.json();
+            console.log('📋 Parsed data:', parseResult);
+
+            parsedData = parseResult;
+
+            if (parseResult.itinerary) {
+              console.log('📅 Itinerary found, storing in metadata');
+            }
+
+            await loadData();
           } else {
             const errorText = await parseResponse.text();
             console.error('❌ PDF parsing failed:', errorText);
-            alert(`⚠️ PDF parsing mislukt: ${errorText.substring(0, 200)}. De TravelBRO wordt wel aangemaakt, maar zonder PDF data.`);
+
+            let errorMsg = '⚠️ PDF parsing mislukt: ';
+            if (parseResponse.status === 402) {
+              errorMsg += 'Onvoldoende credits. Neem contact op met de operator om credits bij te kopen.';
+            } else {
+              errorMsg += errorText.substring(0, 200);
+            }
+            errorMsg += '\n\nDe TravelBRO wordt wel aangemaakt, maar zonder PDF data.';
+            alert(errorMsg);
           }
         } catch (fetchError) {
           console.error('❌ Fetch error:', fetchError);
@@ -406,12 +543,16 @@ export function TravelBroSetup() {
         ? { travelers }
         : null;
 
+      const itinerary = parsedData?.itinerary;
+      const tripMetadata = itinerary ? { itinerary } : null;
+
       console.log('💾 Inserting into database...');
       console.log('💾 Data:', {
         brand_id: user?.brand_id,
         name: newTripName,
         pdf_url: pdfUrl,
         parsed_data: parsedData || {},
+        metadata: tripMetadata,
         source_urls: filteredUrls,
         intake_template: intakeTemplate,
         custom_context: customContext,
@@ -420,13 +561,15 @@ export function TravelBroSetup() {
         created_by: user?.id,
       });
 
-      const { data, error } = await db.supabase
+      const { data, error} = await db.supabase
         .from('travel_trips')
         .insert({
           brand_id: user?.brand_id,
           name: newTripName,
+          compositor_booking_id: compositorBookingId.trim() || null,
           pdf_url: pdfUrl,
           parsed_data: parsedData || {},
+          metadata: tripMetadata,
           source_urls: filteredUrls,
           intake_template: intakeTemplate,
           custom_context: customContext,
@@ -443,6 +586,36 @@ export function TravelBroSetup() {
 
       const createdTrip = data;
 
+      if (compositorBookingId.trim()) {
+        console.log('🔔 Notifying External Builder webhook for Compositor sync...');
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const webhookResponse = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-compositor-webhook`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${session?.access_token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                trip_id: createdTrip.id,
+                event: 'trip.created',
+              }),
+            }
+          );
+
+          if (webhookResponse.ok) {
+            const webhookResult = await webhookResponse.json();
+            console.log('✅ Webhook notification sent:', webhookResult);
+          } else {
+            console.warn('⚠️ Webhook notification failed, but continuing...', await webhookResponse.text());
+          }
+        } catch (webhookError) {
+          console.error('⚠️ Error notifying webhook:', webhookError);
+        }
+      }
+
       const travelersWithPhone = travelers.filter(t => t.phone && t.phone.trim());
 
       if (travelersWithPhone.length > 0) {
@@ -453,12 +626,15 @@ export function TravelBroSetup() {
 
         for (const traveler of travelersWithPhone) {
           try {
+            const normalizedPhone = normalizePhoneNumber(traveler.phone);
+            console.log(`📱 Normalized phone: ${traveler.phone} -> ${normalizedPhone}`);
+
             const { error: participantError } = await db.supabase
               .from('trip_participants')
               .insert({
                 trip_id: createdTrip.id,
                 brand_id: user?.brand_id,
-                phone_number: traveler.phone.trim(),
+                phone_number: normalizedPhone,
                 participant_name: traveler.name || 'Reiziger',
                 is_primary_contact: successCount === 0,
               });
@@ -480,7 +656,7 @@ export function TravelBroSetup() {
               .insert({
                 trip_id: createdTrip.id,
                 brand_id: user?.brand_id,
-                recipient_phone: traveler.phone.trim(),
+                recipient_phone: normalizedPhone,
                 template_name: 'travelbro',
                 message_content: '',
                 scheduled_date: scheduleDate,
@@ -507,23 +683,24 @@ export function TravelBroSetup() {
         }
 
         if (successCount > 0) {
-          alert(`✅ TravelBRO aangemaakt en ${successCount} welkomstbericht(en) gepland!\n\n${failCount > 0 ? `⚠️ ${failCount} bericht(en) mislukt.` : ''}\n\nDruk op "Verwerk Geplande Berichten Nu" om de berichten direct te versturen.`);
+          alert(`✅ TravelBRO aangemaakt en ${successCount} welkomstbericht(en) gepland! (50 credits gebruikt)\n\n${failCount > 0 ? `⚠️ ${failCount} bericht(en) mislukt.` : ''}\n\nDruk op "Verwerk Geplande Berichten Nu" om de berichten direct te versturen.`);
         } else {
-          alert('⚠️ TravelBRO aangemaakt, maar geen WhatsApp berichten konden worden gepland. Check de logs.');
+          alert('⚠️ TravelBRO aangemaakt (50 credits gebruikt), maar geen WhatsApp berichten konden worden gepland. Check de logs.');
         }
       } else if (intakeTemplate) {
         console.log('📋 TravelBRO heeft intake formulier - klant moet eerst formulier invullen');
-        alert('✅ TravelBRO aangemaakt! Deel de client link met je klant zodat ze het intake formulier kunnen invullen.');
+        alert('✅ TravelBRO aangemaakt! (50 credits gebruikt) Deel de client link met je klant zodat ze het intake formulier kunnen invullen.');
       } else {
-        alert('✅ TravelBRO aangemaakt! (Geen telefoonnummers opgegeven)');
+        alert('✅ TravelBRO aangemaakt! (50 credits gebruikt, geen telefoonnummers opgegeven)');
       }
 
       console.log('✅ TravelBRO created successfully!');
       setNewTripName('');
+      setCompositorBookingId('');
       setPdfFile(null);
       setSourceUrls(['']);
       setTravelers([{ name: '', age: '', relation: 'adult', phone: '' }]);
-      setCustomContext('');
+      setCustomContext(DEFAULT_CUSTOM_CONTEXT);
       setGptModel('gpt-4o');
       setGptTemperature(0.7);
       setActiveTab('active');
@@ -571,7 +748,7 @@ export function TravelBroSetup() {
     setNewTripName(trip.name);
     setSourceUrls(trip.source_urls?.length > 0 ? trip.source_urls : ['']);
     setTravelers(trip.intake_template?.travelers || [{ name: '', age: '', relation: 'adult' }]);
-    setCustomContext(trip.custom_context || '');
+    setCustomContext(trip.custom_context || DEFAULT_CUSTOM_CONTEXT);
     setGptModel(trip.gpt_model || 'gpt-4o');
     setGptTemperature(trip.gpt_temperature ?? 0.7);
     setActiveTab('new');
@@ -583,7 +760,7 @@ export function TravelBroSetup() {
     setPdfFile(null);
     setSourceUrls(['']);
     setTravelers([{ name: '', age: '', relation: 'adult' }]);
-    setCustomContext('');
+    setCustomContext(DEFAULT_CUSTOM_CONTEXT);
     setGptModel('gpt-4o');
     setGptTemperature(0.7);
   };
@@ -628,6 +805,135 @@ export function TravelBroSetup() {
     }
   };
 
+
+  const handleSyncCompositorData = async () => {
+    if (!compositorBookingId.trim()) {
+      alert('⚠️ Vul eerst een Compositor Booking ID in');
+      return;
+    }
+
+    if (!micrositeId) {
+      alert('⚠️ Selecteer eerst een microsite');
+      return;
+    }
+
+    setSyncingCompositor(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-external-api`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url: 'https://www.ai-websitestudio.nl/api/travelbro/sync-travel',
+          method: 'POST',
+          body: {
+            id: compositorBookingId.trim(),
+            micrositeId: micrositeId,
+            language: 'NL',
+            brand_id: user?.brand_id
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Compositor API fout (${response.status}): ${errorText || response.statusText}`);
+      }
+
+      const proxyResult = await response.json();
+
+      if (!proxyResult.success) {
+        throw new Error(proxyResult.error || 'Sync failed');
+      }
+
+      const result = proxyResult.data;
+
+      if (!result.success) {
+        throw new Error(result.error || 'Sync failed');
+      }
+
+      setCompositorData(result.data);
+
+      if (result.data?.title) {
+        setNewTripName(result.data.title);
+      }
+
+      if (result.data?.destination_names && result.data.destination_names.length > 0) {
+        setSourceUrls([result.data.destination_names.join(', ')]);
+      }
+
+      alert(`✅ Data opgehaald én opgeslagen van Travel Compositor!\n\nReis: ${result.data?.title}\nTC ID: ${result.tc_idea_id}\nTrip ID: ${result.trip_id}\nDuur: ${result.data?.duration_days || 0} dagen`);
+
+      await loadData();
+    } catch (error) {
+      console.error('❌ Compositor sync error:', error);
+      alert('❌ Kon geen data ophalen: ' + (error instanceof Error ? error.message : 'Onbekende fout'));
+    } finally {
+      setSyncingCompositor(false);
+    }
+  };
+
+  const handleResyncTripFromCompositor = async (trip: any) => {
+    if (!trip.compositor_booking_id) {
+      alert('⚠️ Deze reis heeft geen Compositor Booking ID');
+      return;
+    }
+
+    if (!confirm(`Wil je de data voor "${trip.name}" opnieuw ophalen uit Travel Compositor?\n\nDit synchroniseert de trip data!`)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      console.log('[Re-sync] Starting compositor sync for trip:', trip.id);
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/compositor-sync`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          trip_id: trip.id,
+          compositor_booking_id: trip.compositor_booking_id.trim(),
+          compositor_api_url: 'https://www.ai-websitestudio.nl/api/travelbro/get-travel',
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Re-sync] API error:', response.status, errorText);
+        throw new Error(`Compositor API fout (${response.status}): ${errorText || response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('[Re-sync] Received data:', result);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Sync failed');
+      }
+
+      const structuredData = result.structured_itinerary;
+
+      alert(`✅ Data opnieuw gesynchroniseerd!\n\nReis: ${structuredData.title}\nTC ID: ${trip.compositor_booking_id}\nDuur: ${structuredData.duration_days || 0} dagen\nHotels: ${structuredData.hotels?.length || 0}\nBestemmingen: ${structuredData.destinations?.length || 0}`);
+
+      await loadData();
+
+      const updatedTrip = activeTravelBros.find((t: any) => t.id === trip.id);
+      if (updatedTrip) {
+        setSelectedTrip(updatedTrip);
+        await loadTripDetails(updatedTrip);
+      }
+    } catch (error) {
+      console.error('❌ Re-sync error:', error);
+      alert('❌ Kon data niet opnieuw ophalen: ' + (error instanceof Error ? error.message : 'Onbekende fout'));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const copyWebhookUrl = () => {
     const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-webhook`;
@@ -702,25 +1008,29 @@ export function TravelBroSetup() {
 
       const shareLink = `https://${brandInfo?.travelbro_domain || 'travelbro.nl'}/${selectedTrip.share_token}`;
 
+      const requestPayload = {
+        to: invitePhone,
+        brandId: user?.brand_id,
+        useTemplate: true,
+        templateSid: 'HX23e0ee5840758fb35bd1bedf502fdf42',
+        templateVariables: {
+          '1': clientNameText,
+          '2': selectedTrip.destination || 'je reis'
+        },
+        tripId: selectedTrip.id,
+        sessionToken: sessionToken,
+        skipIntake: skipIntake
+      };
+
+      console.log('🚀 Sending WhatsApp invite request:', JSON.stringify(requestPayload, null, 2));
+
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
-        body: JSON.stringify({
-          to: invitePhone,
-          brandId: user?.brand_id,
-          useTemplate: true,
-          templateSid: 'HX23e0ee5840758fb35bd1bedf502fdf42',
-          templateVariables: {
-            '1': clientNameText,
-            '2': selectedTrip.destination || 'je reis'
-          },
-          tripId: selectedTrip.id,
-          sessionToken: sessionToken,
-          skipIntake: skipIntake
-        }),
+        body: JSON.stringify(requestPayload),
       });
 
       const result = await response.json();
@@ -761,14 +1071,32 @@ export function TravelBroSetup() {
     <>
     <div className="p-6">
       <div className="mb-6">
-        <div className="flex items-center space-x-3 mb-2">
-          <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-orange-500 to-amber-500">
-            <Bot className="w-6 h-6 text-white" />
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-orange-500 to-amber-500">
+              <Bot className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">TravelBRO Assistent</h1>
+              <p className="text-gray-600">Configureer en beheer je AI reisassistent</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">TravelBRO Assistent</h1>
-            <p className="text-gray-600">Configureer en beheer je AI reisassistent</p>
-          </div>
+          {creditBalance !== null && (
+            <div className={`px-4 py-2 rounded-lg ${creditBalance < 50 ? 'bg-red-100 border border-red-300' : 'bg-green-100 border border-green-300'}`}>
+              <div className="flex items-center space-x-2">
+                <CreditCard className={`w-5 h-5 ${creditBalance < 50 ? 'text-red-600' : 'text-green-600'}`} />
+                <div>
+                  <p className="text-xs text-gray-600">Credits</p>
+                  <p className={`font-bold ${creditBalance < 50 ? 'text-red-700' : 'text-green-700'}`}>
+                    {creditBalance.toFixed(2)}
+                  </p>
+                  {creditBalance < 50 && (
+                    <p className="text-xs text-red-600">Niet genoeg voor TravelBRO!</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -953,6 +1281,91 @@ export function TravelBroSetup() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Route className="inline w-4 h-4 mr-1" />
+                  Travel Compositor Booking ID (optioneel)
+                </label>
+
+                <div className="mb-3">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Microsite
+                  </label>
+                  <select
+                    value={micrositeId}
+                    onChange={(e) => setMicrositeId(e.target.value)}
+                    disabled={loadingMicrosites}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white disabled:bg-gray-100"
+                  >
+                    {loadingMicrosites ? (
+                      <option>Laden...</option>
+                    ) : (
+                      microsites.map((ms) => (
+                        <option key={ms.id} value={ms.id}>
+                          {ms.name} {ms.hasCredentials ? '✓' : ''}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Selecteer de microsite waar het TC ID vandaan komt
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={compositorBookingId}
+                    onChange={(e) => setCompositorBookingId(e.target.value)}
+                    placeholder="12345"
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSyncCompositorData}
+                    disabled={!compositorBookingId.trim() || !micrositeId || syncingCompositor}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {syncingCompositor ? (
+                      <>
+                        <Loader className="w-4 h-4 animate-spin" />
+                        Syncing...
+                      </>
+                    ) : (
+                      <>
+                        <ArrowRight className="w-4 h-4" />
+                        Sync Data
+                      </>
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Klik op "Sync Data" om reis informatie op te halen én op te slaan van Travel Compositor
+                </p>
+                {compositorData && (
+                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center gap-2 text-green-800 text-sm font-medium mb-2">
+                      <CheckCircle className="w-4 h-4" />
+                      Data gesynchroniseerd en opgeslagen
+                    </div>
+                    <div className="text-xs text-green-700 space-y-1">
+                      <div><strong>Reis:</strong> {compositorData.title || compositorData.trip_name}</div>
+                      <div><strong>TC Idea ID:</strong> {compositorData.tc_idea_id}</div>
+                      <div><strong>Duur:</strong> {compositorData.duration_days || compositorData.total_days} dagen</div>
+                      {compositorData.destination_names && compositorData.destination_names.length > 0 && (
+                        <div><strong>Bestemmingen:</strong> {compositorData.destination_names.join(', ')}</div>
+                      )}
+                      {compositorData.countries && compositorData.countries.length > 0 && (
+                        <div><strong>Landen:</strong> {compositorData.countries.join(', ')}</div>
+                      )}
+                      {compositorData.price_per_person && (
+                        <div><strong>Prijs p.p.:</strong> {compositorData.currency} {compositorData.price_per_person}</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {!editingTrip && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1115,12 +1528,11 @@ export function TravelBroSetup() {
                     <textarea
                       value={customContext}
                       onChange={(e) => setCustomContext(e.target.value)}
-                      placeholder="Bijvoorbeeld: Dit is een huwelijksreis voor een jong stel. Ze houden van avontuur en romantiek..."
-                      rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      rows={6}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm font-mono"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Geef context over deze reis die de AI moet gebruiken bij het beantwoorden van vragen.
+                      💡 Tip: Geef specifieke instructies over toon, voorkeuren, en hoe om te gaan met foto's. De AI gebruikt dit bij ALLE antwoorden.
                     </p>
                   </div>
 
@@ -1204,19 +1616,45 @@ export function TravelBroSetup() {
 
       {activeTab === 'detail' && selectedTrip && (
         <div className="space-y-6">
-          <div className="flex items-center space-x-4 mb-6">
-            <button
-              onClick={closeTripDetails}
-              className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <ArrowRight className="rotate-180" size={20} />
-              <span>Terug naar lijst</span>
-            </button>
-            <div className="h-8 w-px bg-gray-300"></div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">{selectedTrip.name}</h2>
-              <p className="text-sm text-gray-600">Aangemaakt: {new Date(selectedTrip.created_at).toLocaleDateString('nl-NL')}</p>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={closeTripDetails}
+                className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <ArrowRight className="rotate-180" size={20} />
+                <span>Terug naar lijst</span>
+              </button>
+              <div className="h-8 w-px bg-gray-300"></div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">{selectedTrip.name}</h2>
+                <p className="text-sm text-gray-600">
+                  Aangemaakt: {new Date(selectedTrip.created_at).toLocaleDateString('nl-NL')}
+                  {selectedTrip.compositor_booking_id && (
+                    <span className="ml-3 text-blue-600">TC ID: {selectedTrip.compositor_booking_id}</span>
+                  )}
+                </p>
+              </div>
             </div>
+            {selectedTrip.compositor_booking_id && (
+              <button
+                onClick={() => handleResyncTripFromCompositor(selectedTrip)}
+                disabled={loading}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+              >
+                {loading ? (
+                  <>
+                    <Loader className="w-4 h-4 animate-spin" />
+                    <span>Synchroniseren...</span>
+                  </>
+                ) : (
+                  <>
+                    <Navigation size={18} />
+                    <span>Re-sync Compositor</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
           {loadingTripDetails ? (
@@ -1240,9 +1678,10 @@ export function TravelBroSetup() {
                         setEditTripName(selectedTrip.name);
                         setEditSourceUrls(selectedTrip.source_urls?.length > 0 ? selectedTrip.source_urls : ['']);
                         setEditTravelers(selectedTrip.intake_template?.travelers || [{ name: '', age: '', relation: 'adult' }]);
-                        setEditCustomContext(selectedTrip.custom_context || '');
+                        setEditCustomContext(selectedTrip.custom_context || DEFAULT_CUSTOM_CONTEXT);
                         setEditGptModel(selectedTrip.gpt_model || 'gpt-4o');
                         setEditGptTemperature(selectedTrip.gpt_temperature ?? 0.7);
+                        setEditCompositorId(selectedTrip.compositor_booking_id || '');
                       }
                     }}
                     className="flex items-center space-x-2 px-4 py-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
@@ -1273,6 +1712,23 @@ export function TravelBroSetup() {
                         onChange={(e) => setEditTripName(e.target.value)}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                       />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <Navigation className="inline w-4 h-4 mr-1" />
+                        Travel Compositor Booking ID
+                      </label>
+                      <input
+                        type="text"
+                        value={editCompositorId}
+                        onChange={(e) => setEditCompositorId(e.target.value)}
+                        placeholder="bijv. 44848140"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Als je een Travel Compositor ID invult, kun je automatisch de reisdata synchroniseren via de "Re-sync" knop
+                      </p>
                     </div>
 
                     <div>
@@ -1415,10 +1871,12 @@ export function TravelBroSetup() {
                       <textarea
                         value={editCustomContext}
                         onChange={(e) => setEditCustomContext(e.target.value)}
-                        rows={4}
-                        placeholder="Bijvoorbeeld: Dit is een huwelijksreis voor een jong stel. Ze houden van avontuur en romantiek..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        rows={6}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm font-mono"
                       />
+                      <p className="text-xs text-gray-500 mt-1">
+                        💡 Tip: Geef specifieke instructies over toon, voorkeuren, en hoe om te gaan met foto's. De AI gebruikt dit bij ALLE antwoorden.
+                      </p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -1482,20 +1940,32 @@ export function TravelBroSetup() {
 
                             newPdfUrl = publicUrl;
 
-                            const parseResponse = await fetch(
-                              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-trip-pdf`,
-                              {
-                                method: 'POST',
-                                headers: {
-                                  'Content-Type': 'application/json',
-                                  'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-                                },
-                                body: JSON.stringify({ pdfUrl: newPdfUrl }),
-                              }
-                            );
+                            const { data: { session } } = await supabase.auth.getSession();
 
-                            if (parseResponse.ok) {
-                              newParsedData = await parseResponse.json();
+                            if (session) {
+                              const parseResponse = await fetch(
+                                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-trip-pdf`,
+                                {
+                                  method: 'POST',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${session.access_token}`,
+                                  },
+                                  body: JSON.stringify({ pdfUrl: newPdfUrl }),
+                                }
+                              );
+
+                              if (parseResponse.ok) {
+                                newParsedData = await parseResponse.json();
+                                await loadData();
+                                console.log('✅ PDF parsing successful:', newParsedData);
+                              } else if (parseResponse.status === 402) {
+                                throw new Error('Onvoldoende credits. Neem contact op met de operator om credits bij te kopen.');
+                              } else {
+                                const errorText = await parseResponse.text();
+                                console.error('❌ PDF parsing failed:', parseResponse.status, errorText);
+                                throw new Error(`PDF parsing mislukt (status ${parseResponse.status}): ${errorText.substring(0, 200)}`);
+                              }
                             }
                           }
 
@@ -1504,12 +1974,17 @@ export function TravelBroSetup() {
                             ? { travelers: editTravelers }
                             : null;
 
+                          const itinerary = newParsedData?.itinerary;
+                          const tripMetadata = itinerary ? { itinerary } : selectedTrip.metadata;
+
                           const { error } = await db.supabase
                             .from('travel_trips')
                             .update({
                               name: editTripName,
+                              compositor_booking_id: editCompositorId.trim() || null,
                               pdf_url: newPdfUrl,
                               parsed_data: newParsedData || {},
+                              metadata: tripMetadata,
                               source_urls: filteredUrls,
                               intake_template: intakeTemplate,
                               custom_context: editCustomContext,
@@ -1554,6 +2029,10 @@ export function TravelBroSetup() {
                 ) : (
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">Compositor ID:</span>
+                        <span className="ml-2 text-gray-900">{selectedTrip.compositor_booking_id || '– Niet gekoppeld'}</span>
+                      </div>
                       <div>
                         <span className="text-gray-600">PDF:</span>
                         <span className="ml-2 text-gray-900">{selectedTrip.pdf_url ? '✓ Ja' : '– Nee'}</span>
