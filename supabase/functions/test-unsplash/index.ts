@@ -6,12 +6,8 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req: Request) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { 
-      status: 200, 
-      headers: corsHeaders 
-    });
+    return new Response('ok', { status: 200, headers: corsHeaders });
   }
 
   try {
@@ -24,21 +20,16 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Test the OpenAI API key by calling the models endpoint
-    const response = await fetch('https://api.openai.com/v1/models', {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`
-      }
-    });
+    const response = await fetch(
+      `https://api.unsplash.com/photos/random?client_id=${apiKey}`
+    );
 
     if (response.ok) {
       const data = await response.json();
-      const modelCount = data.data?.length || 0;
-      
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: `API key is geldig! ${modelCount} modellen beschikbaar.`
+          message: `Unsplash API key is geldig! Foto gevonden: "${data.alt_description || 'Random photo'}"`
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -47,13 +38,13 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: errorData.error?.message || 'API key is ongeldig'
+          error: errorData.errors?.[0] || 'Unsplash API key is ongeldig'
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
   } catch (error) {
-    console.error('Error testing OpenAI key:', error);
+    console.error('Error testing Unsplash key:', error);
     return new Response(
       JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

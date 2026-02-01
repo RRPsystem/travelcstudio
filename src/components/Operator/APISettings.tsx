@@ -529,12 +529,24 @@ export function APISettings() {
           throw new Error(data.error?.message || 'Google Search API key is ongeldig');
         }
       } else if (setting.provider === 'Unsplash') {
-        // Test Unsplash API
+        // Test Unsplash API via edge function (CSP blocks direct calls)
+        const { data: { session } } = await supabase.auth.getSession();
+        
         const response = await fetch(
-          `https://api.unsplash.com/photos/random?client_id=${setting.api_key}`
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/test-unsplash`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.access_token}`,
+            },
+            body: JSON.stringify({ apiKey: setting.api_key })
+          }
         );
 
-        if (response.ok) {
+        const data = await response.json();
+
+        if (data.success) {
           const { error: updateError } = await supabase
             .from('api_settings')
             .update({
@@ -549,10 +561,9 @@ export function APISettings() {
             prev.map(s => s.id === setting.id ? { ...s, test_status: 'success', last_tested: new Date().toISOString() } : s)
           );
 
-          alert('✅ Unsplash API key werkt correct!');
+          alert(`✅ ${data.message}`);
         } else {
-          const errorData = await response.json();
-          throw new Error(errorData.errors?.[0] || 'Unsplash API key is ongeldig');
+          throw new Error(data.error || 'Unsplash API key is ongeldig');
         }
       } else if (setting.provider === 'YouTube') {
         // Test YouTube API
