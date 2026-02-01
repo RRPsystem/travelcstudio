@@ -336,7 +336,7 @@ export function DestinationManagement() {
   // CREATE/EDIT VIEW
   if (viewMode === 'create' || viewMode === 'edit') {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 overflow-y-auto">
         {/* Header */}
         <div className="bg-white border-b sticky top-0 z-10">
           <div className="max-w-6xl mx-auto px-6 py-4">
