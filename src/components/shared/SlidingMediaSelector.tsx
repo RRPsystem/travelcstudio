@@ -415,12 +415,7 @@ export function SlidingMediaSelector({
 
             {activeTab === 'unsplash' && (
               <div className="space-y-4">
-                {!unsplashKey && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
-                    ⚠️ Unsplash API key niet geconfigureerd in database. Toont fallback afbeeldingen. Configureer via Operator Dashboard → API Settings.
-                  </div>
-                )}
-                {unsplashKey && (
+                {useRealAPI && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
                     ✅ Unsplash API key geladen vanuit database
                   </div>
