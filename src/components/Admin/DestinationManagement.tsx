@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { generateBuilderJWT, generateBuilderDeeplink } from '../../lib/jwtHelper';
 import AIContentGenerator from '../shared/AIContentGenerator';
+import { DestinationEditor } from './DestinationEditor';
 
 interface Destination {
   id: string;
@@ -27,6 +28,8 @@ export function DestinationManagement() {
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editingDestination, setEditingDestination] = useState<Destination | null>(null);
 
   useEffect(() => {
     loadDestinations();
@@ -66,101 +69,23 @@ export function DestinationManagement() {
 
   const SYSTEM_BRAND_ID = '00000000-0000-0000-0000-000000000999';
 
-  const handleCreateDestination = async () => {
-    try {
-      if (!user?.id) {
-        alert('User not authenticated');
-        return;
-      }
-
-      const jwtResponse = await generateBuilderJWT(SYSTEM_BRAND_ID, user.id, ['content:read', 'content:write'], {
-        forceBrandId: true,
-        authorType: 'admin',
-        authorId: user.id,
-        mode: 'destination',
-      });
-
-      const builderBaseUrl = 'https://www.ai-websitestudio.nl';
-      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/admin/destinations`;
-
-      const deeplink = generateBuilderDeeplink({
-        baseUrl: builderBaseUrl,
-        jwtResponse,
-        returnUrl,
-        mode: 'destination',
-        authorType: 'admin',
-        authorId: user.id,
-        contentType: 'destinations'
-      });
-
-      console.log('🔗 Opening destination builder deeplink:', deeplink);
-
-      const newWindow = window.open(deeplink, '_blank');
-      if (!newWindow) {
-        try {
-          await navigator.clipboard.writeText(deeplink);
-          alert('Pop-up geblokkeerd! URL is gekopieerd naar clipboard. Plak in nieuwe tab.');
-        } catch (clipboardError) {
-          console.error('Clipboard error:', clipboardError);
-          alert(`Pop-up geblokkeerd! Open deze URL handmatig: ${deeplink}`);
-        }
-      }
-    } catch (err) {
-      console.error('Error generating deeplink:', err);
-      alert('Failed to generate builder link');
-    }
+  const handleCreateDestination = () => {
+    setEditingDestination(null);
+    setIsEditorOpen(true);
   };
 
-  const handleEditDestination = async (destination: Destination) => {
-    try {
-      if (!user?.id) {
-        alert('User not authenticated');
-        return;
-      }
+  const handleCloseEditor = () => {
+    setIsEditorOpen(false);
+    setEditingDestination(null);
+  };
 
-      if (!destination.slug) {
-        alert('Destination has no slug. Cannot edit.');
-        return;
-      }
+  const handleSaveDestination = () => {
+    loadDestinations();
+  };
 
-      const jwtResponse = await generateBuilderJWT(SYSTEM_BRAND_ID, user.id, ['content:read', 'content:write'], {
-        forceBrandId: true,
-        destinationSlug: destination.slug,
-        authorType: 'admin',
-        authorId: user.id,
-        mode: 'destination',
-      });
-
-      const builderBaseUrl = 'https://www.ai-websitestudio.nl';
-      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/admin/destinations`;
-
-      const deeplink = generateBuilderDeeplink({
-        baseUrl: builderBaseUrl,
-        jwtResponse,
-        returnUrl,
-        mode: 'destination',
-        authorType: 'admin',
-        authorId: user.id,
-        contentType: 'destinations',
-        destinationSlug: destination.slug
-      });
-
-      console.log('🔗 Opening destination edit deeplink:', deeplink);
-
-      const newWindow = window.open(deeplink, '_blank');
-      if (!newWindow) {
-        try {
-          await navigator.clipboard.writeText(deeplink);
-          alert('Pop-up geblokkeerd! URL is gekopieerd naar clipboard. Plak in nieuwe tab.');
-        } catch (clipboardError) {
-          console.error('Clipboard error:', clipboardError);
-          alert(`Pop-up geblokkeerd! Open deze URL handmatig: ${deeplink}`);
-        }
-      }
-    } catch (err) {
-      console.error('Error generating deeplink:', err);
-      alert('Failed to generate builder link');
-    }
+  const handleEditDestination = (destination: Destination) => {
+    setEditingDestination(destination);
+    setIsEditorOpen(true);
   };
 
   const handleToggleBrands = async (destinationId: string, currentValue: boolean) => {
@@ -383,6 +308,13 @@ export function DestinationManagement() {
 
   return (
     <div className="p-6">
+      {isEditorOpen && (
+        <DestinationEditor
+          destination={editingDestination}
+          onClose={handleCloseEditor}
+          onSave={handleSaveDestination}
+        />
+      )}
       <div className="bg-white rounded-lg shadow-sm border">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
