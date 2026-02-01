@@ -214,26 +214,35 @@ export function SlidingMediaSelector({
     }
 
     console.log('🔑 Using Unsplash key from database');
-
     console.log('🔍 Searching Unsplash for:', query);
 
     try {
       setIsSearching(true);
-      const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=30&client_id=${apiKey}`;
-      console.log('🌐 API URL:', url.replace(apiKey, 'API_KEY_HIDDEN'));
-
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ API Response:', response.status, errorText);
-        throw new Error(`Unsplash API error: ${response.status}`);
-      }
+      
+      // Use edge function to bypass CSP restrictions
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/search-unsplash`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({ query, apiKey, perPage: 30 })
+        }
+      );
 
       const data = await response.json();
-      console.log('✅ Unsplash results:', data.results.length, 'photos found');
-      console.log('📸 First 3 results:', data.results.slice(0, 3).map((p: any) => p.alt_description || p.description));
-      return data.results.map((photo: any) => photo.urls.regular);
+
+      if (data.success && data.images) {
+        console.log('✅ Unsplash results:', data.images.length, 'photos found');
+        return data.images.map((img: any) => img.url);
+      } else {
+        console.error('❌ Unsplash API error:', data.error);
+        return null;
+      }
     } catch (error) {
       console.error('❌ Unsplash search error:', error);
       return null;
