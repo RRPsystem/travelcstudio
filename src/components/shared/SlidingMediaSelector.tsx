@@ -163,8 +163,7 @@ export function SlidingMediaSelector({
         console.log('🔍 Loading API keys from database...');
         const { data: settings, error } = await supabase
           .from('api_settings')
-          .select('provider, api_key')
-          .in('provider', ['Unsplash', 'YouTube'])
+          .select('provider, service_name, api_key')
           .eq('is_active', true);
 
         if (error) {
@@ -173,10 +172,19 @@ export function SlidingMediaSelector({
         }
 
         console.log('📊 Database settings found:', settings?.length || 0);
+        console.log('📊 Settings:', settings?.map(s => ({ provider: s.provider, service_name: s.service_name })));
 
         if (settings) {
-          const unsplash = settings.find(s => s.provider === 'Unsplash');
-          const youtube = settings.find(s => s.provider === 'YouTube');
+          // Look for Unsplash by provider OR service_name
+          const unsplash = settings.find(s => 
+            s.provider === 'Unsplash' || 
+            s.service_name?.toLowerCase().includes('unsplash')
+          );
+          // Look for YouTube by provider OR service_name
+          const youtube = settings.find(s => 
+            s.provider === 'YouTube' || 
+            s.service_name?.toLowerCase().includes('youtube')
+          );
 
           if (unsplash?.api_key) {
             setUnsplashKey(unsplash.api_key);
@@ -198,10 +206,6 @@ export function SlidingMediaSelector({
     };
 
     loadAPIKeys();
-
-    console.log('🔑 API Keys Status:');
-    console.log('  Unsplash:', unsplashKey ? '✅ Loaded from database' : '❌ Not configured');
-    console.log('  YouTube:', youtubeKey ? '✅ Loaded from database' : '❌ Not configured');
   }, []);
 
   const searchUnsplash = async (query: string) => {
