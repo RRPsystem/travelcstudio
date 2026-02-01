@@ -160,10 +160,25 @@ export function DestinationManagement() {
       return;
     }
 
+    console.log('🤖 Starting AI generation for:', formData.title);
     setGeneratingAI(true);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      console.log('🔐 Session:', session ? 'Found' : 'Not found');
+      
+      const requestBody = {
+        contentType: 'destination',
+        prompt: `Genereer uitgebreide reisinformatie voor ${formData.title}`,
+        structuredGeneration: {
+          name: formData.title,
+          type: 'destination',
+          brandId: SYSTEM_BRAND_ID,
+          userId: user?.id,
+          fields: ['intro_text', 'climate', 'best_time_to_visit', 'currency', 'language', 'timezone', 'visa_info', 'highlights', 'regions', 'facts']
+        }
+      };
+      console.log('📤 Request body:', requestBody);
       
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-content`, {
         method: 'POST',
@@ -171,22 +186,19 @@ export function DestinationManagement() {
           'Authorization': `Bearer ${session?.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          contentType: 'destination',
-          prompt: `Genereer uitgebreide reisinformatie voor ${formData.title}`,
-          structuredGeneration: {
-            name: formData.title,
-            type: 'destination',
-            brandId: SYSTEM_BRAND_ID,
-            userId: user?.id,
-            fields: ['intro_text', 'climate', 'best_time_to_visit', 'currency', 'language', 'timezone', 'visa_info', 'highlights', 'regions', 'facts']
-          }
-        })
+        body: JSON.stringify(requestBody)
       });
 
-      if (!response.ok) throw new Error('AI generation failed');
+      console.log('📥 Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Response error:', errorText);
+        throw new Error('AI generation failed');
+      }
 
       const data = await response.json();
+      console.log('✅ Response data:', data);
       
       if (data.content) {
         setFormData(prev => ({
