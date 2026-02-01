@@ -209,21 +209,12 @@ export function SlidingMediaSelector({
   }, []);
 
   const searchUnsplash = async (query: string) => {
-    // SECURITY: Only use API key from database
-    const apiKey = unsplashKey;
-
-    if (!apiKey || apiKey === 'YOUR_UNSPLASH_ACCESS_KEY' || apiKey.trim() === '') {
-      console.log('⚠️ No Unsplash API key configured in database, using fallback images');
-      return null;
-    }
-
-    console.log('🔑 Using Unsplash key from database');
     console.log('🔍 Searching Unsplash for:', query);
 
     try {
       setIsSearching(true);
       
-      // Use edge function to bypass CSP restrictions
+      // Use edge function - it fetches the API key from database using service role
       const { data: { session } } = await supabase.auth.getSession();
       
       const response = await fetch(
@@ -234,7 +225,7 @@ export function SlidingMediaSelector({
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session?.access_token}`,
           },
-          body: JSON.stringify({ query, apiKey, perPage: 30 })
+          body: JSON.stringify({ query, perPage: 30 })
         }
       );
 

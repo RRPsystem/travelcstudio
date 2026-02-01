@@ -1,3 +1,5 @@
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -11,7 +13,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { query, apiKey, perPage = 30 } = await req.json();
+    const { query, apiKey: providedApiKey, perPage = 30 } = await req.json();
 
     if (!query) {
       return new Response(
@@ -20,9 +22,26 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Get API key from database if not provided (using service role)
+    let apiKey = providedApiKey;
+    if (!apiKey) {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabase = createClient(supabaseUrl, supabaseKey);
+
+      const { data: settings } = await supabase
+        .from('api_settings')
+        .select('api_key')
+        .eq('provider', 'Unsplash')
+        .eq('is_active', true)
+        .maybeSingle();
+
+      apiKey = settings?.api_key;
+    }
+
     if (!apiKey) {
       return new Response(
-        JSON.stringify({ success: false, error: 'API key is required' }),
+        JSON.stringify({ success: false, error: 'Unsplash API key not configured' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
