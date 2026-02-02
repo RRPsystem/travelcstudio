@@ -6,6 +6,7 @@ interface SlidingMediaSelectorProps {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (imageUrl: string) => void;
+  onSelectMultiple?: (imageUrls: string[]) => void;
   title?: string;
   allowMultiple?: boolean;
 }
@@ -143,6 +144,7 @@ export function SlidingMediaSelector({
   isOpen,
   onClose,
   onSelect,
+  onSelectMultiple,
   title = "Media Selector",
   allowMultiple = false
 }: SlidingMediaSelectorProps) {
@@ -159,6 +161,7 @@ export function SlidingMediaSelector({
   const [uploading, setUploading] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
 
   // Load previously uploaded images from Supabase Storage
   const loadUploadedImages = async () => {
@@ -531,20 +534,40 @@ export function SlidingMediaSelector({
                     <p className="text-gray-500 text-sm text-center py-4">Nog geen afbeeldingen geüpload</p>
                   ) : (
                     <div className="grid grid-cols-3 gap-3">
-                      {uploadedImages.map((url, index) => (
-                        <div
-                          key={index}
-                          onClick={() => onSelect(url)}
-                          className="aspect-square bg-gray-200 rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-orange-500 transition-all transform hover:scale-105"
-                        >
-                          <img
-                            src={url}
-                            alt={`Upload ${index + 1}`}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                        </div>
-                      ))}
+                      {uploadedImages.map((url, index) => {
+                        const isSelected = selectedImages.includes(url);
+                        return (
+                          <div
+                            key={index}
+                            onClick={() => {
+                              if (allowMultiple) {
+                                setSelectedImages(prev => 
+                                  isSelected 
+                                    ? prev.filter(img => img !== url)
+                                    : [...prev, url]
+                                );
+                              } else {
+                                onSelect(url);
+                              }
+                            }}
+                            className={`aspect-square bg-gray-200 rounded-lg overflow-hidden cursor-pointer transition-all transform hover:scale-105 relative ${
+                              isSelected ? 'ring-2 ring-orange-500' : 'hover:ring-2 hover:ring-orange-300'
+                            }`}
+                          >
+                            <img
+                              src={url}
+                              alt={`Upload ${index + 1}`}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                            {isSelected && (
+                              <div className="absolute top-2 right-2 bg-orange-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">
+                                ✓
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -593,21 +616,41 @@ export function SlidingMediaSelector({
                       </div>
                     )}
                     <div className="grid grid-cols-3 gap-3">
-                  {displayedImages.slice(0, visibleCount).map((image, index) => (
-                    <div
-                      key={`${image}-${index}`}
-                      onClick={() => onSelect(image)}
-                      className="aspect-square bg-gray-200 rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-orange-500 transition-all transform hover:scale-105"
-                    >
-                      <img
-                        src={image}
-                        alt={`${searchTerm} photo ${index + 1}`}
-                        className="w-full h-full object-cover"
-                        style={{ imageRendering: '-webkit-optimize-contrast' }}
-                        loading="lazy"
-                      />
-                    </div>
-                  ))}
+                  {displayedImages.slice(0, visibleCount).map((image, index) => {
+                    const isSelected = selectedImages.includes(image);
+                    return (
+                      <div
+                        key={`${image}-${index}`}
+                        onClick={() => {
+                          if (allowMultiple) {
+                            setSelectedImages(prev => 
+                              isSelected 
+                                ? prev.filter(img => img !== image)
+                                : [...prev, image]
+                            );
+                          } else {
+                            onSelect(image);
+                          }
+                        }}
+                        className={`aspect-square bg-gray-200 rounded-lg overflow-hidden cursor-pointer transition-all transform hover:scale-105 relative ${
+                          isSelected ? 'ring-2 ring-orange-500' : 'hover:ring-2 hover:ring-orange-300'
+                        }`}
+                      >
+                        <img
+                          src={image}
+                          alt={`${searchTerm} photo ${index + 1}`}
+                          className="w-full h-full object-cover"
+                          style={{ imageRendering: '-webkit-optimize-contrast' }}
+                          loading="lazy"
+                        />
+                        {isSelected && (
+                          <div className="absolute top-2 right-2 bg-orange-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">
+                            ✓
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
 
                     {visibleCount < displayedImages.length && (
@@ -713,6 +756,36 @@ export function SlidingMediaSelector({
               </div>
             )}
           </div>
+
+          {/* Multi-select confirmation footer */}
+          {allowMultiple && selectedImages.length > 0 && (
+            <div className="border-t border-gray-200 p-4 bg-gray-50">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">
+                  {selectedImages.length} foto{selectedImages.length !== 1 ? "'s" : ''} geselecteerd
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setSelectedImages([])}
+                    className="px-4 py-2 text-gray-600 hover:text-gray-800 text-sm"
+                  >
+                    Wissen
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (onSelectMultiple) {
+                        onSelectMultiple(selectedImages);
+                      }
+                      setSelectedImages([]);
+                    }}
+                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm font-medium"
+                  >
+                    ✓ Toevoegen ({selectedImages.length})
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

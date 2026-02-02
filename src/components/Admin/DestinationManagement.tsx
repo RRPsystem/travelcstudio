@@ -1007,6 +1007,7 @@ export function DestinationManagement() {
               setShowMediaSelector(false);
               setMediaSelectorTarget(null);
             }}
+            allowMultiple={mediaSelectorTarget?.type === 'gallery'}
             onSelect={(url) => {
               if (mediaSelectorTarget?.type === 'highlight' && mediaSelectorTarget.index !== undefined) {
                 const updated = [...formData.highlights];
@@ -1020,6 +1021,13 @@ export function DestinationManagement() {
                 setFormData(prev => ({ ...prev, images: [...prev.images, url] }));
               } else {
                 setFormData(prev => ({ ...prev, featured_image: url }));
+              }
+              setShowMediaSelector(false);
+              setMediaSelectorTarget(null);
+            }}
+            onSelectMultiple={(urls) => {
+              if (mediaSelectorTarget?.type === 'gallery') {
+                setFormData(prev => ({ ...prev, images: [...prev.images, ...urls] }));
               }
               setShowMediaSelector(false);
               setMediaSelectorTarget(null);
