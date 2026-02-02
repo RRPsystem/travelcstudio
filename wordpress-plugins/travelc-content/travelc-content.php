@@ -28,6 +28,10 @@ add_action('elementor/init', function() {
     require_once TCC_PLUGIN_DIR . 'elementor-dynamic-tags.php';
 });
 
+// Load Shortcodes
+require_once TCC_PLUGIN_DIR . 'shortcodes/highlights-carousel.php';
+require_once TCC_PLUGIN_DIR . 'shortcodes/cities-carousel.php';
+
 class TravelC_Content {
     
     private static $instance = null;
