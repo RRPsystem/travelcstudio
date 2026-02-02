@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { MapPin, Eye, Plus, Pencil, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MapPin, Plus, Pencil, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { generateBuilderJWT, generateBuilderDeeplink } from '../../lib/jwtHelper';
+import { BrandDestinationForm } from './BrandDestinationForm';
 
 interface DestinationAssignment {
   id: string;
@@ -23,11 +23,15 @@ interface DestinationAssignment {
   };
 }
 
+type ViewMode = 'list' | 'create' | 'edit';
+
 export function DestinationApproval() {
   const { user, effectiveBrandId } = useAuth();
   const [assignments, setAssignments] = useState<DestinationAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [isLoadingData, setIsLoadingData] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [editingDestinationId, setEditingDestinationId] = useState<string | null>(null);
 
   useEffect(() => {
     if (effectiveBrandId && !isLoadingData) {
@@ -221,86 +225,14 @@ export function DestinationApproval() {
     }
   };
 
-  const handleCreateDestination = async () => {
-    try {
-      if (!user?.id || !effectiveBrandId) {
-        alert('User not authenticated or brand not found');
-        return;
-      }
-
-      const jwtResponse = await generateBuilderJWT(effectiveBrandId, user.id, ['content:read', 'content:write'], {
-        forceBrandId: true,
-        authorType: 'brand',
-        authorId: user.id,
-        mode: 'destination',
-      });
-
-      const builderBaseUrl = 'https://www.ai-websitestudio.nl';
-      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/destinations`;
-
-      const deeplink = generateBuilderDeeplink({
-        baseUrl: builderBaseUrl,
-        jwtResponse,
-        returnUrl,
-        mode: 'destination',
-        authorType: 'brand',
-        authorId: user.id,
-        contentType: 'destinations'
-      });
-
-      console.log('🔗 Opening destination builder deeplink:', deeplink);
-
-      const newWindow = window.open(deeplink, '_blank');
-      if (!newWindow) {
-        navigator.clipboard.writeText(deeplink);
-        alert('Pop-up geblokkeerd! URL is gekopieerd naar clipboard. Plak in nieuwe tab.');
-      }
-    } catch (err) {
-      console.error('Error generating deeplink:', err);
-      alert('Failed to generate builder link');
-    }
+  const handleCreateDestination = () => {
+    setEditingDestinationId(null);
+    setViewMode('create');
   };
 
-  const handleEditDestination = async (destination: { id: string; slug: string; }, isBrand: boolean) => {
-    try {
-      if (!user?.id || !effectiveBrandId) {
-        alert('User not authenticated or brand not found');
-        return;
-      }
-
-      const jwtResponse = await generateBuilderJWT(effectiveBrandId, user.id, ['content:read', 'content:write'], {
-        forceBrandId: true,
-        destinationSlug: destination.slug,
-        authorType: 'brand',
-        authorId: user.id,
-        mode: 'destination',
-      });
-
-      const builderBaseUrl = 'https://www.ai-websitestudio.nl';
-      const returnUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}#/brand/destinations`;
-
-      const deeplink = generateBuilderDeeplink({
-        baseUrl: builderBaseUrl,
-        jwtResponse,
-        returnUrl,
-        mode: 'destination',
-        authorType: 'brand',
-        authorId: user.id,
-        contentType: 'destinations',
-        destinationSlug: destination.slug
-      });
-
-      console.log('🔗 Opening destination edit deeplink:', deeplink);
-
-      const newWindow = window.open(deeplink, '_blank');
-      if (!newWindow) {
-        navigator.clipboard.writeText(deeplink);
-        alert('Pop-up geblokkeerd! URL is gekopieerd naar clipboard. Plak in nieuwe tab.');
-      }
-    } catch (err) {
-      console.error('Error generating deeplink:', err);
-      alert('Failed to generate builder link');
-    }
+  const handleEditDestination = (destination: { id: string; slug: string; }) => {
+    setEditingDestinationId(destination.id);
+    setViewMode('edit');
   };
 
   const handleDeleteDestination = async (destinationId: string) => {
@@ -331,6 +263,24 @@ export function DestinationApproval() {
           <p className="text-yellow-800">Je moet ingelogd zijn als brand om bestemmingen te beheren.</p>
         </div>
       </div>
+    );
+  }
+
+  // Show form when creating or editing
+  if (viewMode === 'create' || viewMode === 'edit') {
+    return (
+      <BrandDestinationForm
+        destinationId={editingDestinationId || undefined}
+        onBack={() => {
+          setViewMode('list');
+          setEditingDestinationId(null);
+        }}
+        onSaved={() => {
+          setViewMode('list');
+          setEditingDestinationId(null);
+          loadAssignments();
+        }}
+      />
     );
   }
 
@@ -446,7 +396,7 @@ export function DestinationApproval() {
                     <div className="flex items-center justify-end space-x-3">
                       {assignment.status === 'brand' && (
                         <button
-                          onClick={() => handleEditDestination(assignment.destination, true)}
+                          onClick={() => handleEditDestination(assignment.destination)}
                           className="text-blue-600 hover:text-blue-900"
                           title="Bewerken"
                         >
