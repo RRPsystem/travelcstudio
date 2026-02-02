@@ -52,6 +52,9 @@ function tcc_register_dynamic_tags($dynamic_tags_manager) {
     // Fact Tags
     require_once(__DIR__ . '/dynamic-tags/class-tcc-fact-tag.php');
     
+    // Region Tags
+    require_once(__DIR__ . '/dynamic-tags/class-tcc-region-tag.php');
+    
     $dynamic_tags_manager->register(new TCC_Title_Tag());
     $dynamic_tags_manager->register(new TCC_Intro_Tag());
     $dynamic_tags_manager->register(new TCC_Description_Tag());
@@ -67,6 +70,7 @@ function tcc_register_dynamic_tags($dynamic_tags_manager) {
     $dynamic_tags_manager->register(new TCC_Highlight_Tag());
     $dynamic_tags_manager->register(new TCC_Highlight_Image_Tag());
     $dynamic_tags_manager->register(new TCC_Fact_Tag());
+    $dynamic_tags_manager->register(new TCC_Region_Tag());
 }
 add_action('elementor/dynamic_tags/register', 'tcc_register_dynamic_tags');
 
