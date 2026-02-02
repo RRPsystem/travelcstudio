@@ -1012,6 +1012,7 @@ export function DestinationManagement() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Afbeelding</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bestemming</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Land</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Datum</th>
@@ -1024,6 +1025,15 @@ export function DestinationManagement() {
             <tbody className="bg-white divide-y divide-gray-200">
               {destinations.map((d) => (
                 <tr key={d.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {d.featured_image ? (
+                      <img src={d.featured_image} alt={d.title} className="w-16 h-12 object-cover rounded-lg" />
+                    ) : (
+                      <div className="w-16 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
+                        <MapPin size={16} className="text-gray-400" />
+                      </div>
+                    )}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{d.title}</div>
                     <div className="text-sm text-gray-500">{d.slug}</div>
@@ -1064,7 +1074,7 @@ export function DestinationManagement() {
               ))}
               {destinations.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                     Geen bestemmingen gevonden. Klik op "Nieuwe Bestemming" om er één aan te maken.
                   </td>
                 </tr>
