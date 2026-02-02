@@ -26,6 +26,7 @@ const emptyFormData = {
   images: [] as string[],
   video_url: '',
   map_image: '',
+  flag_image: '',
   climate: '',
   best_time_to_visit: '',
   currency: '',
@@ -76,6 +77,7 @@ export function BrandDestinationForm({ destinationId, onBack, onSaved }: BrandDe
           images: data.images || [],
           video_url: data.video_url || '',
           map_image: data.map_image || '',
+          flag_image: data.flag_image || '',
           climate: data.climate || '',
           best_time_to_visit: data.best_time_to_visit || '',
           currency: data.currency || '',
@@ -185,6 +187,7 @@ export function BrandDestinationForm({ destinationId, onBack, onSaved }: BrandDe
         images: formData.images.filter(img => img.trim()),
         video_url: formData.video_url.trim(),
         map_image: formData.map_image.trim(),
+        flag_image: formData.flag_image.trim(),
         climate: formData.climate.trim(),
         best_time_to_visit: formData.best_time_to_visit.trim(),
         currency: formData.currency.trim(),
@@ -453,6 +456,21 @@ export function BrandDestinationForm({ destinationId, onBack, onSaved }: BrandDe
                   />
                   {formData.map_image && (
                     <img src={formData.map_image} alt="Landkaart preview" className="mt-2 h-32 object-contain rounded-lg border" />
+                  )}
+                </div>
+
+                {/* Flag Image */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">🏳️ Vlag Afbeelding</label>
+                  <input
+                    type="url"
+                    value={formData.flag_image}
+                    onChange={(e) => setFormData(prev => ({ ...prev, flag_image: e.target.value }))}
+                    placeholder="URL naar vlag afbeelding"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                  />
+                  {formData.flag_image && (
+                    <img src={formData.flag_image} alt="Vlag preview" className="mt-2 h-16 object-contain rounded-lg border" />
                   )}
                 </div>
 
