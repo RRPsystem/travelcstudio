@@ -101,7 +101,7 @@ class TravelC_Content {
      */
     public function add_rewrite_rules() {
         add_rewrite_rule(
-            '^bestemming/([^/]+)/?$',
+            '^land/([^/]+)/?$',
             'index.php?tcc_destination=$matches[1]',
             'top'
         );
