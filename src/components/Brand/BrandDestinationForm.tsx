@@ -35,7 +35,8 @@ const emptyFormData = {
   visa_info: '',
   highlights: [] as Array<{ title: string; description: string; image?: string }>,
   regions: [] as Array<{ name: string; description: string }>,
-  facts: [] as Array<{ label: string; value: string }>
+  facts: [] as Array<{ label: string; value: string }>,
+  cities: [] as Array<{ name: string; description: string; image?: string }>
 };
 
 export function BrandDestinationForm({ destinationId, onBack, onSaved }: BrandDestinationFormProps) {
@@ -86,7 +87,8 @@ export function BrandDestinationForm({ destinationId, onBack, onSaved }: BrandDe
           visa_info: data.visa_info || '',
           highlights: data.highlights || [],
           regions: data.regions || [],
-          facts: data.facts || []
+          facts: data.facts || [],
+          cities: data.cities || []
         });
       }
     } catch (error) {
@@ -197,6 +199,7 @@ export function BrandDestinationForm({ destinationId, onBack, onSaved }: BrandDe
         highlights: formData.highlights.filter(h => h.title.trim()),
         regions: formData.regions.filter(r => r.name.trim()),
         facts: formData.facts.filter(f => f.label.trim() && f.value.trim()),
+        cities: formData.cities.filter(c => c.name.trim()),
         author_type: 'brand',
         author_id: user?.id,
         brand_id: effectiveBrandId
@@ -748,6 +751,69 @@ export function BrandDestinationForm({ destinationId, onBack, onSaved }: BrandDe
                       className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
                     >
                       <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Cities */}
+            <div className="bg-white rounded-xl shadow-sm border p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Steden</h3>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, cities: [...prev.cities, { name: '', description: '', image: '' }] }))}
+                  className="flex items-center gap-1 px-3 py-1.5 text-sm bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-lg hover:from-violet-600 hover:to-purple-700"
+                >
+                  <Plus size={16} /> Toevoegen
+                </button>
+              </div>
+              <div className="space-y-3">
+                {formData.cities.map((c, i) => (
+                  <div key={i} className="p-3 bg-gray-50 rounded-lg">
+                    <input
+                      type="text"
+                      value={c.name}
+                      onChange={(e) => {
+                        const updated = [...formData.cities];
+                        updated[i].name = e.target.value;
+                        setFormData(prev => ({ ...prev, cities: updated }));
+                      }}
+                      placeholder="Naam"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2"
+                    />
+                    <textarea
+                      value={c.description}
+                      onChange={(e) => {
+                        const updated = [...formData.cities];
+                        updated[i].description = e.target.value;
+                        setFormData(prev => ({ ...prev, cities: updated }));
+                      }}
+                      placeholder="Beschrijving"
+                      rows={2}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    />
+                    <input
+                      type="url"
+                      value={c.image || ''}
+                      onChange={(e) => {
+                        const updated = [...formData.cities];
+                        updated[i].image = e.target.value;
+                        setFormData(prev => ({ ...prev, cities: updated }));
+                      }}
+                      placeholder="Afbeelding URL"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg mt-2"
+                    />
+                    {c.image && (
+                      <img src={c.image} alt={c.name} className="mt-2 h-20 object-cover rounded-lg" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, cities: prev.cities.filter((_, idx) => idx !== i) }))}
+                      className="mt-2 text-red-600 text-sm hover:text-red-700"
+                    >
+                      <Trash2 size={14} className="inline mr-1" /> Verwijderen
                     </button>
                   </div>
                 ))}

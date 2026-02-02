@@ -27,6 +27,7 @@ interface Destination {
   highlights?: Array<{ title: string; description: string; image?: string }>;
   regions?: Array<{ name: string; description: string }>;
   facts?: Array<{ label: string; value: string }>;
+  cities?: Array<{ name: string; description: string; image?: string }>;
   created_at: string;
   enabled_for_brands: boolean;
   enabled_for_franchise: boolean;
@@ -68,7 +69,8 @@ const emptyFormData = {
   visa_info: '',
   highlights: [] as Array<{ title: string; description: string; image?: string }>,
   regions: [] as Array<{ name: string; description: string }>,
-  facts: [] as Array<{ label: string; value: string }>
+  facts: [] as Array<{ label: string; value: string }>,
+  cities: [] as Array<{ name: string; description: string; image?: string }>
 };
 
 export function DestinationManagement() {
@@ -160,7 +162,8 @@ export function DestinationManagement() {
       visa_info: destination.visa_info || '',
       highlights: destination.highlights || [],
       regions: destination.regions || [],
-      facts: destination.facts || []
+      facts: destination.facts || [],
+      cities: destination.cities || []
     });
     setEditingDestination(destination);
     setViewMode('edit');
@@ -275,6 +278,7 @@ export function DestinationManagement() {
         highlights: formData.highlights.filter(h => h.title.trim()),
         regions: formData.regions.filter(r => r.name.trim()),
         facts: formData.facts.filter(f => f.label.trim() && f.value.trim()),
+        cities: formData.cities.filter(c => c.name.trim()),
         author_type: 'admin',
         author_id: user?.id,
         brand_id: SYSTEM_BRAND_ID
@@ -353,6 +357,10 @@ export function DestinationManagement() {
 
   const handleAddFact = () => {
     setFormData(prev => ({ ...prev, facts: [...prev.facts, { label: '', value: '' }] }));
+  };
+
+  const handleAddCity = () => {
+    setFormData(prev => ({ ...prev, cities: [...prev.cities, { name: '', description: '', image: '' }] }));
   };
 
   if (loading) {
@@ -888,6 +896,74 @@ export function DestinationManagement() {
                   ))}
                   {formData.facts.length === 0 && (
                     <p className="text-gray-500 text-sm italic text-center py-4">Nog geen weetjes toegevoegd.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Cities */}
+              <div className="bg-white rounded-xl shadow-sm border p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Steden</h3>
+                  <button
+                    onClick={handleAddCity}
+                    className="flex items-center gap-1 px-3 py-1.5 text-sm bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-lg hover:from-violet-600 hover:to-purple-700"
+                  >
+                    <Plus size={16} /> Toevoegen
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {formData.cities.map((c, i) => (
+                    <div key={i} className="p-3 bg-gray-50 rounded-lg">
+                      <div className="flex gap-2 mb-2">
+                        <input
+                          type="text"
+                          value={c.name}
+                          onChange={(e) => {
+                            const updated = [...formData.cities];
+                            updated[i].name = e.target.value;
+                            setFormData(prev => ({ ...prev, cities: updated }));
+                          }}
+                          placeholder="Naam"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        />
+                        <button
+                          onClick={() => setFormData(prev => ({ ...prev, cities: prev.cities.filter((_, idx) => idx !== i) }))}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                      <textarea
+                        value={c.description}
+                        onChange={(e) => {
+                          const updated = [...formData.cities];
+                          updated[i].description = e.target.value;
+                          setFormData(prev => ({ ...prev, cities: updated }));
+                        }}
+                        placeholder="Beschrijving"
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                      <div className="mt-2">
+                        <input
+                          type="url"
+                          value={c.image || ''}
+                          onChange={(e) => {
+                            const updated = [...formData.cities];
+                            updated[i].image = e.target.value;
+                            setFormData(prev => ({ ...prev, cities: updated }));
+                          }}
+                          placeholder="Afbeelding URL"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        />
+                        {c.image && (
+                          <img src={c.image} alt={c.name} className="mt-2 h-20 object-cover rounded-lg" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {formData.cities.length === 0 && (
+                    <p className="text-gray-500 text-sm italic text-center py-4">Nog geen steden toegevoegd.</p>
                   )}
                 </div>
               </div>
