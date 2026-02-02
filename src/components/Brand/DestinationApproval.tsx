@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Plus, Pencil, Trash2 } from 'lucide-react';
+import { MapPin, Plus, Pencil, Trash2, Eye } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { BrandDestinationForm } from './BrandDestinationForm';
@@ -32,6 +32,7 @@ export function DestinationApproval() {
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [editingDestinationId, setEditingDestinationId] = useState<string | null>(null);
+  const [brandWebsiteUrl, setBrandWebsiteUrl] = useState<string>('');
 
   useEffect(() => {
     if (effectiveBrandId && !isLoadingData) {
@@ -49,6 +50,17 @@ export function DestinationApproval() {
     setLoading(true);
     setIsLoadingData(true);
     try {
+      // Fetch brand's website URL
+      const { data: brandData } = await supabase
+        .from('brands')
+        .select('website_url')
+        .eq('id', effectiveBrandId)
+        .single();
+      
+      if (brandData?.website_url) {
+        setBrandWebsiteUrl(brandData.website_url.replace(/\/$/, '')); // Remove trailing slash
+      }
+
       const { data: assignmentData, error: assignmentError } = await supabase
         .from('destination_brand_assignments')
         .select(`
@@ -394,6 +406,15 @@ export function DestinationApproval() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end space-x-3">
+                      {brandWebsiteUrl && assignment.is_published && (
+                        <button
+                          onClick={() => window.open(`${brandWebsiteUrl}/bestemming/${assignment.destination.slug}/`, '_blank')}
+                          className="text-green-600 hover:text-green-900"
+                          title="Bekijk op website"
+                        >
+                          <Eye size={16} />
+                        </button>
+                      )}
                       {assignment.status === 'brand' && (
                         <button
                           onClick={() => handleEditDestination(assignment.destination)}
