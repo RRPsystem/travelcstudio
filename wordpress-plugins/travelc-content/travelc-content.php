@@ -19,6 +19,11 @@ define('TCC_VERSION', '1.0.0');
 define('TCC_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TCC_PLUGIN_URL', plugin_dir_url(__FILE__));
 
+// Load Elementor Dynamic Tags if Elementor is active
+add_action('elementor/init', function() {
+    require_once TCC_PLUGIN_DIR . 'elementor-dynamic-tags.php';
+});
+
 class TravelC_Content {
     
     private static $instance = null;
@@ -350,6 +355,64 @@ class TravelC_Content {
                     </tr>
                 </tbody>
             </table>
+            
+            <h3 style="margin-top: 20px;">🎯 Elementor Dynamic Tags</h3>
+            <p><em>Als Elementor actief is, kun je deze Dynamic Tags gebruiken in je widgets:</em></p>
+            <table class="widefat">
+                <thead>
+                    <tr>
+                        <th>Dynamic Tag</th>
+                        <th>Beschrijving</th>
+                        <th>Gebruik in</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>TravelC Titel</strong></td>
+                        <td>Bestemmingsnaam</td>
+                        <td>Heading, Text Editor</td>
+                    </tr>
+                    <tr>
+                        <td><strong>TravelC Introductie</strong></td>
+                        <td>Korte introductietekst</td>
+                        <td>Text Editor</td>
+                    </tr>
+                    <tr>
+                        <td><strong>TravelC Beschrijving</strong></td>
+                        <td>Uitgebreide beschrijving</td>
+                        <td>Text Editor</td>
+                    </tr>
+                    <tr>
+                        <td><strong>TravelC Vervoer</strong></td>
+                        <td>Vervoer & rondreizen tips</td>
+                        <td>Text Editor</td>
+                    </tr>
+                    <tr>
+                        <td><strong>TravelC Klimaat</strong></td>
+                        <td>Klimaatinformatie</td>
+                        <td>Text Editor</td>
+                    </tr>
+                    <tr>
+                        <td><strong>TravelC Veld</strong></td>
+                        <td>Elk veld (dropdown keuze)</td>
+                        <td>Text Editor</td>
+                    </tr>
+                    <tr>
+                        <td><strong>TravelC Afbeelding</strong></td>
+                        <td>Featured of galerij afbeelding</td>
+                        <td>Image widget</td>
+                    </tr>
+                    <tr>
+                        <td><strong>TravelC Galerij</strong></td>
+                        <td>Alle afbeeldingen als galerij</td>
+                        <td>Image Carousel, Gallery</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="description" style="margin-top: 10px;">
+                💡 <strong>Tip:</strong> Koppel je bestaande Elementor pagina's aan TravelCStudio via de "TravelCStudio Koppeling" meta box in de sidebar. 
+                Vul daar de bestemming slug in (bijv. "italie") en de Dynamic Tags halen automatisch de juiste content op.
+            </p>
             
             <hr>
             

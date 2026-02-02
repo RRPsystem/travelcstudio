@@ -14,6 +14,7 @@ interface Destination {
   description?: string;
   transportation?: string;
   featured_image?: string;
+  images?: string[];
   climate?: string;
   best_time_to_visit?: string;
   currency?: string;
@@ -52,6 +53,7 @@ const emptyFormData = {
   description: '',
   transportation: '',
   featured_image: '',
+  images: [] as string[],
   climate: '',
   best_time_to_visit: '',
   currency: '',
@@ -140,6 +142,7 @@ export function DestinationManagement() {
       description: destination.description || '',
       transportation: destination.transportation || '',
       featured_image: destination.featured_image || '',
+      images: destination.images || [],
       climate: destination.climate || '',
       best_time_to_visit: destination.best_time_to_visit || '',
       currency: destination.currency || '',
@@ -250,6 +253,7 @@ export function DestinationManagement() {
         description: formData.description.trim(),
         transportation: formData.transportation.trim(),
         featured_image: formData.featured_image.trim(),
+        images: formData.images.filter(img => img.trim()),
         climate: formData.climate.trim(),
         best_time_to_visit: formData.best_time_to_visit.trim(),
         currency: formData.currency.trim(),
@@ -476,6 +480,67 @@ export function DestinationManagement() {
                     </div>
                     {formData.featured_image && (
                       <img src={formData.featured_image} alt="Preview" className="mt-2 h-40 w-full object-cover rounded-lg" />
+                    )}
+                  </div>
+
+                  {/* Photo Gallery */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">📸 Foto Galerij</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, images: [...prev.images, ''] }));
+                        }}
+                        className="text-sm text-teal-600 hover:text-teal-700 flex items-center gap-1"
+                      >
+                        <Plus size={16} /> Foto toevoegen
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {formData.images.map((img, index) => (
+                        <div key={index} className="relative group">
+                          {img ? (
+                            <img src={img} alt={`Foto ${index + 1}`} className="h-24 w-full object-cover rounded-lg" />
+                          ) : (
+                            <div className="h-24 w-full bg-gray-100 rounded-lg flex items-center justify-center">
+                              <ImageIcon size={24} className="text-gray-400" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const url = prompt('Voer afbeelding URL in:', img);
+                                if (url !== null) {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    images: prev.images.map((i, idx) => idx === index ? url : i)
+                                  }));
+                                }
+                              }}
+                              className="p-1.5 bg-white rounded-full hover:bg-gray-100"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  images: prev.images.filter((_, idx) => idx !== index)
+                                }));
+                              }}
+                              className="p-1.5 bg-white rounded-full hover:bg-red-100 text-red-600"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {formData.images.length === 0 && (
+                      <p className="text-sm text-gray-500 mt-2">Nog geen foto's toegevoegd. Klik op "Foto toevoegen" om te beginnen.</p>
                     )}
                   </div>
 
