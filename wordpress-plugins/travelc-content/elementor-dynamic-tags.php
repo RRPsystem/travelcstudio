@@ -59,6 +59,9 @@ function tcc_register_dynamic_tags($dynamic_tags_manager) {
     require_once(__DIR__ . '/dynamic-tags/class-tcc-city-tag.php');
     require_once(__DIR__ . '/dynamic-tags/class-tcc-city-image-tag.php');
     
+    // Fun Facts Tag
+    require_once(__DIR__ . '/dynamic-tags/class-tcc-fun-facts-tag.php');
+    
     $dynamic_tags_manager->register(new TCC_Title_Tag());
     $dynamic_tags_manager->register(new TCC_Intro_Tag());
     $dynamic_tags_manager->register(new TCC_Description_Tag());
@@ -77,6 +80,7 @@ function tcc_register_dynamic_tags($dynamic_tags_manager) {
     $dynamic_tags_manager->register(new TCC_Region_Tag());
     $dynamic_tags_manager->register(new TCC_City_Tag());
     $dynamic_tags_manager->register(new TCC_City_Image_Tag());
+    $dynamic_tags_manager->register(new TCC_Fun_Facts_Tag());
 }
 add_action('elementor/dynamic_tags/register', 'tcc_register_dynamic_tags');
 

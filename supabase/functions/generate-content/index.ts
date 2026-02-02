@@ -473,6 +473,11 @@ Genereer ALLEEN een geldig JSON object (geen markdown, geen uitleg, geen code bl
   ],
   "cities": [
     {"name": "Stadsnaam", "description": "Beschrijving van 2-3 zinnen over de stad en waarom je er moet zijn"}
+  ],
+  "fun_facts": [
+    "Een leuk, verrassend of grappig feit over dit land dat 100% waar is",
+    "Nog een interessant weetje dat reizigers zal verbazen",
+    "Een derde feit dat uniek is voor dit land"
   ]
 }
 BELANGRIJK:
@@ -481,6 +486,7 @@ BELANGRIJK:
 - Geef PRECIES 7 highlights (populaire bezienswaardigheden)
 - Geef PRECIES 3 cities (populaire steden om te bezoeken)
 - Geef minimaal 4 regio's en 5 facts
+- Geef PRECIES 3 fun_facts: leuke, verrassende of grappige weetjes die 100% WAAR zijn. Geen verzinsels! Dit kunnen zijn: bizarre wetten, gekke tradities, verrassende records, onverwachte uitvindingen uit dit land, etc.
 Schrijf in het Nederlands. Wees informatief en inspirerend.`,
         route: `Je bent een enthousiaste reisbuddy die routes tot een beleving maakt. {ROUTE_TYPE_INSTRUCTION}
 

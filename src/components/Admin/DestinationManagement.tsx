@@ -70,7 +70,8 @@ const emptyFormData = {
   highlights: [] as Array<{ title: string; description: string; image?: string }>,
   regions: [] as Array<{ name: string; description: string }>,
   facts: [] as Array<{ label: string; value: string }>,
-  cities: [] as Array<{ name: string; description: string; image?: string }>
+  cities: [] as Array<{ name: string; description: string; image?: string }>,
+  fun_facts: [] as string[]
 };
 
 export function DestinationManagement() {
@@ -164,7 +165,8 @@ export function DestinationManagement() {
       highlights: destination.highlights || [],
       regions: destination.regions || [],
       facts: destination.facts || [],
-      cities: destination.cities || []
+      cities: destination.cities || [],
+      fun_facts: (destination as any).fun_facts || []
     });
     setEditingDestination(destination);
     setViewMode('edit');
@@ -238,6 +240,7 @@ export function DestinationManagement() {
           regions: data.content.regions || prev.regions,
           facts: data.content.facts || prev.facts,
           cities: data.content.cities || prev.cities,
+          fun_facts: data.content.fun_facts || prev.fun_facts,
           featured_image: data.content.featured_image || prev.featured_image
         }));
       }
@@ -281,6 +284,7 @@ export function DestinationManagement() {
         regions: formData.regions.filter(r => r.name.trim()),
         facts: formData.facts.filter(f => f.label.trim() && f.value.trim()),
         cities: formData.cities.filter(c => c.name.trim()),
+        fun_facts: formData.fun_facts.filter(f => f.trim()),
         author_type: 'admin',
         author_id: user?.id,
         brand_id: SYSTEM_BRAND_ID
@@ -993,6 +997,48 @@ export function DestinationManagement() {
                   ))}
                   {formData.cities.length === 0 && (
                     <p className="text-gray-500 text-sm italic text-center py-4">Nog geen steden toegevoegd.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Fun Facts */}
+              <div className="bg-white rounded-xl shadow-sm border p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">🎉 Leuke Feiten</h3>
+                  <button
+                    onClick={() => setFormData(prev => ({ ...prev, fun_facts: [...prev.fun_facts, ''] }))}
+                    className="flex items-center gap-1 px-3 py-1.5 text-sm bg-gradient-to-r from-pink-500 to-rose-600 text-white rounded-lg hover:from-pink-600 hover:to-rose-700"
+                  >
+                    <Plus size={16} /> Feit toevoegen
+                  </button>
+                </div>
+                <p className="text-sm text-gray-500 mb-4">3 leuke, verrassende of grappige weetjes die 100% waar zijn.</p>
+                <div className="space-y-3">
+                  {formData.fun_facts.map((fact, i) => (
+                    <div key={i} className="flex gap-2 items-start">
+                      <span className="text-pink-500 mt-2">•</span>
+                      <textarea
+                        value={fact}
+                        onChange={(e) => {
+                          const updated = [...formData.fun_facts];
+                          updated[i] = e.target.value;
+                          setFormData(prev => ({ ...prev, fun_facts: updated }));
+                        }}
+                        placeholder="Bijv: Brazilië herbergt meer plant- en diersoorten dan welk ander land ter wereld."
+                        rows={2}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, fun_facts: prev.fun_facts.filter((_, idx) => idx !== i) }))}
+                        className="text-red-600 hover:text-red-700 p-2"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                  {formData.fun_facts.length === 0 && (
+                    <p className="text-gray-500 text-sm italic text-center py-4">Nog geen leuke feiten toegevoegd.</p>
                   )}
                 </div>
               </div>
