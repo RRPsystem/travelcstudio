@@ -156,6 +156,113 @@ export function SlidingMediaSelector({
   const [youtubeVideos, setYoutubeVideos] = useState<any[]>([]);
   const [unsplashKey, setUnsplashKey] = useState<string | null>(null);
   const [youtubeKey, setYoutubeKey] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Load previously uploaded images from Supabase Storage
+  const loadUploadedImages = async () => {
+    try {
+      const { data, error } = await supabase!.storage
+        .from('destination-images')
+        .list('uploads', {
+          limit: 50,
+          sortBy: { column: 'created_at', order: 'desc' }
+        });
+
+      if (error) {
+        console.error('Error loading uploaded images:', error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const urls = data
+          .filter(file => file.name !== '.emptyFolderPlaceholder')
+          .map(file => {
+            const { data: urlData } = supabase!.storage
+              .from('destination-images')
+              .getPublicUrl(`uploads/${file.name}`);
+            return urlData.publicUrl;
+          });
+        setUploadedImages(urls);
+      }
+    } catch (error) {
+      console.error('Error loading uploaded images:', error);
+    }
+  };
+
+  // Handle file upload to Supabase Storage
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    setUploadError(null);
+
+    try {
+      for (const file of Array.from(files)) {
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          setUploadError('Alleen afbeeldingen zijn toegestaan');
+          continue;
+        }
+
+        // Validate file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          setUploadError('Bestand is te groot (max 10MB)');
+          continue;
+        }
+
+        // Generate unique filename
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `uploads/${fileName}`;
+
+        // Upload to Supabase Storage
+        const { error: uploadError } = await supabase!.storage
+          .from('destination-images')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          setUploadError(`Upload mislukt: ${uploadError.message}`);
+          continue;
+        }
+
+        // Get public URL
+        const { data: urlData } = supabase!.storage
+          .from('destination-images')
+          .getPublicUrl(filePath);
+
+        const publicUrl = urlData.publicUrl;
+
+        // Add to uploaded images list
+        setUploadedImages(prev => [publicUrl, ...prev]);
+
+        // If single select, immediately select the uploaded image
+        if (!allowMultiple) {
+          onSelect(publicUrl);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      setUploadError('Er ging iets mis bij het uploaden');
+    } finally {
+      setUploading(false);
+      // Reset file input
+      event.target.value = '';
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen && activeTab === 'upload') {
+      loadUploadedImages();
+    }
+  }, [isOpen, activeTab]);
 
   useEffect(() => {
     const loadAPIKeys = async () => {
@@ -381,34 +488,65 @@ export function SlidingMediaSelector({
           <div className="flex-1 p-6 overflow-y-auto">
             {activeTab === 'upload' && (
               <div className="space-y-6">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-orange-400 transition-colors">
-                  <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <p className="text-gray-600 mb-2">Sleep bestanden hierheen of klik om te uploaden</p>
-                  <p className="text-xs text-gray-500 mb-4">JPG, PNG, GIF tot 10MB • {allowMultiple ? 'Meerdere bestanden mogelijk' : 'Eén bestand'}</p>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple={allowMultiple}
-                    className="hidden"
-                    id="file-upload"
-                  />
-                  <label
-                    htmlFor="file-upload"
-                    className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors cursor-pointer inline-block font-medium"
-                  >
-                    📁 Bestanden Kiezen
-                  </label>
+                {uploadError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800">
+                    ❌ {uploadError}
+                  </div>
+                )}
+
+                <div className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                  uploading ? 'border-orange-400 bg-orange-50' : 'border-gray-300 hover:border-orange-400'
+                }`}>
+                  {uploading ? (
+                    <>
+                      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mb-4"></div>
+                      <p className="text-orange-600 font-medium">Bezig met uploaden...</p>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                      <p className="text-gray-600 mb-2">Sleep bestanden hierheen of klik om te uploaden</p>
+                      <p className="text-xs text-gray-500 mb-4">JPG, PNG, GIF tot 10MB • {allowMultiple ? 'Meerdere bestanden mogelijk' : 'Eén bestand'}</p>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple={allowMultiple}
+                        className="hidden"
+                        id="file-upload"
+                        onChange={handleFileUpload}
+                      />
+                      <label
+                        htmlFor="file-upload"
+                        className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors cursor-pointer inline-block font-medium"
+                      >
+                        📁 Bestanden Kiezen
+                      </label>
+                    </>
+                  )}
                 </div>
 
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-3">Recent Uploads</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[1, 2, 3, 4].map((i) => (
-                      <div key={i} className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-300 transition-colors cursor-pointer">
-                        <span className="text-gray-500 text-sm">Upload {i}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <h4 className="font-medium text-gray-900 mb-3">Geüploade Afbeeldingen ({uploadedImages.length})</h4>
+                  {uploadedImages.length === 0 ? (
+                    <p className="text-gray-500 text-sm text-center py-4">Nog geen afbeeldingen geüpload</p>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-3">
+                      {uploadedImages.map((url, index) => (
+                        <div
+                          key={index}
+                          onClick={() => onSelect(url)}
+                          className="aspect-square bg-gray-200 rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-orange-500 transition-all transform hover:scale-105"
+                        >
+                          <img
+                            src={url}
+                            alt={`Upload ${index + 1}`}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
