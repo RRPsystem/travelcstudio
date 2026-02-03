@@ -459,7 +459,8 @@ export function InternalNewsManager() {
                     >
                       <Eye className="w-5 h-5" />
                     </button>
-                    {assignment.status !== 'mandatory' && (
+                    {/* Only show edit/delete for brand's own news, not Admin news */}
+                    {assignment.status === 'brand' && (
                       <>
                         <button
                           onClick={() => handleEdit(assignment)}
