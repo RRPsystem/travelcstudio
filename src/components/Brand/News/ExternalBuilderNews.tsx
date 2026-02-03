@@ -92,11 +92,13 @@ export function ExternalBuilderNews() {
       const filteredBrandNews = (brandNewsData || []).filter(item => !assignedNewsIds.has(item.id));
 
       // 3. Get available Admin news (enabled_for_brands = true)
+      // Admin news is stored with SYSTEM_BRAND_ID, not null
+      const SYSTEM_BRAND_ID = '00000000-0000-0000-0000-000000000999';
       const { data: availableNewsData, error: availableNewsError } = await supabase
         .from('news_items')
         .select('id, title, slug, excerpt, featured_image, created_at, published_at, status, tags, is_mandatory, enabled_for_brands')
         .eq('enabled_for_brands', true)
-        .is('brand_id', null)
+        .eq('brand_id', SYSTEM_BRAND_ID)
         .order('created_at', { ascending: false });
 
       if (availableNewsError) throw availableNewsError;
