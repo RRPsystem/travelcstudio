@@ -255,18 +255,23 @@ Geef het antwoord in het volgende JSON formaat:
 Alleen JSON, geen andere tekst.`;
 
       const response = await edgeAIService.generateContent(
-        'destination',
+        'planning', // Use 'planning' type to get raw text response
         userPrompt,
         'professional'
       );
 
-      console.log('AI Response:', response);
+      console.log('AI Response:', response, typeof response);
       
-      // Parse JSON response
-      if (!response || typeof response !== 'string') {
+      // Parse JSON response - handle both string and object responses
+      let responseText = response;
+      if (typeof response === 'object') {
+        responseText = JSON.stringify(response);
+      }
+      if (!responseText) {
         throw new Error('Geen geldige response van AI ontvangen');
       }
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      
+      const jsonMatch = String(responseText).match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const generated = JSON.parse(jsonMatch[0]);
         setFormData(prev => ({
@@ -278,6 +283,8 @@ Alleen JSON, geen andere tekst.`;
           tags: generated.tags || prev.tags,
           slug: prev.slug || generateSlug(generated.title || topic)
         }));
+      } else {
+        throw new Error('Kon geen JSON vinden in AI response');
       }
     } catch (error: any) {
       console.error('AI generation error:', error);
@@ -328,17 +335,21 @@ Geef 3 suggesties in JSON formaat:
 Alleen JSON array, geen andere tekst.`;
 
       const response = await edgeAIService.generateContent(
-        'destination',
+        'planning', // Use 'planning' type to get raw text response
         prompt,
         'professional'
       );
 
-      console.log('AI Suggestions Response:', response);
+      console.log('AI Suggestions Response:', response, typeof response);
       
-      if (!response || typeof response !== 'string') {
+      let responseText = response;
+      if (typeof response === 'object') {
+        responseText = JSON.stringify(response);
+      }
+      if (!responseText) {
         throw new Error('Geen geldige response van AI ontvangen');
       }
-      const jsonMatch = response.match(/\[[\s\S]*\]/);
+      const jsonMatch = String(responseText).match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         const suggestions = JSON.parse(jsonMatch[0]);
         setAiSuggestions(suggestions);
