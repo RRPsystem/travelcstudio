@@ -3,7 +3,7 @@
  * Plugin Name: TravelC Content
  * Plugin URI: https://travelcstudio.com
  * Description: Synchroniseert nieuws en bestemmingen van TravelCStudio naar WordPress. Content wordt beheerd in TravelCStudio en automatisch getoond op WordPress sites van brands die de content hebben geactiveerd.
- * Version: 1.0.64
+ * Version: 1.0.65
  * Author: RRP System
  * Author URI: https://rrpsystem.com
  * License: GPL v2 or later
@@ -15,7 +15,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('TCC_VERSION', '1.0.64');
+define('TCC_VERSION', '1.0.65');
 define('TCC_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TCC_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -1069,35 +1069,61 @@ class TravelC_Content {
             return array();
         }
         
-        // First get the news IDs that are activated for this brand
-        // Include all statuses except 'rejected' - if assigned, it should sync
+        $all_news = array();
+        
+        // 1. Get news created directly by this brand (brand's own news)
+        $brand_news = $this->fetch_from_supabase('news_items', array(
+            'brand_id' => 'eq.' . $this->brand_id,
+            'select' => 'id,title,slug,excerpt,content,featured_image,tags,created_at,published_at,status',
+            'order' => 'published_at.desc,created_at.desc',
+            'limit' => $limit
+        ));
+        
+        error_log('[TCC] Brand own news for ' . $this->brand_id . ': ' . (is_array($brand_news) ? count($brand_news) : 0) . ' items');
+        
+        if (is_array($brand_news) && !empty($brand_news)) {
+            $all_news = array_merge($all_news, $brand_news);
+        }
+        
+        // 2. Get news assigned to this brand via news_brand_assignments
         $assignments = $this->fetch_from_supabase('news_brand_assignments', array(
             'brand_id' => 'eq.' . $this->brand_id,
             'status' => 'neq.rejected',
             'select' => 'news_id,status,is_published'
         ));
         
-        error_log('[TCC] News assignments for brand ' . $this->brand_id . ': ' . print_r($assignments, true));
+        error_log('[TCC] News assignments for brand ' . $this->brand_id . ': ' . (is_array($assignments) ? count($assignments) : 0) . ' items');
         
-        if (is_wp_error($assignments) || empty($assignments)) {
-            return array();
+        if (is_array($assignments) && !empty($assignments)) {
+            $news_ids = array_column($assignments, 'news_id');
+            
+            if (!empty($news_ids)) {
+                $assigned_news = $this->fetch_from_supabase('news_items', array(
+                    'id' => 'in.(' . implode(',', $news_ids) . ')',
+                    'select' => 'id,title,slug,excerpt,content,featured_image,tags,created_at,published_at,status',
+                    'order' => 'published_at.desc,created_at.desc',
+                    'limit' => $limit
+                ));
+                
+                if (is_array($assigned_news) && !empty($assigned_news)) {
+                    $all_news = array_merge($all_news, $assigned_news);
+                }
+            }
         }
         
-        $news_ids = array_column($assignments, 'news_id');
-        
-        if (empty($news_ids)) {
-            return array();
+        // Remove duplicates by id
+        $unique_news = array();
+        $seen_ids = array();
+        foreach ($all_news as $news) {
+            if (!in_array($news['id'], $seen_ids)) {
+                $unique_news[] = $news;
+                $seen_ids[] = $news['id'];
+            }
         }
         
-        // Now fetch the actual news items (no status filter - if assigned, it should sync)
-        $news = $this->fetch_from_supabase('news_items', array(
-            'id' => 'in.(' . implode(',', $news_ids) . ')',
-            'select' => 'id,title,slug,excerpt,content,featured_image,tags,created_at,published_at,status',
-            'order' => 'published_at.desc,created_at.desc',
-            'limit' => $limit
-        ));
+        error_log('[TCC] Total unique news items: ' . count($unique_news));
         
-        return is_array($news) ? $news : array();
+        return $unique_news;
     }
     
     /**
