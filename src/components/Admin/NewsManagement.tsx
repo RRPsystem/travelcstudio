@@ -47,6 +47,7 @@ const NEWS_CATEGORIES = [
   { id: 'events', name: 'Events & Festivals', icon: '🎉', color: 'bg-purple-100 text-purple-800' },
   { id: 'praktisch', name: 'Praktische Info', icon: '📋', color: 'bg-gray-100 text-gray-800' },
   { id: 'inspiratie', name: 'Inspiratie', icon: '✨', color: 'bg-orange-100 text-orange-800' },
+  { id: 'leveranciers', name: 'Leveranciers', icon: '🤝', color: 'bg-teal-100 text-teal-800' },
 ];
 
 interface AISuggestion {
