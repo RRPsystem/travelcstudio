@@ -151,7 +151,13 @@ export function NewsManagement() {
         return `${siteUrl.replace(/\/$/, '')}/nieuws/${newsSlug}/`;
       }
     }
-    // Fallback: internal preview page
+    // Fallback: try first brand with WordPress URL (for Admin view)
+    const brandWithWP = brands.find(b => b.wordpress_url || b.website_url);
+    if (brandWithWP) {
+      const siteUrl = brandWithWP.wordpress_url || brandWithWP.website_url;
+      return `${siteUrl!.replace(/\/$/, '')}/nieuws/${newsSlug}/`;
+    }
+    // Last fallback: internal preview page
     return `/preview/news/${newsSlug}`;
   };
 
