@@ -3,7 +3,7 @@
  * Plugin Name: TravelC Content
  * Plugin URI: https://travelcstudio.com
  * Description: Synchroniseert nieuws en bestemmingen van TravelCStudio naar WordPress. Content wordt beheerd in TravelCStudio en automatisch getoond op WordPress sites van brands die de content hebben geactiveerd.
- * Version: 1.0.63
+ * Version: 1.0.64
  * Author: RRP System
  * Author URI: https://rrpsystem.com
  * License: GPL v2 or later
@@ -15,7 +15,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('TCC_VERSION', '1.0.63');
+define('TCC_VERSION', '1.0.64');
 define('TCC_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TCC_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -186,24 +186,32 @@ class TravelC_Content {
      * Sync news from TravelCStudio to WordPress
      */
     public function sync_news($force = false) {
+        error_log('[TCC] sync_news called. Brand ID: ' . $this->brand_id . ', Force: ' . ($force ? 'yes' : 'no'));
+        
         if (empty($this->brand_id)) {
+            error_log('[TCC] No brand_id set, skipping sync');
             return;
         }
         
         // Only sync once per hour unless forced
         $last_sync = get_option('tcc_last_news_sync', 0);
         if (!$force && (time() - $last_sync) < 3600) {
+            error_log('[TCC] Skipping sync - last sync was ' . (time() - $last_sync) . ' seconds ago');
             return;
         }
         
         // Get activated news for this brand
         $news_items = $this->get_news_items(100);
         
+        error_log('[TCC] Found ' . (is_array($news_items) ? count($news_items) : 0) . ' news items to sync');
+        
         if (empty($news_items) || !is_array($news_items)) {
+            error_log('[TCC] No news items found, nothing to sync');
             return;
         }
         
         foreach ($news_items as $news) {
+            error_log('[TCC] Syncing news: ' . $news['title'] . ' (slug: ' . $news['slug'] . ')');
             $this->create_or_update_nieuws_post($news);
         }
         
@@ -211,6 +219,7 @@ class TravelC_Content {
         $this->cleanup_deactivated_news($news_items);
         
         update_option('tcc_last_news_sync', time());
+        error_log('[TCC] News sync completed');
     }
     
     /**
