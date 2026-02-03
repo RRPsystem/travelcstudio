@@ -3,7 +3,7 @@ import { Newspaper, Plus, Edit2, Trash2, Eye, ArrowLeft, Save, Image as ImageIco
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { SlidingMediaSelector } from '../shared/SlidingMediaSelector';
-import { aiTravelService } from '../../lib/apiServices';
+import { edgeAIService } from '../../lib/apiServices';
 
 interface NewsItem {
   id: string;
@@ -254,7 +254,7 @@ Geef het antwoord in het volgende JSON formaat:
 
 Alleen JSON, geen andere tekst.`;
 
-      const response = await aiTravelService.generateEnhancedContent(
+      const response = await edgeAIService.generateContent(
         'destination',
         userPrompt,
         'professional'
@@ -322,7 +322,7 @@ Geef 3 suggesties in JSON formaat:
 
 Alleen JSON array, geen andere tekst.`;
 
-      const response = await aiTravelService.generateEnhancedContent(
+      const response = await edgeAIService.generateContent(
         'destination',
         prompt,
         'professional'
