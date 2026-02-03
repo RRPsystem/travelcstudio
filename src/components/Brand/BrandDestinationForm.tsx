@@ -241,9 +241,10 @@ export function BrandDestinationForm({ destinationId, onBack, onSaved }: BrandDe
       }
 
       onSaved();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving destination:', error);
-      alert('Fout bij opslaan van bestemming');
+      const errorMessage = error?.message || error?.details || JSON.stringify(error);
+      alert(`Fout bij opslaan van bestemming: ${errorMessage}`);
     } finally {
       setSaving(false);
     }
