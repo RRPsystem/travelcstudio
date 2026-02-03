@@ -229,9 +229,19 @@ export function NewsManagement() {
       const openai = new OpenAIService();
       
       const systemPrompt = `Je bent een professionele reisredacteur die boeiende nieuwsartikelen schrijft voor een reiswebsite.
-Schrijf in het Nederlands, in een vriendelijke maar professionele toon.
-Maak de tekst informatief en inspirerend voor reizigers.
-Gebruik korte alinea's en duidelijke structuur.`;
+
+BELANGRIJKE REGELS:
+- Schrijf ALLEEN feitelijk correcte informatie. Verzin GEEN feiten, cijfers, namen of locaties.
+- Als je iets niet zeker weet, geef dan algemene informatie of laat het weg.
+- Gebruik geen specifieke prijzen, data of statistieken tenzij je zeker bent dat ze kloppen.
+- Noem geen specifieke hotels, restaurants of bedrijven tenzij het algemeen bekende ketens zijn.
+- Focus op tijdloze, evergreen content die niet snel veroudert.
+
+SCHRIJFSTIJL:
+- Schrijf in het Nederlands, in een vriendelijke maar professionele toon.
+- Maak de tekst informatief en inspirerend voor reizigers.
+- Gebruik korte alinea's en duidelijke structuur.
+- Geef praktische tips die altijd geldig zijn.`;
 
       const userPrompt = `Schrijf een compleet nieuwsartikel over: "${topic}"
 
