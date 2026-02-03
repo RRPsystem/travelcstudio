@@ -38,11 +38,12 @@ interface BrandVoiceSettings {
 }
 
 export function SocialMediaManager() {
-  const { user, effectiveBrandId } = useAuth();
+  const { user, effectiveBrandId, isAdmin } = useAuth();
   const [posts, setPosts] = useState<SocialMediaPost[]>([]);
   const [accounts, setAccounts] = useState<SocialMediaAccount[]>([]);
+  const [availablePosts, setAvailablePosts] = useState<SocialMediaPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'create' | 'planner' | 'suggestions' | 'accounts' | 'brand-voice'>('create');
+  const [activeTab, setActiveTab] = useState<'create' | 'available' | 'planner' | 'suggestions' | 'accounts' | 'brand-voice'>('create');
   const [showMediaSelector, setShowMediaSelector] = useState(false);
   const [connectingPlatform, setConnectingPlatform] = useState('');
   const [testingPlatform, setTestingPlatform] = useState('');
@@ -70,7 +71,10 @@ export function SocialMediaManager() {
     loadPosts();
     loadAccounts();
     loadBrandVoice();
-  }, [effectiveBrandId]);
+    if (!isAdmin) {
+      loadAvailablePosts();
+    }
+  }, [effectiveBrandId, isAdmin]);
 
   const loadPosts = async () => {
     if (!effectiveBrandId) return;
@@ -129,6 +133,24 @@ export function SocialMediaManager() {
       }
     } catch (err: any) {
       console.error('Error loading brand voice:', err);
+    }
+  };
+
+  const loadAvailablePosts = async () => {
+    // Load posts from Admin that are enabled for brands
+    const SYSTEM_BRAND_ID = '00000000-0000-0000-0000-000000000999';
+    try {
+      const { data, error } = await db.supabase
+        .from('social_media_posts')
+        .select('*')
+        .eq('brand_id', SYSTEM_BRAND_ID)
+        .eq('enabled_for_brands', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setAvailablePosts(data || []);
+    } catch (err: any) {
+      console.error('Error loading available posts:', err);
     }
   };
 
@@ -359,26 +381,49 @@ export function SocialMediaManager() {
           >
             Post Maken
           </button>
-          <button
-            onClick={() => setActiveTab('planner')}
-            className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'planner'
-                ? 'border-orange-500 text-orange-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            AI Planner
-          </button>
-          <button
-            onClick={() => setActiveTab('suggestions')}
-            className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'suggestions'
-                ? 'border-orange-500 text-orange-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            AI Voorstellen
-          </button>
+          {/* Available Posts tab - only for Brand/Agent (not Admin) */}
+          {!isAdmin && (
+            <button
+              onClick={() => setActiveTab('available')}
+              className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === 'available'
+                  ? 'border-orange-500 text-orange-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Beschikbare Posts
+              {availablePosts.length > 0 && (
+                <span className="ml-2 py-0.5 px-2 rounded-full text-xs bg-purple-100 text-purple-800">
+                  {availablePosts.length}
+                </span>
+              )}
+            </button>
+          )}
+          {/* AI tabs - only for Admin */}
+          {isAdmin && (
+            <>
+              <button
+                onClick={() => setActiveTab('planner')}
+                className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
+                  activeTab === 'planner'
+                    ? 'border-orange-500 text-orange-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                AI Planner
+              </button>
+              <button
+                onClick={() => setActiveTab('suggestions')}
+                className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
+                  activeTab === 'suggestions'
+                    ? 'border-orange-500 text-orange-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                AI Voorstellen
+              </button>
+            </>
+          )}
           <button
             onClick={() => setActiveTab('accounts')}
             className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
@@ -426,26 +471,35 @@ export function SocialMediaManager() {
         {activeTab === 'create' && (
           <div className="max-w-4xl mx-auto">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-              <h3 className="text-lg font-semibold mb-4">AI Content Generator</h3>
-              <p className="text-sm text-gray-600 mb-4">Onderwerp voor AI</p>
+              {/* AI Content Generator - only for Admin */}
+              {isAdmin && (
+                <>
+                  <h3 className="text-lg font-semibold mb-4">AI Content Generator</h3>
+                  <p className="text-sm text-gray-600 mb-4">Onderwerp voor AI</p>
 
-              <div className="flex space-x-2 mb-4">
-                <input
-                  type="text"
-                  value={formData.aiPrompt}
-                  onChange={(e) => setFormData(prev => ({ ...prev, aiPrompt: e.target.value }))}
-                  placeholder="Bijv: Lancering nieuwe collectie, zomervakantie tips..."
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                />
-                <button
-                  onClick={generateAIContent}
-                  disabled={generatingContent || !formData.aiPrompt.trim()}
-                  className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span>{generatingContent ? 'Bezig...' : 'Genereer met AI'}</span>
-                </button>
-              </div>
+                  <div className="flex space-x-2 mb-4">
+                    <input
+                      type="text"
+                      value={formData.aiPrompt}
+                      onChange={(e) => setFormData(prev => ({ ...prev, aiPrompt: e.target.value }))}
+                      placeholder="Bijv: Lancering nieuwe collectie, zomervakantie tips..."
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    />
+                    <button
+                      onClick={generateAIContent}
+                      disabled={generatingContent || !formData.aiPrompt.trim()}
+                      className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span>{generatingContent ? 'Bezig...' : 'Genereer met AI'}</span>
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {!isAdmin && (
+                <h3 className="text-lg font-semibold mb-4">Nieuwe Post</h3>
+              )}
 
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -454,7 +508,7 @@ export function SocialMediaManager() {
                 <textarea
                   value={formData.content}
                   onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                  placeholder="Schrijf je post of laat het AI voor je maken..."
+                  placeholder="Schrijf je post..."
                   rows={6}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
                 />
@@ -594,7 +648,68 @@ export function SocialMediaManager() {
           </div>
         )}
 
-        {activeTab === 'planner' && (
+        {/* Available Posts tab - for Brand/Agent to activate Admin posts */}
+        {activeTab === 'available' && !isAdmin && (
+          <div className="max-w-6xl mx-auto">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold mb-4">Beschikbare Posts van Admin</h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Activeer posts die door de Admin zijn gemaakt om ze op je eigen kanalen te plaatsen.
+              </p>
+              
+              {availablePosts.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Share2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Er zijn nog geen beschikbare posts van de Admin.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {availablePosts.map((post) => (
+                    <div key={post.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="text-gray-900 whitespace-pre-wrap">{post.content}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            {post.platforms?.map((platform) => (
+                              <span key={platform} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">
+                                {getPlatformIcon(platform)}
+                                <span className="ml-1">{platform}</span>
+                              </span>
+                            ))}
+                          </div>
+                          {post.media_urls && post.media_urls.length > 0 && (
+                            <div className="flex gap-2 mt-3">
+                              {post.media_urls.map((url, idx) => (
+                                <img key={idx} src={url} alt="" className="w-16 h-16 object-cover rounded" />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => {
+                            setFormData(prev => ({
+                              ...prev,
+                              content: post.content,
+                              platforms: post.platforms || [],
+                              media_urls: post.media_urls || []
+                            }));
+                            setActiveTab('create');
+                            setSuccess('Post gekopieerd! Je kunt hem nu aanpassen en publiceren.');
+                          }}
+                          className="ml-4 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm"
+                        >
+                          Activeren
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'planner' && isAdmin && (
           <div className="max-w-6xl mx-auto">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
               <div className="flex items-center justify-between mb-6">
@@ -693,7 +808,7 @@ export function SocialMediaManager() {
           </div>
         )}
 
-        {activeTab === 'suggestions' && (
+        {activeTab === 'suggestions' && isAdmin && (
           <div className="max-w-4xl mx-auto">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
               <div className="flex items-center justify-between mb-6">
