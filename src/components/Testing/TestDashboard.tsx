@@ -36,7 +36,7 @@ interface TestRound {
 }
 
 export default function TestDashboard() {
-  const { user, profile } = useAuth();
+  const { user, isAdmin, isBrand } = useAuth();
   const [activeRound, setActiveRound] = useState<TestRound | null>(null);
   const [assignments, setAssignments] = useState<TestAssignment[]>([]);
   const [feedbackMap, setFeedbackMap] = useState<Map<string, TestFeedback>>(new Map());
@@ -69,24 +69,45 @@ export default function TestDashboard() {
 
       setActiveRound(roundData);
 
-      const category = profile?.role === 'brand' ? 'brand' : profile?.role === 'agent' ? 'agent' : null;
+      // isAdmin comes from useAuth hook
 
-      let query = supabase
-        .from('test_assignments')
-        .select(`
-          id,
-          feature_id,
-          status,
-          feature:test_features(*)
-        `)
-        .eq('user_id', user.id)
-        .eq('round_id', roundData.id);
+      if (isAdmin) {
+        // Admin sees ALL test features, not just assigned ones
+        const { data: featuresData, error: featuresError } = await supabase
+          .from('test_features')
+          .select('*')
+          .order('order_index', { ascending: true });
 
-      const { data: assignmentsData, error: assignmentsError } = await query;
+        if (featuresError) throw featuresError;
 
-      if (assignmentsError) throw assignmentsError;
+        // Convert features to assignment-like format for Admin
+        const adminAssignments = (featuresData || []).map(feature => ({
+          id: `admin-${feature.id}`,
+          feature_id: feature.id,
+          status: 'pending',
+          feature: feature
+        }));
 
-      setAssignments(assignmentsData || []);
+        setAssignments(adminAssignments);
+      } else {
+        // Brand/Agent sees only their assigned features
+        let query = supabase
+          .from('test_assignments')
+          .select(`
+            id,
+            feature_id,
+            status,
+            feature:test_features(*)
+          `)
+          .eq('user_id', user.id)
+          .eq('round_id', roundData.id);
+
+        const { data: assignmentsData, error: assignmentsError } = await query;
+
+        if (assignmentsError) throw assignmentsError;
+
+        setAssignments(assignmentsData || []);
+      }
 
       const { data: feedbackData } = await supabase
         .from('test_feedback')
@@ -211,7 +232,7 @@ export default function TestDashboard() {
 
   const sharedFeatures = assignments.filter(a => a.feature?.category === 'shared');
   const categoryFeatures = assignments.filter(a =>
-    a.feature?.category === (profile?.role === 'brand' ? 'brand' : 'agent')
+    a.feature?.category === (isBrand ? 'brand' : 'agent')
   );
 
   const completedCount = assignments.filter(a => a.status === 'completed').length;
@@ -277,10 +298,10 @@ export default function TestDashboard() {
         <div className="bg-white rounded-lg shadow">
           <div className="p-6 border-b">
             <h2 className="text-xl font-semibold text-gray-900">
-              {profile?.role === 'brand' ? 'Website Management' : 'AI Tools'}
+              {isBrand ? 'Website Management' : 'AI Tools'}
             </h2>
             <p className="text-sm text-gray-600 mt-1">
-              {profile?.role === 'brand'
+              {isBrand
                 ? 'Test de website management tools'
                 : 'Test de AI-powered agent tools'
               }
