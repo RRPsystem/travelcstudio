@@ -7,13 +7,14 @@ import { NewsManagement } from './NewsManagement';
 import { DestinationManagement } from './DestinationManagement';
 import { TemplateManager } from './TemplateManager';
 import { TripCatalogManager } from './TripCatalogManager';
-import DeeplinkTester from './DeeplinkTester';
+import RoadmapBoard from '../Brand/RoadmapBoard';
+import TestDashboard from '../Testing/TestDashboard';
 import { HelpBot } from '../shared/HelpBot';
 import { WordPressCatalogSync } from '../Operator/WordPressCatalogSync';
 import PodcastManagement from '../Podcast/PodcastManagement';
 import { GPTManagement } from '../Operator/GPTManagement';
 import { AIContentGenerator } from '../Brand/AIContentGenerator';
-import { Users, Building2, FileText, Settings, Plus, Search, Filter, CreditCard as Edit, Trash2, LayoutGrid as Layout, Menu, Globe, Newspaper, MapPin, Plane, Link, Key, X, Lock, BookOpen, Mic, Bot, Wand2 } from 'lucide-react'
+import { Users, Building2, FileText, Settings, Plus, Search, Filter, CreditCard as Edit, Trash2, LayoutGrid as Layout, Menu, Globe, Newspaper, MapPin, Plane, Key, X, Lock, BookOpen, Mic, Bot, Wand2, Map, FlaskConical } from 'lucide-react'
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 export function AdminDashboard() {
@@ -542,15 +543,26 @@ export function AdminDashboard() {
             </button>
           )}
           <button
-            onClick={() => setActiveSection('settings')}
+            onClick={() => setActiveSection('roadmap')}
             className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
-              activeSection === 'settings'
+              activeSection === 'roadmap'
                 ? 'bg-slate-700 text-white'
                 : 'text-slate-300 hover:text-white hover:bg-slate-700'
             }`}
           >
-            <Settings size={20} />
-            <span>Settings</span>
+            <Map size={20} />
+            <span>Roadmap</span>
+          </button>
+          <button
+            onClick={() => setActiveSection('test-dashboard')}
+            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+              activeSection === 'test-dashboard'
+                ? 'bg-slate-700 text-white'
+                : 'text-slate-300 hover:text-white hover:bg-slate-700'
+            }`}
+          >
+            <FlaskConical size={20} />
+            <span>Test Dashboard</span>
           </button>
           <button
             onClick={() => setActiveSection('travel-journal')}
@@ -632,7 +644,8 @@ export function AdminDashboard() {
           {activeSection === 'trip-catalog' && <TripCatalogManager />}
           {activeSection === 'wordpress-catalog' && <WordPressCatalogSync />}
           {activeSection === 'podcast' && <PodcastManagement />}
-          {activeSection === 'deeplink-tester' && <DeeplinkTester />}
+          {activeSection === 'roadmap' && <RoadmapBoard />}
+          {activeSection === 'test-dashboard' && <TestDashboard />}
           {activeSection === 'template-manager' && <TemplateManager />}
           {activeSection === 'gpt-management' && <GPTManagement />}
           {activeSection === 'ai-content-generator' && <AIContentGenerator />}
