@@ -91,6 +91,18 @@ export function ExternalBuilderNews() {
 
       const filteredBrandNews = (brandNewsData || []).filter(item => !assignedNewsIds.has(item.id));
 
+      // 3. Get available Admin news (enabled_for_brands = true)
+      const { data: availableNewsData, error: availableNewsError } = await supabase
+        .from('news_items')
+        .select('id, title, slug, excerpt, featured_image, created_at, published_at, status, tags, is_mandatory, enabled_for_brands')
+        .eq('enabled_for_brands', true)
+        .is('brand_id', null)
+        .order('created_at', { ascending: false });
+
+      if (availableNewsError) throw availableNewsError;
+
+      const filteredAvailableNews = (availableNewsData || []).filter(item => !assignedNewsIds.has(item.id));
+
       const formattedBrandNews = filteredBrandNews.map(item => ({
         id: `brand-news-${item.id}`,
         news_id: item.id,
@@ -110,7 +122,25 @@ export function ExternalBuilderNews() {
         }
       }));
 
-      const allNews = [...formattedAssignments, ...formattedBrandNews].sort((a, b) =>
+      const formattedAvailableNews = filteredAvailableNews.map(item => ({
+        id: `available-news-${item.id}`,
+        news_id: item.id,
+        status: item.is_mandatory ? 'mandatory' as const : 'pending' as const,
+        is_published: false,
+        assigned_at: item.created_at,
+        news_item: {
+          id: item.id,
+          title: item.title,
+          slug: item.slug,
+          excerpt: item.excerpt || '',
+          featured_image: item.featured_image || '',
+          is_mandatory: item.is_mandatory || false,
+          published_at: item.published_at,
+          tags: item.tags || []
+        }
+      }));
+
+      const allNews = [...formattedAssignments, ...formattedBrandNews, ...formattedAvailableNews].sort((a, b) =>
         new Date(b.assigned_at).getTime() - new Date(a.assigned_at).getTime()
       );
 
