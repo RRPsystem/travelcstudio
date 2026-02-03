@@ -207,32 +207,40 @@ export function WordPressNewsManager() {
   };
 
   const handleTogglePublish = async (assignmentId: string, currentValue: boolean, assignment: NewsAssignment) => {
+    console.log('handleTogglePublish called:', { assignmentId, currentValue, assignment, effectiveBrandId });
     try {
       if (assignment.status === 'brand' && assignment.news_id) {
         // Brand's own news - update the news_items status directly
+        console.log('Updating brand own news status');
         const { error } = await supabase
           .from('news_items')
           .update({ status: !currentValue ? 'published' : 'draft' })
           .eq('id', assignment.news_id);
 
         if (error) throw error;
-      } else if (assignmentId.startsWith('available-news-') || !assignmentId.includes('-')) {
+      } else if (assignmentId.startsWith('available-news-')) {
         // This is available news without an assignment yet - create one
+        console.log('Creating new assignment for available news');
         if (!currentValue && effectiveBrandId) {
-          const { error } = await supabase
+          const insertData = {
+            brand_id: effectiveBrandId,
+            news_id: assignment.news_id,
+            status: 'accepted',
+            is_published: true,
+            assigned_at: new Date().toISOString()
+          };
+          console.log('Insert data:', insertData);
+          const { data, error } = await supabase
             .from('news_brand_assignments')
-            .insert({
-              brand_id: effectiveBrandId,
-              news_id: assignment.news_id,
-              status: 'accepted',
-              is_published: true,
-              assigned_at: new Date().toISOString()
-            });
+            .insert(insertData)
+            .select();
 
+          console.log('Insert result:', { data, error });
           if (error) throw error;
         }
       } else {
         // Existing assignment - update it
+        console.log('Updating existing assignment');
         const { error } = await supabase
           .from('news_brand_assignments')
           .update({
