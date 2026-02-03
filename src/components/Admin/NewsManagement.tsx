@@ -260,7 +260,12 @@ Alleen JSON, geen andere tekst.`;
         'professional'
       );
 
+      console.log('AI Response:', response);
+      
       // Parse JSON response
+      if (!response || typeof response !== 'string') {
+        throw new Error('Geen geldige response van AI ontvangen');
+      }
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const generated = JSON.parse(jsonMatch[0]);
@@ -328,6 +333,11 @@ Alleen JSON array, geen andere tekst.`;
         'professional'
       );
 
+      console.log('AI Suggestions Response:', response);
+      
+      if (!response || typeof response !== 'string') {
+        throw new Error('Geen geldige response van AI ontvangen');
+      }
       const jsonMatch = response.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         const suggestions = JSON.parse(jsonMatch[0]);
