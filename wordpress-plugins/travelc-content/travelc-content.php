@@ -3,7 +3,7 @@
  * Plugin Name: TravelC Content
  * Plugin URI: https://travelcstudio.com
  * Description: Synchroniseert nieuws en bestemmingen van TravelCStudio naar WordPress. Content wordt beheerd in TravelCStudio en automatisch getoond op WordPress sites van brands die de content hebben geactiveerd.
- * Version: 1.0.48
+ * Version: 1.0.61
  * Author: RRP System
  * Author URI: https://rrpsystem.com
  * License: GPL v2 or later
@@ -15,7 +15,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('TCC_VERSION', '1.0.48');
+define('TCC_VERSION', '1.0.61');
 define('TCC_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TCC_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -32,6 +32,7 @@ add_action('elementor/init', function() {
 // Load Shortcodes
 require_once TCC_PLUGIN_DIR . 'shortcodes/highlights-carousel.php';
 require_once TCC_PLUGIN_DIR . 'shortcodes/cities-carousel.php';
+require_once TCC_PLUGIN_DIR . 'shortcodes/gallery.php';
 
 class TravelC_Content {
     
@@ -93,7 +94,9 @@ class TravelC_Content {
         
         // Auto-sync destinations from TravelCStudio
         add_action('init', array($this, 'register_land_post_type'));
+        add_action('init', array($this, 'register_nieuws_post_type'));
         add_action('admin_init', array($this, 'sync_destinations'));
+        add_action('admin_init', array($this, 'sync_news'));
         
         // Add sync button to admin
         add_action('admin_notices', array($this, 'show_sync_notice'));
@@ -146,6 +149,153 @@ class TravelC_Content {
         if (get_option('tcc_flush_rewrite_rules', false)) {
             flush_rewrite_rules();
             delete_option('tcc_flush_rewrite_rules');
+        }
+    }
+    
+    /**
+     * Register 'nieuws' custom post type
+     */
+    public function register_nieuws_post_type() {
+        register_post_type('nieuws', array(
+            'labels' => array(
+                'name' => 'Nieuws',
+                'singular_name' => 'Nieuwsbericht',
+                'add_new' => 'Nieuw bericht',
+                'add_new_item' => 'Nieuw nieuwsbericht toevoegen',
+                'edit_item' => 'Nieuwsbericht bewerken',
+                'view_item' => 'Nieuwsbericht bekijken',
+                'all_items' => 'Alle nieuwsberichten',
+                'search_items' => 'Nieuwsberichten zoeken',
+                'not_found' => 'Geen nieuwsberichten gevonden',
+            ),
+            'public' => true,
+            'publicly_queryable' => true,
+            'show_ui' => true,
+            'show_in_menu' => true,
+            'query_var' => true,
+            'has_archive' => true,
+            'hierarchical' => false,
+            'rewrite' => array('slug' => 'nieuws', 'with_front' => false),
+            'supports' => array('title', 'editor', 'thumbnail', 'excerpt'),
+            'show_in_rest' => true,
+            'menu_icon' => 'dashicons-megaphone',
+        ));
+    }
+    
+    /**
+     * Sync news from TravelCStudio to WordPress
+     */
+    public function sync_news($force = false) {
+        if (empty($this->brand_id)) {
+            return;
+        }
+        
+        // Only sync once per hour unless forced
+        $last_sync = get_option('tcc_last_news_sync', 0);
+        if (!$force && (time() - $last_sync) < 3600) {
+            return;
+        }
+        
+        // Get activated news for this brand
+        $news_items = $this->get_news_items(100);
+        
+        if (empty($news_items) || !is_array($news_items)) {
+            return;
+        }
+        
+        foreach ($news_items as $news) {
+            $this->create_or_update_nieuws_post($news);
+        }
+        
+        // Remove posts for deactivated news
+        $this->cleanup_deactivated_news($news_items);
+        
+        update_option('tcc_last_news_sync', time());
+    }
+    
+    /**
+     * Create or update a nieuws post from TravelCStudio data
+     */
+    private function create_or_update_nieuws_post($news) {
+        if (empty($news['slug'])) {
+            return;
+        }
+        
+        // Check if post already exists
+        $existing = get_posts(array(
+            'post_type' => 'nieuws',
+            'name' => $news['slug'],
+            'posts_per_page' => 1,
+            'post_status' => 'any',
+        ));
+        
+        $post_data = array(
+            'post_type' => 'nieuws',
+            'post_title' => $news['title'] ?? '',
+            'post_name' => $news['slug'],
+            'post_content' => $this->get_news_content($news),
+            'post_excerpt' => $news['excerpt'] ?? '',
+            'post_status' => 'publish',
+        );
+        
+        if (!empty($existing)) {
+            $post_data['ID'] = $existing[0]->ID;
+            wp_update_post($post_data);
+            $post_id = $existing[0]->ID;
+        } else {
+            $post_id = wp_insert_post($post_data);
+        }
+        
+        if ($post_id && !is_wp_error($post_id)) {
+            // Store TravelCStudio news ID and slug
+            update_post_meta($post_id, '_tcc_news_id', $news['id'] ?? '');
+            update_post_meta($post_id, '_tcc_news_slug', $news['slug']);
+            update_post_meta($post_id, '_tcc_news_tags', $news['tags'] ?? array());
+            update_post_meta($post_id, '_tcc_news_closing_text', $news['closing_text'] ?? '');
+            update_post_meta($post_id, '_tcc_news_published_at', $news['published_at'] ?? '');
+            
+            // Set featured image if available
+            if (!empty($news['featured_image'])) {
+                update_post_meta($post_id, '_tcc_featured_image', $news['featured_image']);
+            }
+        }
+    }
+    
+    /**
+     * Get news content from TravelCStudio data
+     */
+    private function get_news_content($news) {
+        $content = '';
+        
+        if (!empty($news['content'])) {
+            if (is_array($news['content']) && isset($news['content']['html'])) {
+                $content = $news['content']['html'];
+            } elseif (is_string($news['content'])) {
+                $content = $news['content'];
+            }
+        }
+        
+        return $content;
+    }
+    
+    /**
+     * Remove nieuws posts that are no longer activated
+     */
+    private function cleanup_deactivated_news($active_news) {
+        $active_slugs = array_column($active_news, 'slug');
+        
+        $all_nieuws = get_posts(array(
+            'post_type' => 'nieuws',
+            'posts_per_page' => -1,
+            'post_status' => 'any',
+            'meta_key' => '_tcc_news_slug',
+        ));
+        
+        foreach ($all_nieuws as $post) {
+            $slug = get_post_meta($post->ID, '_tcc_news_slug', true);
+            if ($slug && !in_array($slug, $active_slugs)) {
+                wp_trash_post($post->ID);
+            }
         }
     }
     
@@ -272,25 +422,7 @@ class TravelC_Content {
                         🔄 Nu synchroniseren
                     </a>
                 </p>
-                <?php if (!empty($sync_debug)): ?>
-                <p style="margin-top: 10px; font-size: 12px; color: #666;">
-                    <strong>Debug:</strong> Brand ID: <?php echo esc_html($sync_debug['brand_id'] ?? 'niet ingesteld'); ?> | 
-                    Bestemmingen gevonden: <?php echo esc_html($sync_debug['destinations_count'] ?? 0); ?>
-                    <?php if (!empty($sync_debug['destinations'])): ?>
-                        (<?php echo esc_html(implode(', ', array_column($sync_debug['destinations'], 'title'))); ?>)
-                    <?php endif; ?>
-                </p>
-                <p style="font-size: 11px; color: #999;">
-                    Assignments: <?php echo esc_html(is_array($sync_debug['assignments_raw'] ?? null) ? count($sync_debug['assignments_raw']) . ' items' : 'error'); ?> |
-                    IDs extracted: <?php echo esc_html(count($sync_debug['dest_ids_from_assignments'] ?? array())); ?> |
-                    Fetched: <?php echo esc_html(is_array($sync_debug['fetched_destinations'] ?? null) ? count($sync_debug['fetched_destinations']) . ' items' : 'error'); ?> |
-                    Brand own: <?php echo esc_html(is_array($sync_debug['brand_dest_raw'] ?? null) ? count($sync_debug['brand_dest_raw']) . ' items' : 'error'); ?>
-                </p>
-                <p style="font-size: 10px; color: #aaa; word-break: break-all;">
-                    Raw data: <?php echo esc_html(json_encode($sync_debug)); ?>
-                </p>
-                <?php endif; ?>
-            </div>
+                            </div>
             <?php
         }
     }
@@ -328,14 +460,14 @@ class TravelC_Content {
         if (!empty($dest_ids_from_assignments)) {
             $fetched_destinations = $this->fetch_from_supabase('destinations', array(
                 'id' => 'in.(' . implode(',', $dest_ids_from_assignments) . ')',
-                'select' => 'id,title,slug,country,continent,intro_text,featured_image,video_url,flag_image,map_image,facts,fun_facts,climate,regions,highlights,cities,description,transportation',
+                'select' => 'id,title,slug,country,continent,intro_text,featured_image,images,video_url,flag_image,map_image,facts,fun_facts,climate,regions,highlights,cities,description,transportation',
             ));
         }
         
         // Also get brand's own destinations
         $brand_dest_raw = $this->fetch_from_supabase('destinations', array(
             'brand_id' => 'eq.' . $this->brand_id,
-            'select' => 'id,title,slug,country,continent,intro_text,featured_image,video_url,flag_image,map_image,facts,fun_facts,climate,regions,highlights,cities,description,transportation',
+            'select' => 'id,title,slug,country,continent,intro_text,featured_image,images,video_url,flag_image,map_image,facts,fun_facts,climate,regions,highlights,cities,description,transportation',
         ));
         
         // Note: Admin destinations are synced via assignments only
@@ -565,218 +697,262 @@ class TravelC_Content {
     }
     
     /**
-     * Settings Page
+     * Settings Page with Tabs
      */
     public function settings_page() {
+        $current_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'instellingen';
+        $tabs = array(
+            'instellingen' => '⚙️ Instellingen',
+            'landen' => '🌍 Landen',
+            'nieuws' => '📰 Nieuws',
+        );
         ?>
         <div class="wrap">
-            <h1>TravelC Content Instellingen</h1>
+            <h1>TravelC Content</h1>
             
-            <form method="post" action="options.php">
-                <?php settings_fields('tcc_settings'); ?>
-                
-                <table class="form-table">
-                    <tr>
-                        <th scope="row">Brand ID</th>
-                        <td>
-                            <input type="text" name="tcc_brand_id" 
-                                   value="<?php echo esc_attr(get_option('tcc_brand_id')); ?>" 
-                                   class="regular-text" 
-                                   placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
-                            <p class="description">De UUID van deze brand in TravelCStudio (te vinden in je dashboard)</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Supabase API Key</th>
-                        <td>
-                            <input type="text" name="tcc_supabase_key" 
-                                   value="<?php echo esc_attr(get_option('tcc_supabase_key')); ?>" 
-                                   class="large-text" 
-                                   placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." />
-                            <p class="description">De Supabase anon key (te vinden in Supabase Dashboard → Settings → API). Laat leeg om de standaard key te gebruiken.</p>
-                        </td>
-                    </tr>
-                </table>
-                
-                <?php submit_button('Instellingen Opslaan'); ?>
-            </form>
+            <!-- Tab Navigation -->
+            <nav class="nav-tab-wrapper" style="margin-bottom: 20px;">
+                <?php foreach ($tabs as $tab_id => $tab_name): ?>
+                    <a href="?page=travelc-content&tab=<?php echo esc_attr($tab_id); ?>" 
+                       class="nav-tab <?php echo $current_tab === $tab_id ? 'nav-tab-active' : ''; ?>">
+                        <?php echo esc_html($tab_name); ?>
+                    </a>
+                <?php endforeach; ?>
+            </nav>
             
-            <div style="background: #f0f0f1; padding: 15px; border-radius: 5px; margin-top: 20px;">
-                <h3 style="margin-top: 0;">🔗 TravelCStudio Netwerk</h3>
-                <p>Deze plugin is automatisch verbonden met het TravelCStudio netwerk. Je hoeft alleen je Brand ID in te vullen.</p>
-                <code style="display: block; padding: 10px; background: #fff; margin-top: 10px;">
-                    Server: <?php echo esc_html(TCC_SUPABASE_URL); ?>
-                </code>
-            </div>
+            <?php
+            switch ($current_tab) {
+                case 'landen':
+                    $this->render_tab_landen();
+                    break;
+                case 'nieuws':
+                    $this->render_tab_nieuws();
+                    break;
+                default:
+                    $this->render_tab_instellingen();
+                    break;
+            }
+            ?>
+        </div>
+        <?php
+    }
+    
+    /**
+     * Tab: Instellingen
+     */
+    private function render_tab_instellingen() {
+        ?>
+        <form method="post" action="options.php">
+            <?php settings_fields('tcc_settings'); ?>
             
-            <hr>
-            
-            <h2>Beschikbare Shortcodes</h2>
-            
-            <h3>📦 Complete weergaves</h3>
-            <table class="widefat">
-                <thead>
-                    <tr>
-                        <th>Shortcode</th>
-                        <th>Beschrijving</th>
-                        <th>Parameters</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><code>[travelc_news]</code></td>
-                        <td>Toont nieuwsoverzicht</td>
-                        <td>limit="10", columns="3", show_image="yes"</td>
-                    </tr>
-                    <tr>
-                        <td><code>[travelc_news_single slug="artikel-slug"]</code></td>
-                        <td>Toont één nieuwsartikel</td>
-                        <td>slug (verplicht)</td>
-                    </tr>
-                    <tr>
-                        <td><code>[travelc_destination slug="peru"]</code></td>
-                        <td>Toont complete bestemmingspagina</td>
-                        <td>slug (verplicht)</td>
-                    </tr>
-                    <tr>
-                        <td><code>[travelc_destinations_menu]</code></td>
-                        <td>Toont mega menu met alle bestemmingen</td>
-                        <td>group_by="continent"</td>
-                    </tr>
-                </tbody>
+            <table class="form-table">
+                <tr>
+                    <th scope="row">Brand ID</th>
+                    <td>
+                        <input type="text" name="tcc_brand_id" 
+                               value="<?php echo esc_attr(get_option('tcc_brand_id')); ?>" 
+                               class="regular-text" 
+                               placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+                        <p class="description">De UUID van deze brand in TravelCStudio (te vinden in je dashboard)</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Supabase API Key</th>
+                    <td>
+                        <input type="text" name="tcc_supabase_key" 
+                               value="<?php echo esc_attr(get_option('tcc_supabase_key')); ?>" 
+                               class="large-text" 
+                               placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." />
+                        <p class="description">De Supabase anon key. Laat leeg om de standaard key te gebruiken.</p>
+                    </td>
+                </tr>
             </table>
             
-            <h3 style="margin-top: 20px;">🎨 Individuele velden (voor eigen layouts in Elementor)</h3>
-            <p><em>Gebruik deze shortcodes om zelf je pagina-layout te bepalen. Plaats ze waar je wilt in Elementor!</em></p>
-            <table class="widefat">
-                <thead>
-                    <tr>
-                        <th>Shortcode</th>
-                        <th>Beschrijving</th>
-                        <th>Parameters</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><code>[travelc_destination_title slug="italie"]</code></td>
-                        <td>Alleen de titel</td>
-                        <td>slug (verplicht)</td>
-                    </tr>
-                    <tr>
-                        <td><code>[travelc_destination_intro slug="italie"]</code></td>
-                        <td>Korte introductietekst</td>
-                        <td>slug (verplicht)</td>
-                    </tr>
-                    <tr>
-                        <td><code>[travelc_destination_description slug="italie"]</code></td>
-                        <td>Uitgebreide beschrijving over het land</td>
-                        <td>slug (verplicht)</td>
-                    </tr>
-                    <tr>
-                        <td><code>[travelc_destination_transportation slug="italie"]</code></td>
-                        <td>Vervoer & rondreizen (trein, huurauto, etc.)</td>
-                        <td>slug (verplicht)</td>
-                    </tr>
-                    <tr>
-                        <td><code>[travelc_destination_image slug="italie"]</code></td>
-                        <td>Featured afbeelding</td>
-                        <td>slug, class="mijn-class", alt="alt tekst"</td>
-                    </tr>
-                    <tr>
-                        <td><code>[travelc_destination_climate slug="italie"]</code></td>
-                        <td>Klimaat + beste reistijd</td>
-                        <td>slug (verplicht)</td>
-                    </tr>
-                    <tr>
-                        <td><code>[travelc_destination_highlights slug="italie"]</code></td>
-                        <td>Hoogtepunten</td>
-                        <td>slug, columns="3", style="cards|list"</td>
-                    </tr>
-                    <tr>
-                        <td><code>[travelc_destination_regions slug="italie"]</code></td>
-                        <td>Regio's</td>
-                        <td>slug, columns="3"</td>
-                    </tr>
-                    <tr>
-                        <td><code>[travelc_destination_facts slug="italie"]</code></td>
-                        <td>Weetjes/feiten</td>
-                        <td>slug, style="list|table"</td>
-                    </tr>
-                    <tr>
-                        <td><code>[travelc_destination_info slug="italie"]</code></td>
-                        <td>Praktische info (valuta, taal, etc.)</td>
-                        <td>slug, fields="currency,language,timezone,visa_info", style="list|icons"</td>
-                    </tr>
-                    <tr>
-                        <td><code>[travelc_field slug="italie" field="climate"]</code></td>
-                        <td>Elk willekeurig veld ophalen</td>
-                        <td>slug, field (title, country, continent, intro_text, climate, currency, language, timezone, visa_info, best_time_to_visit)</td>
-                    </tr>
-                </tbody>
-            </table>
-            
-            <h3 style="margin-top: 20px;">🎯 Elementor Dynamic Tags</h3>
-            <p><em>Als Elementor actief is, kun je deze Dynamic Tags gebruiken in je widgets:</em></p>
-            <table class="widefat">
-                <thead>
-                    <tr>
-                        <th>Dynamic Tag</th>
-                        <th>Beschrijving</th>
-                        <th>Gebruik in</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>TravelC Titel</strong></td>
-                        <td>Bestemmingsnaam</td>
-                        <td>Heading, Text Editor</td>
-                    </tr>
-                    <tr>
-                        <td><strong>TravelC Introductie</strong></td>
-                        <td>Korte introductietekst</td>
-                        <td>Text Editor</td>
-                    </tr>
-                    <tr>
-                        <td><strong>TravelC Beschrijving</strong></td>
-                        <td>Uitgebreide beschrijving</td>
-                        <td>Text Editor</td>
-                    </tr>
-                    <tr>
-                        <td><strong>TravelC Vervoer</strong></td>
-                        <td>Vervoer & rondreizen tips</td>
-                        <td>Text Editor</td>
-                    </tr>
-                    <tr>
-                        <td><strong>TravelC Klimaat</strong></td>
-                        <td>Klimaatinformatie</td>
-                        <td>Text Editor</td>
-                    </tr>
-                    <tr>
-                        <td><strong>TravelC Veld</strong></td>
-                        <td>Elk veld (dropdown keuze)</td>
-                        <td>Text Editor</td>
-                    </tr>
-                    <tr>
-                        <td><strong>TravelC Afbeelding</strong></td>
-                        <td>Featured of galerij afbeelding</td>
-                        <td>Image widget</td>
-                    </tr>
-                    <tr>
-                        <td><strong>TravelC Galerij</strong></td>
-                        <td>Alle afbeeldingen als galerij</td>
-                        <td>Image Carousel, Gallery</td>
-                    </tr>
-                </tbody>
-            </table>
-            <p class="description" style="margin-top: 10px;">
-                💡 <strong>Tip:</strong> Koppel je bestaande Elementor pagina's aan TravelCStudio via de "TravelCStudio Koppeling" meta box in de sidebar. 
-                Vul daar de bestemming slug in (bijv. "italie") en de Dynamic Tags halen automatisch de juiste content op.
-            </p>
-            
-            <hr>
-            
-            <h2>Connectie Test</h2>
-            <?php $this->test_connection(); ?>
+            <?php submit_button('Instellingen Opslaan'); ?>
+        </form>
+        
+        <div style="background: #f0f0f1; padding: 15px; border-radius: 5px; margin-top: 20px;">
+            <h3 style="margin-top: 0;">🔗 TravelCStudio Netwerk</h3>
+            <p>Deze plugin is automatisch verbonden met het TravelCStudio netwerk.</p>
+            <code style="display: block; padding: 10px; background: #fff; margin-top: 10px;">
+                Server: <?php echo esc_html(TCC_SUPABASE_URL); ?>
+            </code>
+        </div>
+        
+        <hr>
+        
+        <h2>Connectie Test</h2>
+        <?php $this->test_connection(); ?>
+        <?php
+    }
+    
+    /**
+     * Tab: Landen (Bestemmingen)
+     */
+    private function render_tab_landen() {
+        ?>
+        <h2>🌍 Landen Shortcodes & Dynamic Tags</h2>
+        <p style="font-size: 14px; color: #666;">Gebruik deze shortcodes in Elementor of de Text Editor. De slug wordt automatisch gedetecteerd op basis van de huidige pagina.</p>
+        
+        <!-- MEEST GEBRUIKTE -->
+        <div style="background: #e7f3ff; border-left: 4px solid #0073aa; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <h3 style="margin: 0 0 10px; color: #0073aa;">⭐ Meest Gebruikte Shortcodes</h3>
+            <p style="margin: 0;">De slug wordt automatisch gedetecteerd. Je hoeft geen slug mee te geven!</p>
+        </div>
+        
+        <table class="widefat" style="margin-bottom: 30px;">
+            <thead style="background: #f8f9fa;">
+                <tr>
+                    <th style="width: 40%;">Kopieer deze code</th>
+                    <th style="width: 30%;">Wat het toont</th>
+                    <th style="width: 30%;">Voorbeeld</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="background: #fffbea;">
+                    <td><code style="background: #fff; padding: 8px; display: block; cursor: pointer;" onclick="navigator.clipboard.writeText(this.innerText)">[travelc_highlights_carousel]</code></td>
+                    <td><strong>🎠 Hoogtepunten Carousel</strong><br>Mooie kaarten met afbeeldingen</td>
+                    <td>Colosseum, Eiffeltoren, etc.</td>
+                </tr>
+                <tr style="background: #fffbea;">
+                    <td><code style="background: #fff; padding: 8px; display: block; cursor: pointer;" onclick="navigator.clipboard.writeText(this.innerText)">[travelc_cities_carousel]</code></td>
+                    <td><strong>🏙️ Steden Carousel</strong><br>Steden met foto's</td>
+                    <td>Athene, Thessaloniki, etc.</td>
+                </tr>
+                <tr style="background: #fffbea;">
+                    <td><code style="background: #fff; padding: 8px; display: block; cursor: pointer;" onclick="navigator.clipboard.writeText(this.innerText)">[travelc_gallery mode="carousel"]</code></td>
+                    <td><strong>📷 Foto Galerij (Carousel)</strong><br>Auto-rotate foto carousel</td>
+                    <td>Alle foto's doorlopend</td>
+                </tr>
+                <tr>
+                    <td><code style="background: #fff; padding: 8px; display: block; cursor: pointer;" onclick="navigator.clipboard.writeText(this.innerText)">[travelc_gallery mode="grid"]</code></td>
+                    <td><strong>📷 Foto Galerij (Grid)</strong><br>Grid met max 8 foto's</td>
+                    <td>Foto's in raster</td>
+                </tr>
+                <tr>
+                    <td><code style="background: #fff; padding: 8px; display: block; cursor: pointer;" onclick="navigator.clipboard.writeText(this.innerText)">[travelc_destination_description]</code></td>
+                    <td><strong>📝 Beschrijving</strong><br>Lange tekst over het land</td>
+                    <td>Cultuur, geschiedenis...</td>
+                </tr>
+                <tr>
+                    <td><code style="background: #fff; padding: 8px; display: block; cursor: pointer;" onclick="navigator.clipboard.writeText(this.innerText)">[travelc_destination_transportation]</code></td>
+                    <td><strong>🚗 Vervoer</strong><br>Rondreizen tips</td>
+                    <td>Huurauto, trein, ferry...</td>
+                </tr>
+                <tr>
+                    <td><code style="background: #fff; padding: 8px; display: block; cursor: pointer;" onclick="navigator.clipboard.writeText(this.innerText)">[travelc_destination_climate]</code></td>
+                    <td><strong>🌡️ Klimaat</strong><br>Weer en beste reistijd</td>
+                    <td>Mediterraan, zomers warm...</td>
+                </tr>
+                <tr>
+                    <td><code style="background: #fff; padding: 8px; display: block; cursor: pointer;" onclick="navigator.clipboard.writeText(this.innerText)">[travelc_destination_regions]</code></td>
+                    <td><strong>🗺️ Regio's</strong><br>Gebieden binnen het land</td>
+                    <td>Peloponnesos, Kreta...</td>
+                </tr>
+                <tr>
+                    <td><code style="background: #fff; padding: 8px; display: block; cursor: pointer;" onclick="navigator.clipboard.writeText(this.innerText)">[travelc_destination_facts]</code></td>
+                    <td><strong>📊 Feiten</strong><br>Praktische info</td>
+                    <td>Hoofdstad, inwoners...</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <!-- CAROUSEL OPTIES -->
+        <div style="background: #f0f7f0; border-left: 4px solid #46b450; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <h3 style="margin: 0 0 10px; color: #46b450;">🎨 Carousel Aanpassen</h3>
+            <code style="background: #fff; padding: 10px; display: block; margin-bottom: 10px;">[travelc_highlights_carousel columns="4" color="#f5a623"]</code>
+            <ul style="margin: 10px 0 0; padding-left: 20px;">
+                <li><strong>columns="4"</strong> - Aantal kaarten naast elkaar</li>
+                <li><strong>color="#f5a623"</strong> - Accent kleur</li>
+                <li><strong>height="280"</strong> - Hoogte in pixels</li>
+            </ul>
+        </div>
+        
+        <!-- DYNAMIC TAGS -->
+        <h3 style="margin-top: 30px;">🎯 Elementor Dynamic Tags</h3>
+        <p><em>Gebruik deze in Elementor widgets (Heading, Text Editor, Image):</em></p>
+        <table class="widefat">
+            <thead>
+                <tr>
+                    <th>Dynamic Tag</th>
+                    <th>Beschrijving</th>
+                    <th>Gebruik in</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>TravelC Titel</strong></td><td>Bestemmingsnaam</td><td>Heading</td></tr>
+                <tr><td><strong>TravelC Introductie</strong></td><td>Korte intro</td><td>Text Editor</td></tr>
+                <tr><td><strong>TravelC Beschrijving</strong></td><td>Uitgebreide tekst</td><td>Text Editor</td></tr>
+                <tr><td><strong>TravelC Vervoer</strong></td><td>Vervoer tips</td><td>Text Editor</td></tr>
+                <tr><td><strong>TravelC Klimaat</strong></td><td>Klimaatinfo</td><td>Text Editor</td></tr>
+                <tr><td><strong>TravelC Afbeelding</strong></td><td>Featured image</td><td>Image widget</td></tr>
+                <tr><td><strong>TravelC Feiten</strong></td><td>Feiten met labels</td><td>Text Editor</td></tr>
+            </tbody>
+        </table>
+        <?php
+    }
+    
+    /**
+     * Tab: Nieuws
+     */
+    private function render_tab_nieuws() {
+        ?>
+        <h2>📰 Nieuws Shortcodes & Dynamic Tags</h2>
+        <p style="font-size: 14px; color: #666;">Gebruik deze shortcodes en Dynamic Tags voor nieuwsartikelen. De slug wordt automatisch gedetecteerd.</p>
+        
+        <div style="background: #e7f3ff; border-left: 4px solid #0073aa; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <h3 style="margin: 0 0 10px; color: #0073aa;">✅ Nieuws Sync Actief</h3>
+            <p style="margin: 0;">Nieuwsartikelen worden automatisch gesynchroniseerd vanuit TravelCStudio naar het <strong>Nieuws</strong> post type in WordPress.</p>
+        </div>
+        
+        <h3>📋 Nieuws Overzicht Shortcodes</h3>
+        <table class="widefat" style="margin-bottom: 30px;">
+            <thead style="background: #f8f9fa;">
+                <tr>
+                    <th style="width: 40%;">Shortcode</th>
+                    <th style="width: 60%;">Beschrijving</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code style="background: #fff; padding: 8px; display: block; cursor: pointer;" onclick="navigator.clipboard.writeText(this.innerText)">[travelc_news limit="6"]</code></td>
+                    <td><strong>📰 Nieuws Grid</strong><br>Overzicht van nieuwsartikelen (standaard 6)</td>
+                </tr>
+                <tr>
+                    <td><code style="background: #fff; padding: 8px; display: block; cursor: pointer;" onclick="navigator.clipboard.writeText(this.innerText)">[travelc_news limit="3" columns="3"]</code></td>
+                    <td><strong>📰 Nieuws Grid (3 kolommen)</strong><br>Compacte weergave</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <h3>🎯 Nieuws Dynamic Tags</h3>
+        <p><em>Gebruik deze in Elementor widgets op je nieuws single template:</em></p>
+        <table class="widefat">
+            <thead>
+                <tr>
+                    <th>Dynamic Tag</th>
+                    <th>Beschrijving</th>
+                    <th>Gebruik in</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>TravelC Nieuws Titel</strong></td><td>Artikel titel</td><td>Heading</td></tr>
+                <tr><td><strong>TravelC Nieuws Samenvatting</strong></td><td>Korte samenvatting</td><td>Text Editor</td></tr>
+                <tr><td><strong>TravelC Nieuws Inhoud</strong></td><td>Volledige artikel</td><td>Text Editor</td></tr>
+                <tr><td><strong>TravelC Nieuws Afbeelding</strong></td><td>Featured image</td><td>Image widget</td></tr>
+                <tr><td><strong>TravelC Nieuws Datum</strong></td><td>Publicatiedatum</td><td>Text Editor</td></tr>
+                <tr><td><strong>TravelC Nieuws Tags</strong></td><td>Artikel tags (badges of tekst)</td><td>Text Editor</td></tr>
+            </tbody>
+        </table>
+        
+        <div style="background: #f0f7f0; border-left: 4px solid #46b450; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <h3 style="margin: 0 0 10px; color: #46b450;">💡 Hoe werkt het?</h3>
+            <ol style="margin: 10px 0 0; padding-left: 20px;">
+                <li>Maak een <strong>Single Post</strong> template in Elementor Theme Builder</li>
+                <li>Kies <strong>Nieuws</strong> als post type</li>
+                <li>Gebruik de Dynamic Tags hierboven om de content te tonen</li>
+                <li>De slug wordt automatisch gedetecteerd per nieuwsartikel</li>
+            </ol>
         </div>
         <?php
     }
@@ -981,7 +1157,7 @@ class TravelC_Content {
         if (!empty($dest_ids)) {
             $assigned_destinations = $this->fetch_from_supabase('destinations', array(
                 'id' => 'in.(' . implode(',', $dest_ids) . ')',
-                'select' => 'id,title,slug,country,continent,intro_text,featured_image,video_url,flag_image,map_image,facts,fun_facts,climate,regions,highlights,cities,description,transportation',
+                'select' => 'id,title,slug,country,continent,intro_text,featured_image,images,video_url,flag_image,map_image,facts,fun_facts,climate,regions,highlights,cities,description,transportation',
             ));
             if (!is_wp_error($assigned_destinations) && is_array($assigned_destinations)) {
                 foreach ($assigned_destinations as $dest) {
@@ -995,7 +1171,7 @@ class TravelC_Content {
         // 2. Get brand's own destinations (created by the brand, stored with brand_id)
         $brand_destinations = $this->fetch_from_supabase('destinations', array(
             'brand_id' => 'eq.' . $this->brand_id,
-            'select' => 'id,title,slug,country,continent,intro_text,featured_image,video_url,flag_image,map_image,facts,fun_facts,climate,regions,highlights,cities,description,transportation',
+            'select' => 'id,title,slug,country,continent,intro_text,featured_image,images,video_url,flag_image,map_image,facts,fun_facts,climate,regions,highlights,cities,description,transportation',
         ));
         
         if (!is_wp_error($brand_destinations) && is_array($brand_destinations)) {
