@@ -180,7 +180,6 @@ export function AdminDashboard() {
     { id: 'dashboard', label: 'Dashboard', icon: Settings },
     { id: 'brands', label: 'Brand Management', icon: Building2 },
     { id: 'agents', label: 'Agent Management', icon: Users },
-    { id: 'deeplink-tester', label: 'Deeplink Tester', icon: Link },
     { id: 'podcast', label: 'Podcast Beheer', icon: Mic },
   ];
 
@@ -655,42 +654,145 @@ export function AdminDashboard() {
           )}
 
           {activeSection === 'dashboard' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-white p-6 rounded-lg shadow-sm border">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Total Brands</p>
-                    <p className="text-2xl font-bold text-gray-900">{dashboardStats.totalBrands}</p>
+            <div className="space-y-8">
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-xl shadow-lg text-white">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-blue-100 text-sm font-medium">Totaal Brands</p>
+                      <p className="text-4xl font-bold mt-2">{dashboardStats.totalBrands}</p>
+                      <p className="text-blue-200 text-xs mt-2">Actieve reisbureaus</p>
+                    </div>
+                    <div className="bg-white/20 p-4 rounded-xl">
+                      <Building2 className="h-8 w-8 text-white" />
+                    </div>
                   </div>
-                  <Building2 className="h-8 w-8 text-blue-600" />
+                </div>
+                <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-xl shadow-lg text-white">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-green-100 text-sm font-medium">Actieve Agents</p>
+                      <p className="text-4xl font-bold mt-2">{dashboardStats.activeAgents}</p>
+                      <p className="text-green-200 text-xs mt-2">Geregistreerde adviseurs</p>
+                    </div>
+                    <div className="bg-white/20 p-4 rounded-xl">
+                      <Users className="h-8 w-8 text-white" />
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-xl shadow-lg text-white">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-purple-100 text-sm font-medium">Bestemmingen</p>
+                      <p className="text-4xl font-bold mt-2">{dashboardStats.publishedPages}</p>
+                      <p className="text-purple-200 text-xs mt-2">Gepubliceerde pagina's</p>
+                    </div>
+                    <div className="bg-white/20 p-4 rounded-xl">
+                      <MapPin className="h-8 w-8 text-white" />
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-6 rounded-xl shadow-lg text-white">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-orange-100 text-sm font-medium">Nieuws Artikelen</p>
+                      <p className="text-4xl font-bold mt-2">{dashboardStats.newsArticles}</p>
+                      <p className="text-orange-200 text-xs mt-2">Gepubliceerde berichten</p>
+                    </div>
+                    <div className="bg-white/20 p-4 rounded-xl">
+                      <Newspaper className="h-8 w-8 text-white" />
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm border">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Active Agents</p>
-                    <p className="text-2xl font-bold text-gray-900">{dashboardStats.activeAgents}</p>
+
+              {/* Quick Actions */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <button
+                  onClick={() => setActiveSection('brands')}
+                  className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-300 transition-all text-left group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="bg-blue-100 p-3 rounded-lg group-hover:bg-blue-200 transition-colors">
+                      <Building2 className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Brand Management</h3>
+                      <p className="text-sm text-gray-500">Beheer reisbureaus en instellingen</p>
+                    </div>
                   </div>
-                  <Users className="h-8 w-8 text-green-600" />
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm border">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Published Pages</p>
-                    <p className="text-2xl font-bold text-gray-900">{dashboardStats.publishedPages}</p>
+                </button>
+                <button
+                  onClick={() => setActiveSection('admin-news')}
+                  className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-orange-300 transition-all text-left group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="bg-orange-100 p-3 rounded-lg group-hover:bg-orange-200 transition-colors">
+                      <Newspaper className="h-6 w-6 text-orange-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Nieuwsbeheer</h3>
+                      <p className="text-sm text-gray-500">Maak nieuws voor alle brands</p>
+                    </div>
                   </div>
-                  <FileText className="h-8 w-8 text-purple-600" />
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm border">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">News Articles</p>
-                    <p className="text-2xl font-bold text-gray-900">{dashboardStats.newsArticles}</p>
+                </button>
+                <button
+                  onClick={() => setActiveSection('destinations')}
+                  className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-purple-300 transition-all text-left group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="bg-purple-100 p-3 rounded-lg group-hover:bg-purple-200 transition-colors">
+                      <MapPin className="h-6 w-6 text-purple-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Bestemmingen</h3>
+                      <p className="text-sm text-gray-500">Beheer reisbestemmingen</p>
+                    </div>
                   </div>
-                  <FileText className="h-8 w-8 text-orange-600" />
-                </div>
+                </button>
+                <button
+                  onClick={() => setActiveSection('agents')}
+                  className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-green-300 transition-all text-left group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="bg-green-100 p-3 rounded-lg group-hover:bg-green-200 transition-colors">
+                      <Users className="h-6 w-6 text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Agent Management</h3>
+                      <p className="text-sm text-gray-500">Beheer reisadviseurs</p>
+                    </div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setActiveSection('ai-content-generator')}
+                  className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-pink-300 transition-all text-left group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="bg-gradient-to-br from-purple-100 to-pink-100 p-3 rounded-lg group-hover:from-purple-200 group-hover:to-pink-200 transition-colors">
+                      <Wand2 className="h-6 w-6 text-purple-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">AI Content Generator</h3>
+                      <p className="text-sm text-gray-500">Genereer content met AI</p>
+                    </div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setActiveSection('trip-catalog')}
+                  className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-cyan-300 transition-all text-left group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="bg-cyan-100 p-3 rounded-lg group-hover:bg-cyan-200 transition-colors">
+                      <Plane className="h-6 w-6 text-cyan-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Reizen Catalogus</h3>
+                      <p className="text-sm text-gray-500">Beheer en wijs reizen toe</p>
+                    </div>
+                  </div>
+                </button>
               </div>
             </div>
           )}
