@@ -281,8 +281,8 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
   const handleCreateChat = () => {
     if (!selectedContentType) return;
     
-    // Create new chat session
-    const newChatId = Date.now().toString();
+    // Create new chat session with UUID
+    const newChatId = crypto.randomUUID();
     let chatTitle = '';
     let userMessage = '';
     let additionalData: any = {};
@@ -825,7 +825,7 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
 
                               if (markdownMatch || urlMatch) {
                                 const imageUrl = markdownMatch ? markdownMatch[1] : urlMatch![1];
-                                const textContent = message.content
+                                const textContent = contentStr
                                   .replace(/!\[.*?\]\(https?:\/\/[^\)]+\)/, '')
                                   .replace(/https?:\/\/[^\s]+\.(?:png|jpg|jpeg|gif|webp)[^\s]*/i, '')
                                   .trim();
@@ -861,7 +861,7 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
                                 <div
                                   className="prose prose-sm max-w-none text-gray-700 leading-relaxed"
                                   dangerouslySetInnerHTML={{
-                                    __html: DOMPurify.sanitize(message.content
+                                    __html: DOMPurify.sanitize(contentStr
                                       .replace(/###\s(.+)/g, '<h3 class="text-lg font-bold text-gray-900 mt-4 mb-2">$1</h3>')
                                       .replace(/##\s(.+)/g, '<h2 class="text-xl font-bold text-gray-900 mt-6 mb-3">$1</h2>')
                                       .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
