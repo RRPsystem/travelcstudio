@@ -41,7 +41,8 @@ Deno.serve(async (req: Request) => {
     }
 
     // Fetch data from Travel Compositor API
-    const apiUrl = compositor_api_url || "https://www.ai-websitestudio.nl/api/travelbro/get-travel";
+    // Use sync-travel endpoint (same as initial sync) - this endpoint works
+    const apiUrl = "https://www.ai-websitestudio.nl/api/travelbro/sync-travel";
     
     console.log("[Compositor Sync] Fetching from:", apiUrl);
     console.log("[Compositor Sync] Booking ID:", compositor_booking_id);
@@ -51,7 +52,9 @@ Deno.serve(async (req: Request) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         id: compositor_booking_id,
-        language: "NL"
+        micrositeId: "rondreis-planner",
+        language: "NL",
+        brand_id: trip.brand_id
       })
     });
 
