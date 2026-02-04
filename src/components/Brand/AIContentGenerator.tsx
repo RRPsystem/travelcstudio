@@ -94,7 +94,7 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
     const images: string[] = [];
     chatSessions.forEach(session => {
       session.messages.forEach(message => {
-        if (message.type === 'assistant') {
+        if (message.type === 'assistant' && typeof message.content === 'string') {
           const markdownMatch = message.content.match(/!\[.*?\]\((https?:\/\/[^\)]+)\)/);
           const urlMatch = message.content.match(/(https?:\/\/[^\s]+\.(?:png|jpg|jpeg|gif|webp)[^\s]*)/i);
           if (markdownMatch || urlMatch) {
@@ -819,8 +819,9 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
                         ) : (
                           <div className="space-y-3">
                             {(() => {
-                              const markdownMatch = message.content.match(/!\[.*?\]\((https?:\/\/[^\)]+)\)/);
-                              const urlMatch = message.content.match(/(https?:\/\/[^\s]+\.(?:png|jpg|jpeg|gif|webp)[^\s]*)/i);
+                              const contentStr = typeof message.content === 'string' ? message.content : '';
+                              const markdownMatch = contentStr.match(/!\[.*?\]\((https?:\/\/[^\)]+)\)/);
+                              const urlMatch = contentStr.match(/(https?:\/\/[^\s]+\.(?:png|jpg|jpeg|gif|webp)[^\s]*)/i);
 
                               if (markdownMatch || urlMatch) {
                                 const imageUrl = markdownMatch ? markdownMatch[1] : urlMatch![1];
