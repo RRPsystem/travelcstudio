@@ -167,6 +167,8 @@ export function ChatEmbed({ tripId, shareToken }: ChatEmbedProps) {
       if (imageToSend) requestBody.imageBase64 = imageToSend;
       if (userLocation) requestBody.userLocation = userLocation;
 
+      console.log('[ChatEmbed] Sending message:', { tripId: trip.id, message: messageToSend });
+
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/travelbro-chat`, {
         method: 'POST',
         headers: {
@@ -176,11 +178,16 @@ export function ChatEmbed({ tripId, shareToken }: ChatEmbedProps) {
         body: JSON.stringify(requestBody),
       });
 
+      console.log('[ChatEmbed] Response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Failed to get response');
+        const errorText = await response.text();
+        console.error('[ChatEmbed] Error response:', errorText);
+        throw new Error(`Failed to get response: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log('[ChatEmbed] Response data:', data);
 
       setMessages(prev => [...prev, {
         role: 'assistant',
