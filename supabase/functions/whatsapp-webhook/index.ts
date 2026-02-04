@@ -159,6 +159,12 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log('✅ Trip found:', trip.id, trip.name);
+    console.log('📊 Trip data check:', {
+      hasCustomContext: !!trip.custom_context,
+      customContextLength: trip.custom_context?.length || 0,
+      hasParsedData: !!trip.parsed_data,
+      parsedDataKeys: trip.parsed_data ? Object.keys(trip.parsed_data) : []
+    });
 
     const brandId = trip.brand_id;
 

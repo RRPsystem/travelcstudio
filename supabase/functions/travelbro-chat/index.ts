@@ -131,9 +131,13 @@ Deno.serve(async (req: Request) => {
 
     let tripContext = `REISINFORMATIE:\n- Reis: ${trip.name}`;
 
-    if (trip.raw_text) {
-      tripContext += `\n\nGEDETAILLEERDE REISINFORMATIE (uit PDF/document):\n${trip.raw_text.substring(0, 8000)}`;
-    } else if (trip.parsed_data && Object.keys(trip.parsed_data).length > 0) {
+    // Check custom_context (contains synced compositor data as readable text)
+    if (trip.custom_context && typeof trip.custom_context === 'string' && trip.custom_context.length > 0) {
+      tripContext += `\n\nGEDETAILLEERDE REISINFORMATIE:\n${trip.custom_context.substring(0, 8000)}`;
+    }
+    
+    // Also add parsed_data if available (structured data)
+    if (trip.parsed_data && typeof trip.parsed_data === 'object' && Object.keys(trip.parsed_data).length > 0) {
       tripContext += `\n\nGESTRUCTUREERDE REISINFORMATIE:\n${JSON.stringify(trip.parsed_data, null, 2)}`;
     }
 
