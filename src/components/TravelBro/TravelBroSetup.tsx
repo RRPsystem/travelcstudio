@@ -996,6 +996,9 @@ export function TravelBroSetup() {
 
   const handleCreateRoadbook = async (trip: any) => {
     try {
+      // Generate unique slug with timestamp
+      const uniqueSlug = `roadbook-${trip.share_token.substring(0, 8)}-${Date.now()}`;
+      
       // Create a new page in the pages table for the roadbook
       const { data: newPage, error: pageError } = await db.supabase
         .from('pages')
@@ -1003,7 +1006,7 @@ export function TravelBroSetup() {
           brand_id: trip.brand_id,
           owner_user_id: user?.id,
           title: trip.name,
-          slug: `roadbook-${trip.share_token}`,
+          slug: uniqueSlug,
           content_type: 'roadbook',
           content_json: {
             tripId: trip.id,
