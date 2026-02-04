@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { ClientInterface } from './ClientInterface';
+import { ChatEmbed } from './ChatEmbed';
 import { 
   Map, MessageCircle, Smartphone, Loader, Car, Hotel, Calendar, 
   MapPin, ChevronRight, ExternalLink
@@ -156,7 +156,7 @@ export function TravelBroPage({ shareToken }: TravelBroPageProps) {
         {activeTab === 'roadbook' && <RoadbookTab trip={trip} />}
         {activeTab === 'chat' && (
           <div className="bg-white min-h-[calc(100vh-140px)]">
-            <ClientInterface shareToken={shareToken} />
+            <ChatEmbed shareToken={shareToken} />
           </div>
         )}
         {activeTab === 'whatsapp' && <WhatsAppTab trip={trip} whatsappNumber={whatsappNumber} />}
