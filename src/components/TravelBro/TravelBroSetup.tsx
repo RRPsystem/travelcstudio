@@ -2201,8 +2201,22 @@ export function TravelBroSetup() {
                             />
                           </div>
 
+                          {/* Web Link - duidelijk zichtbaar */}
+                          <div className="bg-green-100 rounded-lg p-4 mb-4 border-2 border-green-400">
+                            <p className="text-sm font-semibold text-green-800 mb-2">🌐 Web Link voor klant:</p>
+                            <div className="bg-white rounded p-2 mb-2 font-mono text-sm text-gray-800 break-all">
+                              {getShareUrl(selectedTrip.share_token)}
+                            </div>
+                            <button
+                              onClick={() => copyClientLink(selectedTrip.share_token)}
+                              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                            >
+                              📋 Kopieer Link
+                            </button>
+                          </div>
+
                           <div className="bg-orange-100 rounded-lg p-3 mb-4 border-2 border-dashed border-orange-400">
-                            <p className="text-xs text-gray-600 mb-1">Of stuur deze code:</p>
+                            <p className="text-xs text-gray-600 mb-1">Of stuur deze WhatsApp code:</p>
                             <p className="text-2xl font-bold text-orange-600 tracking-wider">{qrData.code}</p>
                             <p className="text-xs text-gray-600 mt-1">naar +{qrData.cleanNumber}</p>
                           </div>
