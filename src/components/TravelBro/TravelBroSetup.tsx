@@ -2781,59 +2781,53 @@ export function TravelBroSetup() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {activeTravelBros.map((trip) => (
-                <div key={trip.id} className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 cursor-pointer" onClick={() => loadTripDetails(trip)}>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2 hover:text-orange-600 transition-colors">{trip.name}</h3>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-600">PDF:</span>
-                          <span className="ml-2 text-gray-900">{trip.pdf_url ? '✓' : '–'}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">URLs:</span>
-                          <span className="ml-2 text-gray-900">{trip.source_urls?.length || 0}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Pre-filled reizigers:</span>
-                          <span className="ml-2 text-gray-900">{trip.intake_template?.travelers?.length || 0}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Status:</span>
-                          <span className={`ml-2 font-medium ${trip.is_active ? 'text-green-600' : 'text-gray-400'}`}>
-                            {trip.is_active ? 'Actief' : 'Inactief'}
-                          </span>
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-2">
-                        Aangemaakt: {new Date(trip.created_at).toLocaleDateString('nl-NL')}
-                      </p>
+                <div 
+                  key={trip.id} 
+                  className="bg-white rounded-xl shadow-sm border hover:shadow-lg hover:border-orange-300 transition-all cursor-pointer overflow-hidden"
+                  onClick={() => loadTripDetails(trip)}
+                >
+                  <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-4">
+                    <h3 className="text-lg font-bold text-white truncate">{trip.name}</h3>
+                    <p className="text-sm text-white/80">{new Date(trip.created_at).toLocaleDateString('nl-NL')}</p>
+                  </div>
+                  <div className="p-4">
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {trip.parsed_data && Object.keys(trip.parsed_data).length > 0 && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">✓ Data</span>
+                      )}
+                      {trip.page_id && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">🗺️ Roadbook</span>
+                      )}
+                      {trip.pdf_url && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">📄 PDF</span>
+                      )}
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${trip.is_active !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {trip.is_active !== false ? '🟢 Actief' : '⚪ Inactief'}
+                      </span>
                     </div>
-
-                    <div className="flex items-center space-x-2 ml-4">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); loadTripDetails(trip); }}
-                        className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                        title="Open details"
-                      >
-                        <Edit size={18} />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); copyClientLink(trip.share_token); }}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Kopieer client link voor reizigers"
-                      >
-                        <Share2 size={18} />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); deleteTravelBro(trip.id); }}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Verwijder"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                    <div className="flex items-center justify-between pt-3 border-t">
+                      <div className="flex items-center space-x-1">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); copyClientLink(trip.share_token); }}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Kopieer link"
+                        >
+                          <Share2 size={16} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteTravelBro(trip.id); }}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Verwijder"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                      <div className="flex items-center text-orange-600 text-sm font-medium">
+                        <span>Bekijk</span>
+                        <ArrowRight size={16} className="ml-1" />
+                      </div>
                     </div>
                   </div>
                 </div>
