@@ -145,12 +145,12 @@ Deno.serve(async (req: Request) => {
     console.log("[Compositor Sync] Built raw text:", rawText.substring(0, 500));
 
     // Update trip with synced data
+    // Note: Only update columns that exist in the database
     const { error: updateError } = await supabase
       .from("travel_trips")
       .update({
         parsed_data: structuredItinerary,
-        raw_text: rawText,
-        compositor_synced_at: new Date().toISOString(),
+        custom_context: rawText,
         updated_at: new Date().toISOString()
       })
       .eq("id", trip_id);
