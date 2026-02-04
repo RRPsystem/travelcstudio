@@ -9,6 +9,7 @@ import AgentProfile from './components/Agent/AgentProfile';
 import { PreviewPage } from './components/Preview/PreviewPage';
 import { NewsPreview } from './components/Preview/NewsPreview';
 import { ClientInterface } from './components/TravelBro/ClientInterface';
+import { TravelBroPage } from './components/TravelBro/TravelBroPage';
 import { DemoInterface } from './components/TravelBro/DemoInterface';
 import { SubdomainViewer } from './components/Website/SubdomainViewer';
 import TravelJournal from './components/TravelJournal/TravelJournal';
@@ -64,7 +65,7 @@ function AppContent() {
 
   if (travelMatch) {
     console.log('[App] Matched TravelBRO route');
-    return <ClientInterface shareToken={travelMatch[1]} />;
+    return <TravelBroPage shareToken={travelMatch[1]} />;
   }
 
   const agentProfileMatch = path.match(/^\/agents\/([a-z0-9-]+)$/);
