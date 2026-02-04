@@ -72,6 +72,7 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
   const [selectedBudget, setSelectedBudget] = useState('');
   const [selectedMoreSetting, setSelectedMoreSetting] = useState('');
   const [selectedImageStyle, setSelectedImageStyle] = useState('');
+  const [selectedHotelTypes, setSelectedHotelTypes] = useState<string[]>([]);
   const [currentInput, setCurrentInput] = useState('');
   const [routeFrom, setRouteFrom] = useState('');
   const [routeTo, setRouteTo] = useState('');
@@ -273,6 +274,27 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
     { id: 'modern', label: 'Modern', icon: '✨', description: 'Strak en minimalistisch' }
   ];
 
+  const hotelTypes = [
+    { id: 'all-inclusive', label: 'All Inclusive', icon: '🍹', description: 'Alles inbegrepen' },
+    { id: 'adults-only', label: 'Adults Only', icon: '🥂', description: 'Alleen volwassenen' },
+    { id: 'family-waterpark', label: 'Glijbanen/Waterpark', icon: '🏊', description: 'Leuk voor kinderen' },
+    { id: 'pet-friendly', label: 'Honden toegestaan', icon: '🐕', description: 'Huisdieren welkom' },
+    { id: 'roadtrip', label: 'Roadtrip Hotel', icon: '🚗', description: 'Simpel onderweg' },
+    { id: 'bnb', label: 'Bed & Breakfast', icon: '🏡', description: 'Gezellig en persoonlijk' },
+    { id: 'luxury', label: 'Luxe Resort', icon: '✨', description: '5-sterren ervaring' },
+    { id: 'boutique', label: 'Boutique Hotel', icon: '🎨', description: 'Uniek en stijlvol' },
+    { id: 'eco', label: 'Eco/Duurzaam', icon: '🌿', description: 'Milieuvriendelijk' },
+    { id: 'spa', label: 'Spa & Wellness', icon: '💆', description: 'Ontspanning centraal' }
+  ];
+
+  const toggleHotelType = (typeId: string) => {
+    setSelectedHotelTypes(prev => 
+      prev.includes(typeId) 
+        ? prev.filter(t => t !== typeId)
+        : [...prev, typeId]
+    );
+  };
+
   const handleContentTypeSelect = (type: string) => {
     setSelectedContentType(type);
     setShowSlidingPanel(true);
@@ -298,8 +320,12 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
       chatTitle = `Dagplanning (${selectedDays}) - ${currentInput}...`;
       userMessage = `Maak een complete ${selectedDays} dagplanning voor ${currentInput}. Geef concrete bezienswaardigheden, restaurants en activiteiten met tijden per dag.`;
     } else if (selectedContentType === 'hotel') {
+      const selectedHotelLabels = selectedHotelTypes.map(id => hotelTypes.find(t => t.id === id)?.label).filter(Boolean);
       chatTitle = `Hotel zoeker - ${currentInput}...`;
-      userMessage = currentInput;
+      userMessage = selectedHotelLabels.length > 0 
+        ? `Zoek hotels in ${currentInput} met de volgende kenmerken: ${selectedHotelLabels.join(', ')}`
+        : `Zoek hotels in ${currentInput}`;
+      additionalData = { hotelTypes: selectedHotelLabels };
     } else if (selectedContentType === 'image') {
       const styleLabel = imageStyles.find(s => s.id === selectedImageStyle)?.label || '';
       chatTitle = `Afbeelding maker (${styleLabel}) - ${currentInput.substring(0, 30)}...`;
@@ -499,6 +525,7 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
     setSelectedDays('');
     setSelectedMoreSetting('');
     setSelectedImageStyle('');
+    setSelectedHotelTypes([]);
     setCurrentInput('');
     setRouteFrom('');
     setRouteTo('');
@@ -1101,8 +1128,32 @@ export function AIContentGenerator({ onClose }: AIContentGeneratorProps) {
               </div>
             )}
 
-            {/* More Settings (hide for route and image content types) */}
-            {selectedContentType !== 'route' && selectedContentType !== 'image' && (
+            {/* Hotel Types (only show for hotel content type) */}
+            {selectedContentType === 'hotel' && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Hotel Type (meerdere mogelijk):</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {hotelTypes.map((type) => (
+                    <button
+                      key={type.id}
+                      onClick={() => toggleHotelType(type.id)}
+                      className={`p-2 border-2 rounded-lg transition-all shadow-sm hover:shadow-md ${
+                        selectedHotelTypes.includes(type.id)
+                          ? 'border-purple-500 bg-purple-50 shadow-md'
+                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                      }`}
+                    >
+                      <div className="text-base mb-0.5">{type.icon}</div>
+                      <div className="text-xs font-medium text-gray-900">{type.label}</div>
+                      <div className="text-[10px] text-gray-500 mt-0.5">{type.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* More Settings (hide for route, image, and hotel content types) */}
+            {selectedContentType !== 'route' && selectedContentType !== 'image' && selectedContentType !== 'hotel' && (
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Meer Instellingen:</h3>
                 <div className="grid grid-cols-2 gap-3">

@@ -448,7 +448,18 @@ Deno.serve(async (req: Request) => {
 
     const getSystemPrompt = (contentType: string) => {
       const basePrompts: Record<string, string> = {
-        destination: `Je bent een professionele reisschrijver die gestructureerde bestemmingsinformatie genereert. 
+        destination: `Je bent een professionele reisschrijver die gestructureerde bestemmingsinformatie genereert.
+
+SCHRIJFSTIJL: {WRITING_STYLE}
+DOELGROEP: {VACATION_TYPE} reizigers
+
+STIJLREGELS:
+- Bij "speels" of "kinderen": Gebruik emoji's 🎉✨🌴🏖️ door de tekst, maak het enthousiast en kindvriendelijk
+- Bij "beleefd" of "zakelijk": Schrijf in de u-vorm, formeel en professioneel
+- Bij "informeel" of "vriendelijk": Schrijf in de je-vorm, warm en persoonlijk
+- Bij "avontuurlijk": Gebruik actieve taal, spanning en uitdaging
+- Bij "romantisch": Focus op sfeer, intimiteit en bijzondere momenten
+
 Genereer ALLEEN een geldig JSON object (geen markdown, geen uitleg, geen code blocks) met deze structuur:
 {
   "country_code": "De officiële ISO 3166-1 alpha-2 landcode (bijv. NL voor Nederland, BR voor Brazilië, ES voor Spanje, TH voor Thailand)",
@@ -482,6 +493,7 @@ Genereer ALLEEN een geldig JSON object (geen markdown, geen uitleg, geen code bl
   ]
 }
 BELANGRIJK:
+- Pas de schrijfstijl aan op basis van de SCHRIJFSTIJL en DOELGROEP hierboven!
 - intro_text: KORT, max 50 woorden (wordt gebruikt als samenvatting)
 - description: LANG, 400-600 woorden over cultuur, geschiedenis, natuur, bezienswaardigheden. GEEN vervoer info hier!
 - transportation: UITGEBREID 150-250 woorden over vervoer en rondreizen - dit is het ENIGE veld voor vervoer info
@@ -489,7 +501,7 @@ BELANGRIJK:
 - Geef PRECIES 3 cities (populaire steden om te bezoeken)
 - Geef minimaal 4 regio's en 5 facts
 - Geef PRECIES 3 fun_facts: leuke, verrassende of grappige weetjes die 100% WAAR zijn. Geen verzinsels! Dit kunnen zijn: bizarre wetten, gekke tradities, verrassende records, onverwachte uitvindingen uit dit land, etc.
-Schrijf in het Nederlands. Wees informatief en inspirerend.`,
+Schrijf in het Nederlands.`,
         route: `Je bent een enthousiaste reisbuddy die routes tot een beleving maakt. {ROUTE_TYPE_INSTRUCTION}
 
 FOCUS OP BELEVING, NIET OP NAVIGATIE:
@@ -512,13 +524,68 @@ STIJL:
 - Wees enthousiast en inspirerend
 - Geef concrete namen van plekken (niet "er zijn cafés" maar "Café De Zon")
 - Maak de reis tot een avontuur, niet alleen maar kilometers`,
-        planning: `Je bent een reisplanner die {DAYS} dagplanningen maakt voor {DESTINATION}. Geef een praktische planning met tijden, activiteiten, en tips. Schrijf in {WRITING_STYLE} stijl voor {VACATION_TYPE} reizigers.`,
-        hotel: `Je bent een hotelexpert die hotelzoekresultaten presenteert voor {VACATION_TYPE} reizigers. Geef gedetailleerde informatie over hotels, voorzieningen, en boekingsadvies. Schrijf in {WRITING_STYLE} stijl.`,
-        image: `Je bent een AI die afbeeldingsbeschrijvingen genereert voor DALL-E. Maak een gedetailleerde, visuele beschrijving voor een {VACATION_TYPE} reisafbeelding in {WRITING_STYLE} stijl.`
-      };
+        planning: `Je bent een professionele reisplanner. Maak NU DIRECT een complete {DAYS} dagplanning voor {DESTINATION}.
 
-      let systemPrompt = basePrompts[contentType] || basePrompts.destination;
-      
+BELANGRIJK: Stel GEEN vragen. Genereer DIRECT een volledige dagplanning met:
+- Dag 1, Dag 2, etc. als kopjes
+- Voor elke dag: ochtend, middag, avond activiteiten met tijden (bijv. 09:00-12:00)
+- Concrete bezienswaardigheden, restaurants en activiteiten met echte namen
+- Praktische tips en vervoersadvies
+
+Schrijf in {WRITING_STYLE} stijl voor {VACATION_TYPE} reizigers. Begin DIRECT met "Dag 1:" - geen inleiding of vragen!`,
+    hotel: `Je bent een ervaren hotelexpert en reisadviseur die hotels aanbeveelt voor {VACATION_TYPE} reizigers.
+
+SCHRIJFSTIJL: {WRITING_STYLE}
+DOELGROEP: {VACATION_TYPE} reizigers
+
+HOTEL TYPE FILTERS (zoek hotels die hieraan voldoen):
+- All Inclusive: Hotels waar alles inbegrepen is (eten, drinken, activiteiten)
+- Adults Only: Hotels alleen voor volwassenen (18+), rustig en romantisch
+- Glijbanen/Waterpark: Hotels met waterparken, glijbanen, kinderpools
+- Honden toegestaan: Pet-friendly hotels waar huisdieren welkom zijn
+- Roadtrip Hotel: Simpele, betaalbare hotels voor onderweg
+- Bed & Breakfast: Gezellige B&B's met persoonlijke service
+- Luxe Resort: 5-sterren resorts met premium voorzieningen
+- Boutique Hotel: Unieke, stijlvolle kleinschalige hotels
+- Eco/Duurzaam: Milieuvriendelijke en duurzame accommodaties
+- Spa & Wellness: Hotels met uitgebreide spa en wellness faciliteiten
+
+STIJLREGELS:
+- Bij "speels" of "kinderen": Gebruik emoji's 🏨⭐🏊‍♂️🎢 door de tekst, focus op kindvriendelijke faciliteiten
+- Bij "beleefd" of "zakelijk": Schrijf in de u-vorm, formeel en professioneel
+- Bij "informeel" of "vriendelijk": Schrijf in de je-vorm, warm en persoonlijk
+- Bij "avontuurlijk": Focus op unieke ervaringen en actieve mogelijkheden
+- Bij "romantisch": Focus op sfeer, privacy en romantische voorzieningen
+
+BELANGRIJK - VERBODEN:
+- Noem NOOIT booking.com, Expedia, Hotels.com of andere boekingssites
+- Verwijs NOOIT naar externe boekingsplatformen
+- Dit is een tool voor REISAGENTEN - zij gebruiken dit om hotels te vinden voor HUN klanten
+- Schrijf alsof je de reisagent helpt met informatie die zij aan hun klant kunnen presenteren
+
+STRUCTUUR voor elk hotel:
+1. **Hotelnaam** - Locatie
+2. **Waarom dit hotel past bij deze reiziger** - Persoonlijke match uitleg (koppel aan de gevraagde hotel types!)
+3. **Highlights**: 3-5 belangrijkste voorzieningen die matchen met de gevraagde types
+4. **Kamertypes**: Welke kamers geschikt zijn voor deze doelgroep
+5. **Ligging**: Afstand tot centrum, strand, bezienswaardigheden
+6. **Prijsindicatie**: €/€€/€€€/€€€€ (geen exacte prijzen)
+7. **Tip van de expert**: Insider tip over dit hotel
+
+Geef 3-5 hotelsugesties die ECHT bestaan en perfect passen bij de opgegeven bestemming EN de gevraagde hotel types.
+Leg bij elk hotel uit WAAROM het specifiek bij deze klant past op basis van de geselecteerde filters.`,
+    image: `Je bent een AI die afbeeldingsbeschrijvingen genereert voor DALL-E. Maak een gedetailleerde, visuele beschrijving voor een {VACATION_TYPE} reisafbeelding in {WRITING_STYLE} stijl.`
+  };
+
+  let systemPrompt = basePrompts[contentType] || basePrompts.destination;
+  
+  systemPrompt = systemPrompt
+    .replace('{WRITING_STYLE}', writingStyle)
+    .replace('{VACATION_TYPE}', options.vacationType || 'algemene')
+    .replace('{ROUTE_TYPE}', options.routeType || '')
+    .replace('{ROUTE_TYPE_INSTRUCTION}', getRouteInstruction(options.routeType || ''))
+    .replace('{DAYS}', options.days || '')
+    .replace('{DESTINATION}', options.destination || '');
       systemPrompt = systemPrompt
         .replace('{WRITING_STYLE}', writingStyle)
         .replace('{VACATION_TYPE}', options.vacationType || 'algemene')
@@ -579,9 +646,9 @@ STIJL:
     let temperatureToUse = options.temperature ?? 0.7;
     let maxTokensToUse = options.maxTokens || 2000;
 
-    // For destination content type, ALWAYS use the JSON prompt to ensure structured output
-    if (contentType === 'destination') {
-      console.log('[GPT] Using hardcoded JSON prompt for destination');
+    // For destination and planning content types, ALWAYS use the hardcoded prompt to ensure correct output
+    if (contentType === 'destination' || contentType === 'planning') {
+      console.log(`[GPT] Using hardcoded prompt for ${contentType}`);
       // systemPrompt is already set correctly from getSystemPrompt()
     } else if (gptModel && gptModel.system_prompt) {
       console.log('[GPT] Using operator GPT instructions from database');
@@ -631,7 +698,7 @@ STIJL:
     const data = await response.json();
     let content = data.choices[0].message.content;
 
-    // For destination content type, parse the JSON response
+    // For destination content type, parse the JSON and format as readable text
     if (contentType === 'destination') {
       try {
         // Remove markdown code blocks if present
@@ -647,8 +714,55 @@ STIJL:
         jsonStr = jsonStr.trim();
         
         const parsedContent = JSON.parse(jsonStr);
+        
+        // Format JSON as readable text for chat display
+        let formattedText = '';
+        
+        if (parsedContent.intro_text) {
+          formattedText += `**${parsedContent.intro_text}**\n\n`;
+        }
+        
+        if (parsedContent.description) {
+          formattedText += `## Over dit land\n${parsedContent.description}\n\n`;
+        }
+        
+        if (parsedContent.transportation) {
+          formattedText += `## Vervoer & Rondreizen\n${parsedContent.transportation}\n\n`;
+        }
+        
+        if (parsedContent.highlights && parsedContent.highlights.length > 0) {
+          formattedText += `## Bezienswaardigheden\n`;
+          parsedContent.highlights.forEach((h: any) => {
+            formattedText += `- **${h.title}**: ${h.description}\n`;
+          });
+          formattedText += '\n';
+        }
+        
+        if (parsedContent.cities && parsedContent.cities.length > 0) {
+          formattedText += `## Populaire Steden\n`;
+          parsedContent.cities.forEach((c: any) => {
+            formattedText += `- **${c.name}**: ${c.description}\n`;
+          });
+          formattedText += '\n';
+        }
+        
+        if (parsedContent.best_time_to_visit) {
+          formattedText += `## Beste Reistijd\n${parsedContent.best_time_to_visit}\n\n`;
+        }
+        
+        if (parsedContent.climate) {
+          formattedText += `## Klimaat\n${parsedContent.climate}\n\n`;
+        }
+        
+        if (parsedContent.fun_facts && parsedContent.fun_facts.length > 0) {
+          formattedText += `## Leuke Weetjes\n`;
+          parsedContent.fun_facts.forEach((f: string) => {
+            formattedText += `- ${f}\n`;
+          });
+        }
+        
         return new Response(
-          JSON.stringify({ content: parsedContent }),
+          JSON.stringify({ content: formattedText.trim() }),
           {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           }
