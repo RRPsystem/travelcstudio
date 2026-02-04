@@ -40,6 +40,25 @@ function AppContent() {
   }, []);
 
   const hostname = window.location.hostname;
+  const path = window.location.pathname;
+  console.log('[App] Current hostname:', hostname, 'path:', path);
+
+  // TravelBro.nl domain - show TravelBroPage
+  const isTravelBroDomain = hostname === 'travelbro.nl' || 
+                            hostname === 'www.travelbro.nl' ||
+                            hostname.endsWith('.travelbro.nl');
+
+  if (isTravelBroDomain) {
+    console.log('[App] TravelBro.nl domain detected');
+    // Check if there's a token in the path
+    const tokenMatch = path.match(/^\/([a-f0-9]{8,})$/);
+    if (tokenMatch) {
+      return <TravelBroPage shareToken={tokenMatch[1]} />;
+    }
+    // Otherwise show demo (loads most recent trip)
+    return <DemoInterface />;
+  }
+
   const isSubdomain = hostname !== 'ai-travelstudio.nl' &&
                      hostname !== 'www.ai-travelstudio.nl' &&
                      hostname.endsWith('.ai-travelstudio.nl');
@@ -49,9 +68,6 @@ function AppContent() {
     console.log('[App] Subdomain detected:', subdomain);
     return <SubdomainViewer subdomain={subdomain} />;
   }
-
-  const path = window.location.pathname;
-  console.log('[App] Current path:', path);
 
   // TravelBro demo route - automatically loads first active trip
   if (path === '/travelbro' || path === '/travelbro-demo') {

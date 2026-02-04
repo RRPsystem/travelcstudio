@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { ClientInterface } from './ClientInterface';
-import { Loader, AlertCircle, MessageCircle } from 'lucide-react';
+import { TravelBroPage } from './TravelBroPage';
+import { Loader, AlertCircle } from 'lucide-react';
 
 export function DemoInterface() {
   const [loading, setLoading] = useState(true);
@@ -15,20 +15,25 @@ export function DemoInterface() {
   const loadDemoTrip = async () => {
     try {
       setLoading(true);
-      // Find first active trip to use as demo
+      if (!supabase) {
+        setError('Database niet geconfigureerd');
+        return;
+      }
+      // Find first trip (active or not) to use as demo
       const { data, error } = await supabase
         .from('travel_trips')
         .select('share_token, name')
-        .eq('is_active', true)
+        .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (error) throw error;
 
       if (data?.share_token) {
+        console.log('Demo trip loaded:', data.name, data.share_token);
         setDemoToken(data.share_token);
       } else {
-        setError('Geen actieve trips gevonden. Maak eerst een trip aan via Brand Dashboard.');
+        setError('Geen trips gevonden. Maak eerst een trip aan via Brand Dashboard.');
       }
     } catch (err) {
       console.error('Failed to load demo trip:', err);
@@ -72,23 +77,5 @@ export function DemoInterface() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-3">
-            <MessageCircle className="w-6 h-6 text-blue-600" />
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">TravelBro Demo</h1>
-              <p className="text-sm text-gray-600">Interactieve reis-assistent</p>
-            </div>
-          </div>
-          <div className="text-xs text-gray-500 font-mono bg-gray-100 px-3 py-1 rounded">
-            Token: {demoToken}
-          </div>
-        </div>
-      </div>
-      <ClientInterface shareToken={demoToken} />
-    </div>
-  );
+  return <TravelBroPage shareToken={demoToken} />;
 }
