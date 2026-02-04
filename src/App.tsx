@@ -11,6 +11,7 @@ import { NewsPreview } from './components/Preview/NewsPreview';
 import { ClientInterface } from './components/TravelBro/ClientInterface';
 import { TravelBroPage } from './components/TravelBro/TravelBroPage';
 import { DemoInterface } from './components/TravelBro/DemoInterface';
+import { ChatEmbed } from './components/TravelBro/ChatEmbed';
 import { SubdomainViewer } from './components/Website/SubdomainViewer';
 import TravelJournal from './components/TravelJournal/TravelJournal';
 import QuestionSubmission from './components/Podcast/QuestionSubmission';
@@ -73,6 +74,21 @@ function AppContent() {
   if (path === '/travelbro' || path === '/travelbro-demo') {
     console.log('[App] Matched TravelBRO demo route');
     return <DemoInterface />;
+  }
+
+  // TravelBro embed route for iframe embedding in external builder
+  // URL: /travelbro/embed/[share_token] or /travelbro/embed?trip_id=[trip_id]
+  const embedMatch = path.match(/^\/travelbro\/embed\/([a-f0-9-]+)$/);
+  if (embedMatch) {
+    console.log('[App] Matched TravelBRO embed route');
+    return <ChatEmbed shareToken={embedMatch[1]} />;
+  }
+  if (path === '/travelbro/embed') {
+    const params = new URLSearchParams(window.location.search);
+    const tripId = params.get('trip_id');
+    const shareToken = params.get('share_token');
+    console.log('[App] Matched TravelBRO embed route with params');
+    return <ChatEmbed tripId={tripId || undefined} shareToken={shareToken || undefined} />;
   }
 
   // Match TravelBRO chat links: /travelbro/[token], /travel/[token], or just /[token]

@@ -31,6 +31,14 @@ export function TravelBroPage({ shareToken }: TravelBroPageProps) {
   }, [shareToken]);
 
   const loadTrip = async () => {
+    console.log('[TravelBroPage] Loading trip with shareToken:', shareToken);
+    
+    if (!supabase) {
+      console.error('[TravelBroPage] Supabase not initialized');
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('travel_trips')
@@ -38,20 +46,25 @@ export function TravelBroPage({ shareToken }: TravelBroPageProps) {
         .eq('share_token', shareToken)
         .maybeSingle();
 
+      console.log('[TravelBroPage] Query result:', { data, error });
+
       if (error) throw error;
       if (data) {
+        console.log('[TravelBroPage] Trip found:', data.name);
         setTrip(data);
-        // Load WhatsApp number for QR code
         loadWhatsAppNumber(data.brand_id);
+      } else {
+        console.log('[TravelBroPage] No trip found for token:', shareToken);
       }
     } catch (err) {
-      console.error('Error loading trip:', err);
+      console.error('[TravelBroPage] Error loading trip:', err);
     } finally {
       setLoading(false);
     }
   };
 
   const loadWhatsAppNumber = async (brandId: string) => {
+    if (!supabase) return;
     try {
       const { data } = await supabase
         .from('api_settings')
