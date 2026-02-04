@@ -1,0 +1,14 @@
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+[functions.mollie-webhook]
+verify_jwt = false
+
+[functions.riverside-webhook]
+verify_jwt = false
+
+[functions.wordpress-trip-webhook]
+verify_jwt = false
+
+[functions.notify-compositor-webhook]
+verify_jwt = false

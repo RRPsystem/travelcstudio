@@ -327,13 +327,17 @@ Deno.serve(async (req: Request) => {
 
       const coordinates = decodePolyline(polyline);
 
-      const radius = 10000;
+      // Use smaller radius (5km) to stay close to actual route
+      const radius = 5000;
       const placeTypes = ['tourist_attraction', 'museum', 'park', 'monument', 'art_gallery'];
       const uniquePlaces = new Map<string, RouteStop>();
 
-      // Skip first 20% of route to avoid stops near departure point
-      const startIndex = Math.floor(coordinates.length * 0.2);
-      for (let i = startIndex; i < coordinates.length; i += Math.floor(coordinates.length / 15)) {
+      // Skip first 30% and last 10% of route to focus on middle section
+      const startIndex = Math.floor(coordinates.length * 0.3);
+      const endIndex = Math.floor(coordinates.length * 0.9);
+      const step = Math.max(1, Math.floor((endIndex - startIndex) / 10)); // Sample ~10 points
+      
+      for (let i = startIndex; i < endIndex; i += step) {
         const coord = coordinates[i];
         const nearbyUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${coord.lat},${coord.lng}&radius=${radius}&type=${placeTypes[0]}&key=${googleMapsApiKey}&language=nl`;
 
@@ -369,7 +373,16 @@ Deno.serve(async (req: Request) => {
       }
 
       const allStops = Array.from(uniquePlaces.values());
-      const filteredStops = await filterAndEnrichStops(allStops);
+      
+      // Filter out stops that are too close to the origin (within 30km)
+      const originLat = leg.start_location.lat;
+      const originLng = leg.start_location.lng;
+      const stopsAwayFromOrigin = allStops.filter(stop => {
+        const distanceFromOrigin = calculateDistance(originLat, originLng, stop.location.lat, stop.location.lng);
+        return distanceFromOrigin > 30; // Must be at least 30km from departure
+      });
+      
+      const filteredStops = await filterAndEnrichStops(stopsAwayFromOrigin);
 
       const compressedSteps = compressSteps(leg.steps || []);
 
@@ -504,42 +517,57 @@ BELANGRIJK:
 - Geef minimaal 4 regio's en 5 facts
 - Geef PRECIES 3 fun_facts: leuke, verrassende of grappige weetjes die 100% WAAR zijn. Geen verzinsels! Dit kunnen zijn: bizarre wetten, gekke tradities, verrassende records, onverwachte uitvindingen uit dit land, etc.
 Schrijf in het Nederlands.`,
-        route: `Je bent een enthousiaste reisbuddy die routes tot een beleving maakt. {ROUTE_TYPE_INSTRUCTION}
+    route: `Je bent een ervaren reisschrijver die roadtrips tot leven brengt met verhalen.
 
 SCHRIJFSTIJL: {WRITING_STYLE}
 DOELGROEP: {VACATION_TYPE} reizigers
 
-STIJLREGELS (VOLG EXACT):
-- Bij "speels" of "kinderen": Gebruik VEEL emoji's 🚗🎉🛝🍦🦆🎠🌈 door de tekst! Focus op speeltuinen, ijsjes, dieren.
-- Bij "stelletjes": Gebruik romantische emoji's 💑🌅🍷✨ Focus op sfeervolle plekken.
-- Bij "beleefd" of "u-vorm": Schrijf formeel in de u-vorm. Geen emoji's.
-- Bij "zakelijk": Kort en bondig, geen emoji's.
+EMOJI'S FUNCTIONEEL:
+🚻 toilet | 🍔 eten | ⏱️ korte stop | 📸 foto | 🎢 actie/fun
 
-BELANGRIJK - STOPS ONDERWEG:
-- Geef ALLEEN stops die ONDERWEG liggen (na minimaal 1 uur rijden)
-- NOOIT bezienswaardigheden in de vertrekstad noemen!
+VOOR KINDEREN (8-14 jaar):
+- WOW-momenten > wandelen/picknicken (dat is saai voor kids!)
+- Zoek: gekke/grote dingen, diners, ijswinkels, selfie-spots
+- Praktisch: 🚻 toilet + � snack + benen strekken na 2u rijden
+
+VOOR STELLETJES:
+- Romantische stops: uitzichtpunten, wijngaarden, sunset spots
+- Quality time, geen haast
+
+VERTEL EEN VERHAAL - geen opsomming!
+1. Beschrijf de TRANSITIE (stad→natuur, kust→bergen, etc.)
+2. Kies MAX 2-3 BESTE stops uit de lijst - kwaliteit boven kwantiteit!
+3. Beschrijf hoe het LANDSCHAP verandert onderweg
+4. Bouw SPANNING op naar de bestemming ("nog even en dan...")
+
+GEBRUIK ALLEEN stops uit de meegegeven lijst!
 
 STRUCTUUR:
-🧭 Route: [Vertrek] → [Bestemming]
-📏 Afstand: ±XXX km | ⏱️ Reistijd: ±X uur
+🧭 **[Vertrek] → [Bestemming]**
+📏 [Afstand] | ⏱️ [Reistijd]
 
-🛑 1e Stop: [STAD] (na ±1u15 rijden)
-➡️ [Reden om te stoppen]
-- [Activiteit] - [Eet/drink tip]
-🎒 Tip: [Doelgroep-specifieke tip]
+**Het avontuur begint...**
+[Wat laat je achter? Waar ga je naartoe? Wat gaat er veranderen?]
 
-🛑 2e Stop: [STAD] (na ±3u totaal)
-[Zelfde structuur]
+🛑 **Stop 1: [Naam]** (na ±Xu rijden)
+📸 Waarom hier? [Concreet, niet generiek!]
+🎯 Doe dit: [Specifieke activiteit]
+💡 Tip: [Praktisch of insider]
 
-🛑 3e Stop: [STAD] (na ±5u totaal)
-[Zelfde structuur]
+[Beschrijf hoe het landschap nu verandert...]
 
-🚗 Laatste stuk → [Bestemming]
-🎉 AANKOMST!
+� **Stop 2: [Naam]** (na ±Xu totaal)
+[Zelfde format - maar alleen als echt de moeite waard!]
 
-🍱 Onderweg-tip: [Praktische tips]
-🎯 Samenvatting: [Tabel met etappes]`,
-        planning: `Je bent een professionele reisplanner. Maak NU DIRECT een complete {DAYS} dagplanning voor {DESTINATION}.
+🚗 **De laatste kilometers...**
+[Bouw spanning op - wat gaat de reiziger zien/voelen?]
+
+� **WELKOM IN [Bestemming]!**
+
+⚡ **Quick overview:**
+| Stop | Highlight | Tijd |
+|------|-----------|------|`,
+    planning: `Je bent een professionele reisplanner. Maak NU DIRECT een complete {DAYS} dagplanning voor {DESTINATION}.
 
 BELANGRIJK: Stel GEEN vragen. Genereer DIRECT een volledige dagplanning met:
 - Dag 1, Dag 2, etc. als kopjes

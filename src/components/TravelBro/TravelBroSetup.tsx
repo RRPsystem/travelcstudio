@@ -1236,9 +1236,58 @@ export function TravelBroSetup() {
 
       {activeTab === 'new' && (
         <div className="max-w-3xl mx-auto">
+          {/* Flow Stepper - alleen tonen bij nieuwe TravelBro */}
+          {!editingTrip && (
+            <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl border border-orange-200 p-4 mb-6">
+              <h4 className="font-semibold text-orange-800 mb-3 flex items-center gap-2">
+                <Route className="w-5 h-5" />
+                TravelBRO Setup Flow
+              </h4>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${compositorData ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'}`}>
+                    {compositorData ? '✓' : '1'}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">Sync Data</p>
+                    <p className="text-xs text-gray-500">Haal reisinfo op</p>
+                  </div>
+                </div>
+                <div className="flex-1 h-1 bg-gray-200 mx-3 rounded">
+                  <div className={`h-full rounded transition-all ${compositorData ? 'bg-green-500 w-full' : 'bg-gray-200 w-0'}`} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${compositorData ? 'bg-orange-500 text-white' : 'bg-gray-300 text-gray-500'}`}>
+                    2
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">Aanmaken</p>
+                    <p className="text-xs text-gray-500">Sla TravelBro op</p>
+                  </div>
+                </div>
+                <div className="flex-1 h-1 bg-gray-200 mx-3 rounded" />
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-gray-300 text-gray-500 flex items-center justify-center text-sm font-bold">
+                    3
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">Versturen</p>
+                    <p className="text-xs text-gray-500">WhatsApp uitnodiging</p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 p-2 bg-white/60 rounded-lg">
+                <p className="text-xs text-orange-700">
+                  <strong>⚠️ Belangrijk:</strong> Sync eerst de data (stap 1) voordat je de TravelBro aanmaakt. 
+                  Zo heeft de AI alle reisinformatie beschikbaar wanneer de klant vragen stelt.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="bg-white rounded-lg shadow-sm border p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-6">
-              {editingTrip ? `TravelBRO Bewerken: ${editingTrip.name}` : 'Maak Nieuwe TravelBRO'}
+              {editingTrip ? `TravelBRO Bewerken: ${editingTrip.name}` : 'Stap 1: Sync Reisdata & Maak TravelBRO'}
             </h3>
 
             <div className="space-y-6">
