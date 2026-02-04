@@ -93,9 +93,12 @@ export function GooglePlacesAutocomplete({
   }, [value, googleApiKey]);
 
   const handleSelect = (place: Place) => {
-    onChange(place.description, place.place_id);
-    setShowSuggestions(false);
+    // Clear suggestions first to prevent re-triggering
     setSuggestions([]);
+    setShowSuggestions(false);
+    // Use main_text (city name) instead of full description to avoid duplicate suggestions
+    const selectedValue = place.structured_formatting?.main_text || place.description;
+    onChange(selectedValue, place.place_id);
   };
 
   return (

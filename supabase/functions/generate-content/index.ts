@@ -331,7 +331,9 @@ Deno.serve(async (req: Request) => {
       const placeTypes = ['tourist_attraction', 'museum', 'park', 'monument', 'art_gallery'];
       const uniquePlaces = new Map<string, RouteStop>();
 
-      for (let i = 0; i < coordinates.length; i += Math.floor(coordinates.length / 15)) {
+      // Skip first 20% of route to avoid stops near departure point
+      const startIndex = Math.floor(coordinates.length * 0.2);
+      for (let i = startIndex; i < coordinates.length; i += Math.floor(coordinates.length / 15)) {
         const coord = coordinates[i];
         const nearbyUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${coord.lat},${coord.lng}&radius=${radius}&type=${placeTypes[0]}&key=${googleMapsApiKey}&language=nl`;
 
@@ -504,26 +506,39 @@ BELANGRIJK:
 Schrijf in het Nederlands.`,
         route: `Je bent een enthousiaste reisbuddy die routes tot een beleving maakt. {ROUTE_TYPE_INSTRUCTION}
 
-FOCUS OP BELEVING, NIET OP NAVIGATIE:
-- De routenavigatie wordt via Google Maps gedaan (die link wordt apart getoond)
-- Jouw focus is op DE ERVARING tijdens de reis
-- Vertel over wat ze ONDERWEG kunnen zien, doen, en beleven
-- Suggereer leuke stops voor foto's, koffie, of een snack
-- Geef tips voor waar ze kunnen eten/drinken onderweg
-- Bij aankomst: suggereer een supermarkt voor boodschappen of restaurant voor direct uit eten
+SCHRIJFSTIJL: {WRITING_STYLE}
+DOELGROEP: {VACATION_TYPE} reizigers
+
+STIJLREGELS (VOLG EXACT):
+- Bij "speels" of "kinderen": Gebruik VEEL emoji's 🚗🎉🛝🍦🦆🎠🌈 door de tekst! Focus op speeltuinen, ijsjes, dieren.
+- Bij "stelletjes": Gebruik romantische emoji's 💑🌅🍷✨ Focus op sfeervolle plekken.
+- Bij "beleefd" of "u-vorm": Schrijf formeel in de u-vorm. Geen emoji's.
+- Bij "zakelijk": Kort en bondig, geen emoji's.
+
+BELANGRIJK - STOPS ONDERWEG:
+- Geef ALLEEN stops die ONDERWEG liggen (na minimaal 1 uur rijden)
+- NOOIT bezienswaardigheden in de vertrekstad noemen!
 
 STRUCTUUR:
-1. Korte intro over de reis (afstand/tijd)
-2. Bezienswaardigheden onderweg (met waarom ze leuk zijn)
-3. Eet- en drinkgelegenheden onderweg (match aan reizigersvoorkeuren als bekend)
-4. Leuke stops voor foto's of een pauze
-5. Tips bij aankomst (supermarkt of restaurant in de buurt)
+🧭 Route: [Vertrek] → [Bestemming]
+📏 Afstand: ±XXX km | ⏱️ Reistijd: ±X uur
 
-STIJL:
-- Schrijf in {WRITING_STYLE} stijl voor {VACATION_TYPE} reizigers
-- Wees enthousiast en inspirerend
-- Geef concrete namen van plekken (niet "er zijn cafés" maar "Café De Zon")
-- Maak de reis tot een avontuur, niet alleen maar kilometers`,
+🛑 1e Stop: [STAD] (na ±1u15 rijden)
+➡️ [Reden om te stoppen]
+- [Activiteit] - [Eet/drink tip]
+🎒 Tip: [Doelgroep-specifieke tip]
+
+🛑 2e Stop: [STAD] (na ±3u totaal)
+[Zelfde structuur]
+
+🛑 3e Stop: [STAD] (na ±5u totaal)
+[Zelfde structuur]
+
+🚗 Laatste stuk → [Bestemming]
+🎉 AANKOMST!
+
+🍱 Onderweg-tip: [Praktische tips]
+🎯 Samenvatting: [Tabel met etappes]`,
         planning: `Je bent een professionele reisplanner. Maak NU DIRECT een complete {DAYS} dagplanning voor {DESTINATION}.
 
 BELANGRIJK: Stel GEEN vragen. Genereer DIRECT een volledige dagplanning met:
@@ -533,47 +548,28 @@ BELANGRIJK: Stel GEEN vragen. Genereer DIRECT een volledige dagplanning met:
 - Praktische tips en vervoersadvies
 
 Schrijf in {WRITING_STYLE} stijl voor {VACATION_TYPE} reizigers. Begin DIRECT met "Dag 1:" - geen inleiding of vragen!`,
-    hotel: `Je bent een ervaren hotelexpert en reisadviseur die hotels aanbeveelt voor {VACATION_TYPE} reizigers.
+    hotel: `Je bent een ervaren hotelexpert voor reisagenten. Geef DIRECT hotelsugesties - stel GEEN vragen.
+
+BELANGRIJK: Stel GEEN vragen. Genereer DIRECT een lijst met 3-5 hotels die passen bij de opgegeven bestemming en kenmerken.
 
 SCHRIJFSTIJL: {WRITING_STYLE}
 DOELGROEP: {VACATION_TYPE} reizigers
 
-HOTEL TYPE FILTERS (zoek hotels die hieraan voldoen):
-- All Inclusive: Hotels waar alles inbegrepen is (eten, drinken, activiteiten)
-- Adults Only: Hotels alleen voor volwassenen (18+), rustig en romantisch
-- Glijbanen/Waterpark: Hotels met waterparken, glijbanen, kinderpools
-- Honden toegestaan: Pet-friendly hotels waar huisdieren welkom zijn
-- Roadtrip Hotel: Simpele, betaalbare hotels voor onderweg
-- Bed & Breakfast: Gezellige B&B's met persoonlijke service
-- Luxe Resort: 5-sterren resorts met premium voorzieningen
-- Boutique Hotel: Unieke, stijlvolle kleinschalige hotels
-- Eco/Duurzaam: Milieuvriendelijke en duurzame accommodaties
-- Spa & Wellness: Hotels met uitgebreide spa en wellness faciliteiten
-
-STIJLREGELS:
-- Bij "speels" of "kinderen": Gebruik emoji's 🏨⭐🏊‍♂️🎢 door de tekst, focus op kindvriendelijke faciliteiten
-- Bij "beleefd" of "zakelijk": Schrijf in de u-vorm, formeel en professioneel
-- Bij "informeel" of "vriendelijk": Schrijf in de je-vorm, warm en persoonlijk
-- Bij "avontuurlijk": Focus op unieke ervaringen en actieve mogelijkheden
-- Bij "romantisch": Focus op sfeer, privacy en romantische voorzieningen
-
-BELANGRIJK - VERBODEN:
+VERBODEN:
+- Stel NOOIT vragen terug aan de gebruiker
 - Noem NOOIT booking.com, Expedia, Hotels.com of andere boekingssites
-- Verwijs NOOIT naar externe boekingsplatformen
 - Dit is een tool voor REISAGENTEN - zij gebruiken dit om hotels te vinden voor HUN klanten
-- Schrijf alsof je de reisagent helpt met informatie die zij aan hun klant kunnen presenteren
 
 STRUCTUUR voor elk hotel:
-1. **Hotelnaam** - Locatie
-2. **Waarom dit hotel past bij deze reiziger** - Persoonlijke match uitleg (koppel aan de gevraagde hotel types!)
-3. **Highlights**: 3-5 belangrijkste voorzieningen die matchen met de gevraagde types
-4. **Kamertypes**: Welke kamers geschikt zijn voor deze doelgroep
-5. **Ligging**: Afstand tot centrum, strand, bezienswaardigheden
-6. **Prijsindicatie**: €/€€/€€€/€€€€ (geen exacte prijzen)
-7. **Tip van de expert**: Insider tip over dit hotel
+## 1. **Hotelnaam** - Locatie
+**Waarom dit hotel past**: Korte uitleg waarom dit hotel matcht met de gevraagde kenmerken
+**Highlights**: 3-5 belangrijkste voorzieningen
+**Kamertypes**: Welke kamers geschikt zijn
+**Ligging**: Afstand tot centrum, strand, bezienswaardigheden
+**Prijsindicatie**: €/€€/€€€/€€€€
+**Tip van de expert**: Insider tip
 
-Geef 3-5 hotelsugesties die ECHT bestaan en perfect passen bij de opgegeven bestemming EN de gevraagde hotel types.
-Leg bij elk hotel uit WAAROM het specifiek bij deze klant past op basis van de geselecteerde filters.`,
+Begin DIRECT met "## 1. **Hotelnaam**" - geen inleiding of vragen!`,
     image: `Je bent een AI die afbeeldingsbeschrijvingen genereert voor DALL-E. Maak een gedetailleerde, visuele beschrijving voor een {VACATION_TYPE} reisafbeelding in {WRITING_STYLE} stijl.`
   };
 
@@ -646,8 +642,8 @@ Leg bij elk hotel uit WAAROM het specifiek bij deze klant past op basis van de g
     let temperatureToUse = options.temperature ?? 0.7;
     let maxTokensToUse = options.maxTokens || 2000;
 
-    // For destination and planning content types, ALWAYS use the hardcoded prompt to ensure correct output
-    if (contentType === 'destination' || contentType === 'planning') {
+    // For destination, planning, hotel, and route content types, ALWAYS use the hardcoded prompt to ensure correct output
+    if (contentType === 'destination' || contentType === 'planning' || contentType === 'hotel' || contentType === 'route') {
       console.log(`[GPT] Using hardcoded prompt for ${contentType}`);
       // systemPrompt is already set correctly from getSystemPrompt()
     } else if (gptModel && gptModel.system_prompt) {
