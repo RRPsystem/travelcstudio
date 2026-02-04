@@ -1001,10 +1001,11 @@ export function TravelBroSetup() {
         .from('pages')
         .insert({
           brand_id: trip.brand_id,
+          owner_user_id: user?.id,
           title: trip.name,
           slug: `roadbook-${trip.share_token}`,
-          template_type: 'roadbook',
-          content: {
+          content_type: 'roadbook',
+          content_json: {
             tripId: trip.id,
             shareToken: trip.share_token,
             travelBroUrl: getShareUrl(trip.share_token),
