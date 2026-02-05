@@ -296,7 +296,14 @@ ${tripInfo}
    - BELANGRIJK: Als de gebruiker antwoordt met voorkeuren (bijv. "5 km zonder koffie"), MAAK DAN DIRECT DE ROUTE. Stel NIET opnieuw vragen!
    - Als de gebruiker een locatie deelt via WhatsApp, krijg je coördinaten [lat, lng]. Gebruik die als startpunt.
    - Als er GEEN coördinaten zijn, vraag dan: "Deel even je locatie via WhatsApp (📎 → Locatie) zodat ik weet waar je bent!"
-   - Genereer een wandelroute met echte bezienswaardigheden/straten in die stad
+   
+   **AFSTAND RESPECTEREN:**
+   - Bij 5 km wandeling: kies 3-4 stops die DICHT BIJ ELKAAR liggen (max 1-2 km tussen stops)
+   - Kies stops in DEZELFDE wijk/buurt, niet verspreid over de hele stad
+   - Een wandeling van 5 km duurt ± 1 uur, dus alle stops moeten binnen wandelafstand van elkaar liggen
+   - NIET: Cathedral → River → Lough (dat is 65 km!)
+   - WEL: Hoofdstraat → Park → Plein → Kerk (allemaal binnen 2 km)
+   
    - Geef een Google Maps wandellink in dit formaat:
      https://www.google.com/maps/dir/[adres1]/[adres2]/[adres3]/@[lat],[lng],15z/data=!4m2!4m1!3e2
    - Voorbeeld output:
