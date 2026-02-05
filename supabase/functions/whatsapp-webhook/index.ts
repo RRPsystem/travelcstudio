@@ -293,25 +293,29 @@ ${tripInfo}
      2. 🌳 Natuur of centrum?
      3. ☕ Koffie onderweg?"
    
-   - BELANGRIJK: Als de gebruiker antwoordt met voorkeuren (bijv. "5 km zonder koffie"), MAAK DAN DIRECT DE ROUTE. Stel NIET opnieuw vragen!
-   - Als de gebruiker een locatie deelt via WhatsApp, krijg je coördinaten [lat, lng]. Gebruik die als startpunt.
-   - Als er GEEN coördinaten zijn, vraag dan: "Deel even je locatie via WhatsApp (📎 → Locatie) zodat ik weet waar je bent!"
+   - BELANGRIJK: Als de gebruiker antwoordt met voorkeuren, MAAK DAN DIRECT DE ROUTE. Stel NIET opnieuw vragen!
    
-   **AFSTAND RESPECTEREN:**
-   - Bij 5 km wandeling: kies 3-4 stops die DICHT BIJ ELKAAR liggen (max 1-2 km tussen stops)
-   - Kies stops in DEZELFDE wijk/buurt, niet verspreid over de hele stad
-   - Een wandeling van 5 km duurt ± 1 uur, dus alle stops moeten binnen wandelafstand van elkaar liggen
-   - NIET: Cathedral → River → Lough (dat is 65 km!)
-   - WEL: Hoofdstraat → Park → Plein → Kerk (allemaal binnen 2 km)
+   **LOCATIE BEPALEN (ZEER BELANGRIJK!):**
+   - Als de gebruiker een STAD NOEMT (bijv. "in Dublin", "rond Dublin", "in Belfast"), gebruik DIE stad!
+   - NIET automatisch Letterkenny of andere steden uit de reisdata pakken als de gebruiker specifiek een andere stad noemt
+   - Als de gebruiker coördinaten deelt via WhatsApp, gebruik die als startpunt
+   - Alleen als er GEEN stad genoemd is EN geen coördinaten, vraag dan waar ze zijn
    
-   - Geef een Google Maps wandellink in dit formaat:
-     https://www.google.com/maps/dir/[adres1]/[adres2]/[adres3]/@[lat],[lng],15z/data=!4m2!4m1!3e2
+   **AFSTAND RESPECTEREN (KRITIEK!):**
+   - 5 km = maximaal 5 km TOTALE wandeling, niet per stuk!
+   - Kies 3-4 stops die ALLEMAAL binnen 1 km van elkaar liggen
+   - Alle stops moeten in DEZELFDE buurt/wijk zijn
+   - Voorbeeld Dublin 5km natuur: Phoenix Park ingang → Papal Cross → Dublin Zoo ingang → Ashtown Castle
+   - FOUT: stops 10+ km uit elkaar (Cathedral → Lough = 47 km totaal!)
+   
+   - Geef een Google Maps wandellink:
+     https://www.google.com/maps/dir/[adres1,+stad]/[adres2,+stad]/[adres3,+stad]/data=!4m2!4m1!3e2
    - Voorbeeld output:
      🚶 **Wandelroute (± 5 km, 1 uur)**
-     📍 Start: [straatnaam/landmark]
-     🛤️ [stop1] → [stop2] → [stop3]
+     📍 Locatie: Dublin
+     🛤️ Phoenix Park → Papal Cross → Zoo → Ashtown Castle
      
-     👉 [klikbare Google Maps link]`;
+     👉 [Google Maps link]`;
 
     // Use gpt-4o for vision, gpt-4o-mini for text only
     const gptModel = imageUrl ? 'gpt-4o' : 'gpt-4o-mini';
