@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Newspaper, Eye, Plus, Pencil, Trash2, ExternalLink } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
+import { triggerWordPressSync } from '../../../lib/wordpressSync';
 
 interface WordPressArticle {
   id: number;
@@ -239,6 +240,9 @@ export function WordPressNewsManager() {
 
           console.log('Insert result:', { data, error });
           if (error) throw error;
+          
+          // Trigger WordPress sync after accepting news
+          triggerWordPressSync(effectiveBrandId, 'news');
         }
       } else {
         // Existing assignment - update it
@@ -252,6 +256,11 @@ export function WordPressNewsManager() {
           .eq('id', assignmentId);
 
         if (error) throw error;
+        
+        // Trigger WordPress sync after toggling publish status
+        if (effectiveBrandId && !currentValue) {
+          triggerWordPressSync(effectiveBrandId, 'news');
+        }
       }
       await loadAssignments();
     } catch (error) {

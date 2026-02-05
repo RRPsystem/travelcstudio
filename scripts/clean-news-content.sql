@@ -10,9 +10,9 @@ WHERE content::text LIKE '%<style%'
    OR content::text LIKE '%Reset & Base Styles%'
    OR content::text LIKE '%canvas-area%';
 
--- Then run this to clear the content field for affected items
+-- Then run this to clear the content field for affected items (content is JSON type)
 UPDATE news_items 
-SET content = ''
+SET content = NULL
 WHERE content::text LIKE '%<style%' 
    OR content::text LIKE '%wb-block%' 
    OR content::text LIKE '%Reset & Base Styles%'

@@ -3,6 +3,7 @@ import { Newspaper, Eye, Plus, Pencil, Trash2 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 import { NewsEditor } from '../../Admin/NewsEditor';
+import { triggerWordPressSync } from '../../../lib/wordpressSync';
 
 interface NewsAssignment {
   id: string;
@@ -180,6 +181,9 @@ export function InternalNewsManager() {
             });
 
           if (error) throw error;
+          
+          // Trigger WordPress sync after accepting news
+          triggerWordPressSync(effectiveBrandId, 'news');
         }
       } else {
         const { error } = await supabase
@@ -191,6 +195,11 @@ export function InternalNewsManager() {
           .eq('id', assignmentId);
 
         if (error) throw error;
+        
+        // Trigger WordPress sync after toggling publish status
+        if (effectiveBrandId && !currentValue) {
+          triggerWordPressSync(effectiveBrandId, 'news');
+        }
       }
       await loadAssignments();
     } catch (error) {

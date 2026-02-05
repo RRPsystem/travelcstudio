@@ -3,7 +3,7 @@
  * Plugin Name: TravelC Content
  * Plugin URI: https://travelcstudio.com
  * Description: Synchroniseert nieuws en bestemmingen van TravelCStudio naar WordPress. Content wordt beheerd in TravelCStudio en automatisch getoond op WordPress sites van brands die de content hebben geactiveerd.
- * Version: 1.0.70
+ * Version: 1.0.71
  * Author: RRP System
  * Author URI: https://rrpsystem.com
  * License: GPL v2 or later
@@ -15,7 +15,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('TCC_VERSION', '1.0.70');
+define('TCC_VERSION', '1.0.71');
 define('TCC_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TCC_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -101,6 +101,81 @@ class TravelC_Content {
         // Add sync button to admin
         add_action('admin_notices', array($this, 'show_sync_notice'));
         add_action('admin_post_tcc_sync_destinations', array($this, 'handle_manual_sync'));
+        
+        // Register REST API webhook endpoint for automatic sync from TravelCStudio
+        add_action('rest_api_init', array($this, 'register_webhook_endpoint'));
+    }
+    
+    /**
+     * Register webhook endpoint for automatic sync triggers from TravelCStudio
+     */
+    public function register_webhook_endpoint() {
+        register_rest_route('travelc/v1', '/sync', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'handle_webhook_sync'),
+            'permission_callback' => array($this, 'verify_webhook_token'),
+        ));
+    }
+    
+    /**
+     * Verify webhook token from TravelCStudio
+     */
+    public function verify_webhook_token($request) {
+        $token = $request->get_header('X-TravelC-Token');
+        $expected_token = get_option('tcc_webhook_token', '');
+        
+        // If no token is set, generate one and save it
+        if (empty($expected_token)) {
+            $expected_token = wp_generate_password(32, false);
+            update_option('tcc_webhook_token', $expected_token);
+        }
+        
+        // Also accept the brand_id as a simple verification
+        $brand_id = $request->get_param('brand_id');
+        if (!empty($brand_id) && $brand_id === $this->brand_id) {
+            return true;
+        }
+        
+        return $token === $expected_token;
+    }
+    
+    /**
+     * Handle webhook sync request from TravelCStudio
+     */
+    public function handle_webhook_sync($request) {
+        $type = $request->get_param('type'); // 'destination', 'news', or 'all'
+        $brand_id = $request->get_param('brand_id');
+        
+        // Log the webhook call
+        error_log('[TCC Webhook] Received sync request: type=' . $type . ', brand_id=' . $brand_id);
+        
+        // Verify brand_id matches
+        if (!empty($brand_id) && $brand_id !== $this->brand_id) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'message' => 'Brand ID mismatch'
+            ), 403);
+        }
+        
+        $synced = array();
+        
+        if ($type === 'destination' || $type === 'all') {
+            $this->sync_destinations(true);
+            $synced[] = 'destinations';
+        }
+        
+        if ($type === 'news' || $type === 'all') {
+            $this->sync_news(true);
+            $synced[] = 'news';
+        }
+        
+        error_log('[TCC Webhook] Sync completed: ' . implode(', ', $synced));
+        
+        return new WP_REST_Response(array(
+            'success' => true,
+            'synced' => $synced,
+            'timestamp' => current_time('mysql')
+        ), 200);
     }
     
     /**

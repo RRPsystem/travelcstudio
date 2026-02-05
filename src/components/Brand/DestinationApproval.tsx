@@ -3,6 +3,7 @@ import { MapPin, Plus, Pencil, Trash2, Eye } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { BrandDestinationForm } from './BrandDestinationForm';
+import { triggerWordPressSync } from '../../lib/wordpressSync';
 
 interface DestinationAssignment {
   id: string;
@@ -189,6 +190,11 @@ export function DestinationApproval() {
             });
 
           if (error) throw error;
+          
+          // Trigger WordPress sync after accepting destination
+          if (effectiveBrandId) {
+            triggerWordPressSync(effectiveBrandId, 'destination');
+          }
         }
       } else {
         const { error } = await supabase
@@ -200,6 +206,11 @@ export function DestinationApproval() {
           .eq('id', assignmentId);
 
         if (error) throw error;
+        
+        // Trigger WordPress sync after toggling publish status
+        if (effectiveBrandId && !currentValue) {
+          triggerWordPressSync(effectiveBrandId, 'destination');
+        }
       }
       await loadAssignments();
     } catch (error) {
