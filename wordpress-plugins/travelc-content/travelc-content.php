@@ -3,7 +3,7 @@
  * Plugin Name: TravelC Content
  * Plugin URI: https://travelcstudio.com
  * Description: Synchroniseert nieuws en bestemmingen van TravelCStudio naar WordPress. Content wordt beheerd in TravelCStudio en automatisch getoond op WordPress sites van brands die de content hebben geactiveerd.
- * Version: 1.0.69
+ * Version: 1.0.70
  * Author: RRP System
  * Author URI: https://rrpsystem.com
  * License: GPL v2 or later
@@ -15,7 +15,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('TCC_VERSION', '1.0.69');
+define('TCC_VERSION', '1.0.70');
 define('TCC_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TCC_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -275,6 +275,7 @@ class TravelC_Content {
     
     /**
      * Get news content from TravelCStudio data
+     * Returns clean article text without builder HTML/CSS
      */
     private function get_news_content($news) {
         $content = '';
@@ -287,29 +288,15 @@ class TravelC_Content {
             }
         }
         
-        // Strip embedded CSS/style tags from builder output
-        $content = preg_replace('/<style[^>]*>.*?<\/style>/is', '', $content);
+        // If content looks like builder output (contains style tags or builder classes), 
+        // it's corrupted data - return empty and use excerpt instead
+        if (preg_match('/<style|wb-block|\.sidebar|\.canvas-area|Reset & Base Styles/i', $content)) {
+            // This is builder HTML, not article content - skip it
+            return '';
+        }
         
-        // Also strip any CSS that starts with /* Reset or /* Component
-        $content = preg_replace('/\/\*\s*(Reset|Component|Utility).*?\*\/.*?(?=<|$)/is', '', $content);
-        
-        // Clean up any remaining raw CSS (lines starting with common CSS patterns)
-        $lines = explode("\n", $content);
-        $filtered_lines = array_filter($lines, function($line) {
-            $trimmed = trim($line);
-            // Skip lines that look like CSS rules
-            if (preg_match('/^[a-z\.\#\*\@\[\:]/i', $trimmed) && strpos($trimmed, '{') !== false) {
-                return false;
-            }
-            if (preg_match('/^\s*(margin|padding|font-|color|background|border|display|position|width|height|box-sizing|line-height)[\s:]/i', $trimmed)) {
-                return false;
-            }
-            if (preg_match('/^\s*[\}\{]\s*$/', $trimmed)) {
-                return false;
-            }
-            return true;
-        });
-        $content = implode("\n", $filtered_lines);
+        // Basic HTML cleanup for normal content
+        $content = wp_kses_post($content);
         
         return trim($content);
     }
