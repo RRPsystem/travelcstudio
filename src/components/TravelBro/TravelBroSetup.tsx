@@ -995,53 +995,22 @@ export function TravelBroSetup() {
   };
 
   const handleCreateRoadbook = async (trip: any) => {
-    try {
-      // Generate unique slug with timestamp
-      const uniqueSlug = `roadbook-${trip.share_token.substring(0, 8)}-${Date.now()}`;
-      
-      // Create a new page in the pages table for the roadbook
-      const { data: newPage, error: pageError } = await db.supabase
-        .from('pages')
-        .insert({
-          brand_id: trip.brand_id,
-          owner_user_id: user?.id,
-          title: trip.name,
-          slug: uniqueSlug,
-          content_type: 'roadbook',
-          content_json: {
-            tripId: trip.id,
-            shareToken: trip.share_token,
-            travelBroUrl: getShareUrl(trip.share_token),
-            ...trip.parsed_data
-          },
-          status: 'published'
-        })
-        .select()
-        .single();
-
-      if (pageError) throw pageError;
-
-      // Try to update the trip with the page_id (column may not exist yet)
-      try {
-        await db.supabase
-          .from('travel_trips')
-          .update({ page_id: newPage.id })
-          .eq('id', trip.id);
-      } catch (e) {
-        console.warn('Could not update page_id on trip (column may not exist):', e);
-      }
-
-      alert('✅ Roadbook aangemaakt! Je wordt doorgestuurd naar de builder...');
-      
-      // Open the roadbook in the builder
-      window.open(`https://www.ai-websitestudio.nl/builder.html?page_id=${newPage.id}`, '_blank');
-      
-      // Reload data to show the link
-      loadData();
-    } catch (error) {
-      console.error('Error creating roadbook:', error);
-      alert('❌ Fout bij aanmaken roadbook: ' + (error instanceof Error ? error.message : 'Onbekende fout'));
+    // Only allow roadbook creation if trip has a compositor_booking_id
+    if (!trip.compositor_booking_id) {
+      alert('❌ Roadbook kan alleen aangemaakt worden voor reizen met een Travel Compositor ID.\n\nReizen aangemaakt via PDF of handmatig kunnen (nog) geen roadbook krijgen.');
+      return;
     }
+
+    // Open the builder directly with the TC ID pre-filled
+    // The builder will handle loading the trip data and creating the page
+    const builderUrl = new URL('https://www.ai-websitestudio.nl/builder.html');
+    builderUrl.searchParams.set('tc_id', trip.compositor_booking_id);
+    builderUrl.searchParams.set('mode', 'roadbook');
+    builderUrl.searchParams.set('brand_id', trip.brand_id);
+    builderUrl.searchParams.set('trip_id', trip.id);
+    builderUrl.searchParams.set('trip_name', trip.name);
+    
+    window.open(builderUrl.toString(), '_blank');
   };
 
   const [showQRCode, setShowQRCode] = useState(false);
@@ -2306,13 +2275,17 @@ export function TravelBroSetup() {
                                   Bekijk Roadbook
                                 </button>
                               </div>
-                            ) : (
+                            ) : selectedTrip.compositor_booking_id ? (
                               <button
                                 onClick={() => handleCreateRoadbook(selectedTrip)}
                                 className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
                               >
                                 🗺️ Maak Roadbook
                               </button>
+                            ) : (
+                              <p className="text-sm text-gray-500 italic">
+                                Roadbook alleen beschikbaar voor reizen met Travel Compositor ID
+                              </p>
                             )}
                           </div>
 
