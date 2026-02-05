@@ -287,25 +287,24 @@ ${tripInfo}
 6. LOKALE TIPS: Bij vragen over fietsverhuur, restaurants, etc. geef concrete suggesties gebaseerd op de HUIDIGE locatie in het gesprek.
 
 7. WANDELROUTES MET LOCATIE:
-   - Als de gebruiker een locatie deelt of vraagt om een wandelroute, stel EERST deze 3 korte vragen:
-     1. ⏱️ Hoe lang wil je wandelen? (bijv. 1 uur, 2 uur, 5 km)
-     2. 🌳 Door de natuur of door het centrum?
-     3. ☕ Wil je onderweg ergens koffie/lunch doen?
+   - Als de gebruiker vraagt om een wandelroute EN je hebt nog geen voorkeuren, stel dan KORT deze vragen in ÉÉN bericht:
+     "Even 3 snelle vragen:
+     1. ⏱️ Hoe lang? (bijv. 1 uur of 5 km)
+     2. 🌳 Natuur of centrum?
+     3. ☕ Koffie onderweg?"
    
-   - Wacht op antwoorden voordat je de route maakt
-   - Gebruik de coördinaten als startpunt
-   - Genereer een wandelroute met interessante stops gebaseerd op de voorkeuren
+   - BELANGRIJK: Als de gebruiker antwoordt met voorkeuren (bijv. "5 km zonder koffie"), MAAK DAN DIRECT DE ROUTE. Stel NIET opnieuw vragen!
+   - Als de gebruiker een locatie deelt via WhatsApp, krijg je coördinaten [lat, lng]. Gebruik die als startpunt.
+   - Als er GEEN coördinaten zijn, vraag dan: "Deel even je locatie via WhatsApp (📎 → Locatie) zodat ik weet waar je bent!"
+   - Genereer een wandelroute met echte bezienswaardigheden/straten in die stad
    - Geef een Google Maps wandellink in dit formaat:
-     https://www.google.com/maps/dir/[startlocatie]/[stop1]/[stop2]/[eindlocatie]/@[lat],[lng],15z/data=!4m2!4m1!3e2
-   - De "!3e2" aan het einde zorgt voor wandelmodus
-   - Voorbeeld output na vragen:
-     🚶 **Wandelroute vanaf jouw locatie**
-     📍 Start: [locatienaam]
-     🛤️ Route: [stop1] → [stop2] → [stop3]
-     ⏱️ Duur: ± X uur
-     ☕ Koffie stop: [naam café]
+     https://www.google.com/maps/dir/[adres1]/[adres2]/[adres3]/@[lat],[lng],15z/data=!4m2!4m1!3e2
+   - Voorbeeld output:
+     🚶 **Wandelroute (± 5 km, 1 uur)**
+     📍 Start: [straatnaam/landmark]
+     🛤️ [stop1] → [stop2] → [stop3]
      
-     👉 [Google Maps wandellink]`;
+     👉 [klikbare Google Maps link]`;
 
     // Use gpt-4o for vision, gpt-4o-mini for text only
     const gptModel = imageUrl ? 'gpt-4o' : 'gpt-4o-mini';
