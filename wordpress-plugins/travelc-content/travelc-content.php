@@ -3,7 +3,7 @@
  * Plugin Name: TravelC Content
  * Plugin URI: https://travelcstudio.com
  * Description: Synchroniseert nieuws en bestemmingen van TravelCStudio naar WordPress. Content wordt beheerd in TravelCStudio en automatisch getoond op WordPress sites van brands die de content hebben geactiveerd.
- * Version: 1.0.68
+ * Version: 1.0.69
  * Author: RRP System
  * Author URI: https://rrpsystem.com
  * License: GPL v2 or later
@@ -15,7 +15,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('TCC_VERSION', '1.0.68');
+define('TCC_VERSION', '1.0.69');
 define('TCC_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TCC_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -176,10 +176,13 @@ class TravelC_Content {
             'has_archive' => true,
             'hierarchical' => false,
             'rewrite' => array('slug' => 'nieuws', 'with_front' => false),
-            'supports' => array('title', 'editor', 'thumbnail', 'excerpt'),
+            'supports' => array('title', 'editor', 'thumbnail', 'excerpt', 'custom-fields'),
             'show_in_rest' => true,
             'menu_icon' => 'dashicons-megaphone',
         ));
+        
+        // Add Elementor support for nieuws post type
+        add_post_type_support('nieuws', 'elementor');
     }
     
     /**
