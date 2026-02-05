@@ -2151,191 +2151,161 @@ export function TravelBroSetup() {
                 )}
               </div>
 
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <Phone className="w-5 h-5 mr-2 text-orange-600" />
-                  Stuur WhatsApp Uitnodiging
-                </h3>
-
-                {!isTwilioConfigured && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                    <p className="text-sm text-yellow-800">
-                      <strong>WhatsApp niet geconfigureerd.</strong> Ga naar de Settings tab om je Twilio credentials in te vullen.
-                    </p>
+              {/* === ACTIE CARDS GRID === */}
+              <div className="grid md:grid-cols-2 gap-4">
+                {/* Card 1: Deel de Reis */}
+                <div className="bg-white rounded-xl shadow-sm border p-5">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                      <Share2 className="w-5 h-5 text-green-600" />
+                    </div>
+                    <h3 className="font-semibold text-gray-900">Deel de Reis</h3>
                   </div>
-                )}
-
-                {isTwilioConfigured && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                    <p className="text-sm text-blue-900 font-semibold mb-2">
-                      📋 WhatsApp Business Account Info
-                    </p>
-                    <p className="text-xs text-blue-800 mb-1">
-                      • Voor het <strong>eerste bericht</strong> naar een klant heb je een <strong>approved message template</strong> nodig
-                    </p>
-                    <p className="text-xs text-blue-800 mb-1">
-                      • Als de klant <strong>eerst een bericht stuurt</strong>, kun je 24 uur lang vrije tekst sturen
-                    </p>
-                    <p className="text-xs text-blue-800">
-                      • Template maken: <a href="https://console.twilio.com/us1/develop/sms/content-editor" target="_blank" className="underline font-medium">Twilio Console → Content Templates</a>
-                    </p>
-                  </div>
-                )}
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Naam klant (optioneel)
-                    </label>
-                    <input
-                      type="text"
-                      value={inviteClientName}
-                      onChange={(e) => setInviteClientName(e.target.value)}
-                      placeholder="bijv. Alex"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      WhatsApp Nummer
-                    </label>
-                    <input
-                      type="tel"
-                      value={invitePhone}
-                      onChange={(e) => setInvitePhone(e.target.value)}
-                      placeholder="+31612345678"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <label className="flex items-start cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={skipIntake}
-                        onChange={(e) => setSkipIntake(e.target.checked)}
-                        className="mt-1 h-4 w-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
-                      />
-                      <span className="ml-3 flex-1">
-                        <span className="text-sm font-medium text-gray-900 block">Intake formulier overslaan</span>
-                        <span className="text-xs text-gray-600">Klant kan direct chatten zonder intake</span>
-                      </span>
-                    </label>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <button
-                      onClick={toggleQRCode}
-                      disabled={!selectedTrip}
-                      className="flex items-center justify-center space-x-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-lg font-semibold transition-colors"
-                    >
-                      <Phone size={18} />
-                      <span className="text-sm">{showQRCode ? 'Verberg' : 'Toon'} QR</span>
-                    </button>
-
-                    <button
-                      onClick={sendWhatsAppInvite}
-                      disabled={sendingInvite || !isTwilioConfigured || !invitePhone.trim()}
-                      className="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-lg font-semibold transition-colors"
-                    >
-                      {sendingInvite ? (
-                        <>
-                          <Loader className="w-4 h-4 animate-spin" />
-                          <span className="text-sm">Verzenden...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Send size={18} />
-                          <span className="text-sm">Via Template</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  {showQRCode && selectedTrip && (() => {
-                    const qrData = getQRCodeData();
-                    if (!qrData) return null;
-                    return (
-                      <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-6 mb-4 border-2 border-purple-200">
+                  
+                  <div className="space-y-3">
+                    {/* Web Link */}
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <p className="text-xs text-gray-500 mb-1">🌐 Web Link</p>
+                      <code className="text-xs text-gray-700 break-all block mb-2">{getShareUrl(selectedTrip.share_token)}</code>
+                      <button
+                        onClick={() => copyClientLink(selectedTrip.share_token)}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Share2 size={14} />
+                        Kopieer Link
+                      </button>
+                    </div>
+                    
+                    {/* QR Code */}
+                    {(() => {
+                      const qrData = getQRCodeData();
+                      return qrData ? (
                         <div className="text-center">
-                          <h4 className="text-lg font-semibold text-gray-900 mb-3">📱 Scan & Start</h4>
-
-                          <div className="bg-white rounded-lg p-4 inline-block shadow-md mb-4">
-                            <img
-                              src={qrData.qrCodeUrl}
-                              alt="QR Code"
-                              className="w-48 h-48 mx-auto"
-                            />
-                          </div>
-
-                          {/* Web Link - duidelijk zichtbaar */}
-                          <div className="bg-green-100 rounded-lg p-4 mb-4 border-2 border-green-400">
-                            <p className="text-sm font-semibold text-green-800 mb-2">🌐 Web Link voor klant:</p>
-                            <div className="bg-white rounded p-2 mb-2 font-mono text-sm text-gray-800 break-all">
-                              {getShareUrl(selectedTrip.share_token)}
-                            </div>
-                            <button
-                              onClick={() => copyClientLink(selectedTrip.share_token)}
-                              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
-                            >
-                              📋 Kopieer Link
-                            </button>
-                          </div>
-
-                          {/* Roadbook koppeling */}
-                          <div className="bg-purple-100 rounded-lg p-4 mb-4 border-2 border-purple-400">
-                            <p className="text-sm font-semibold text-purple-800 mb-2">🗺️ Roadbook:</p>
-                            {selectedTrip.page_id ? (
-                              <div className="flex items-center gap-2">
-                                <span className="text-green-600 font-semibold">✅ Gekoppeld</span>
-                                <button
-                                  onClick={() => window.open(`https://www.ai-websitestudio.nl/preview.html?page_id=${selectedTrip.page_id}`, '_blank')}
-                                  className="text-purple-600 hover:text-purple-800 underline text-sm"
-                                >
-                                  Bekijk Roadbook
-                                </button>
-                              </div>
-                            ) : selectedTrip.compositor_booking_id ? (
-                              <button
-                                onClick={() => handleCreateRoadbook(selectedTrip)}
-                                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
-                              >
-                                🗺️ Maak Roadbook
-                              </button>
-                            ) : (
-                              <p className="text-sm text-gray-500 italic">
-                                Roadbook alleen beschikbaar voor reizen met Travel Compositor ID
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="bg-orange-100 rounded-lg p-3 mb-4 border-2 border-dashed border-orange-400">
-                            <p className="text-xs text-gray-600 mb-1">Of stuur deze WhatsApp code:</p>
-                            <p className="text-2xl font-bold text-orange-600 tracking-wider">{qrData.code}</p>
-                            <p className="text-xs text-gray-600 mt-1">naar +{qrData.cleanNumber}</p>
-                          </div>
-
-                          <div className="bg-blue-50 rounded-lg p-3 text-left text-xs">
-                            <p className="text-blue-900 mb-2">
-                              <strong>✅ Hoe werkt het:</strong>
-                            </p>
-                            <p className="text-blue-800 mb-1">1. Klant scant QR code → WhatsApp opent automatisch</p>
-                            <p className="text-blue-800 mb-1">2. Code staat al ingevuld, klant tikt op verzenden</p>
-                            <p className="text-blue-800 mb-3">3. Direct chatten zonder template problemen!</p>
-
-                            <p className="text-blue-900 font-semibold mb-1">⏰ 24-uur regel:</p>
-                            <p className="text-blue-800">
-                              Na elk bericht van de klant kun je 24 uur vrij antwoorden.
-                              Voor vakanties geen probleem: elke vraag herstart de timer!
-                            </p>
-                          </div>
+                          <p className="text-xs text-gray-500 mb-2">📱 WhatsApp QR Code</p>
+                          <img src={qrData.qrCodeUrl} alt="QR Code" className="w-32 h-32 mx-auto rounded-lg shadow bg-white p-1" />
+                          <p className="text-xs text-gray-500 mt-2">Code: <span className="font-mono font-bold text-orange-600">{qrData.code}</span></p>
                         </div>
+                      ) : null;
+                    })()}
+                  </div>
+                </div>
+
+                {/* Card 2: Roadbook */}
+                <div className="bg-white rounded-xl shadow-sm border p-5">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                      <Route className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <h3 className="font-semibold text-gray-900">Roadbook</h3>
+                  </div>
+                  
+                  {selectedTrip.page_id ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-green-600">
+                        <CheckCircle size={18} />
+                        <span className="font-medium">Roadbook aangemaakt</span>
                       </div>
-                    );
-                  })()}
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => window.open(`https://www.ai-websitestudio.nl/preview.html?page_id=${selectedTrip.page_id}&brand_id=${selectedTrip.brand_id}`, '_blank')}
+                          className="bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium py-2.5 px-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+                        >
+                          <ExternalLink size={14} />
+                          Bekijk
+                        </button>
+                        <button
+                          onClick={() => window.open(`https://www.ai-websitestudio.nl/builder.html?page_id=${selectedTrip.page_id}`, '_blank')}
+                          className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium py-2.5 px-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Edit size={14} />
+                          Bewerk
+                        </button>
+                      </div>
+                    </div>
+                  ) : selectedTrip.compositor_booking_id ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-gray-600">Maak een interactief roadbook voor je klant.</p>
+                      <button
+                        onClick={() => handleCreateRoadbook(selectedTrip)}
+                        className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Route size={18} />
+                        Maak Roadbook
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-gray-500">Alleen beschikbaar voor reizen met Travel Compositor ID</p>
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {/* === WHATSAPP UITNODIGING (collapsed) === */}
+              <details className="bg-white rounded-xl shadow-sm border">
+                <summary className="p-5 cursor-pointer hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                      <Send className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">WhatsApp Uitnodiging Versturen</h3>
+                      <p className="text-xs text-gray-500">Stuur een template bericht naar de klant</p>
+                    </div>
+                  </div>
+                </summary>
+                <div className="px-5 pb-5 border-t">
+                  {!isTwilioConfigured ? (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
+                      <p className="text-sm text-yellow-800">
+                        <strong>WhatsApp niet geconfigureerd.</strong> Ga naar Instellingen om Twilio in te stellen.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 mt-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Naam klant</label>
+                          <input
+                            type="text"
+                            value={inviteClientName}
+                            onChange={(e) => setInviteClientName(e.target.value)}
+                            placeholder="Alex"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">WhatsApp nummer</label>
+                          <input
+                            type="tel"
+                            value={invitePhone}
+                            onChange={(e) => setInvitePhone(e.target.value)}
+                            placeholder="+31612345678"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500"
+                          />
+                        </div>
+                      </div>
+                      <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={skipIntake}
+                          onChange={(e) => setSkipIntake(e.target.checked)}
+                          className="h-4 w-4 text-green-600 border-gray-300 rounded"
+                        />
+                        Intake formulier overslaan
+                      </label>
+                      <button
+                        onClick={sendWhatsAppInvite}
+                        disabled={sendingInvite || !invitePhone.trim()}
+                        className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-medium py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                      >
+                        {sendingInvite ? <Loader className="w-4 h-4 animate-spin" /> : <Send size={16} />}
+                        {sendingInvite ? 'Verzenden...' : 'Verstuur Template'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </details>
 
               <div className="bg-white rounded-lg shadow-sm border p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
