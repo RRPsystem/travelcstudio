@@ -729,8 +729,10 @@ export function TravelBroSetup() {
       setCustomContext(DEFAULT_CUSTOM_CONTEXT);
       setGptModel('gpt-4o');
       setGptTemperature(0.7);
-      setActiveTab('active');
-      loadData();
+      
+      // Navigate directly to the new trip's detail page
+      await loadData();
+      loadTripDetails(createdTrip);
     } catch (error) {
       console.error('❌ Error in handleCreateTravelBro:', error);
       alert('❌ Fout bij aanmaken: ' + (error instanceof Error ? error.message : 'Onbekende fout'));
