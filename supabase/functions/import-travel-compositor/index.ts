@@ -137,16 +137,33 @@ function processAndReturnTravel(data: any, rawTcData: any, travelId: string) {
       t.type === 'FLIGHT' || t.type === 'flight' || t.transportType === 'FLIGHT'
     ) || [],
     
+    // Cruises - from transports or separate cruises array
+    cruises: rawTcData.cruises || rawTcData.transports?.filter((t: any) => 
+      t.type === 'CRUISE' || t.type === 'cruise' || t.type === 'SHIP' || 
+      t.type === 'FERRY' || t.transportType === 'CRUISE'
+    ) || data.cruises || [],
+    
+    // Transfers - pickup/dropoff between locations
+    transfers: rawTcData.transfers || data.transfers || rawTcData.transports?.filter((t: any) => 
+      t.type === 'TRANSFER' || t.type === 'transfer' || t.type === 'SHUTTLE' ||
+      t.type === 'PRIVATE_TRANSFER' || t.transportType === 'TRANSFER'
+    ) || [],
+    
     // Other transports (trains, ferries, etc.)
     otherTransports: data.other_transports || rawTcData.transports?.filter((t: any) => 
-      t.type !== 'FLIGHT' && t.type !== 'flight' && t.transportType !== 'FLIGHT'
+      t.type !== 'FLIGHT' && t.type !== 'flight' && t.transportType !== 'FLIGHT' &&
+      t.type !== 'CRUISE' && t.type !== 'cruise' && t.type !== 'SHIP' &&
+      t.type !== 'TRANSFER' && t.type !== 'transfer'
     ) || [],
     
     // Car rentals - from RAW TC data
     carRentals: rawTcData.cars || data.car_rentals || [],
     
-    // Activities
-    activities: data.activities || [],
+    // Activities/Excursions - from activities array or excursions
+    activities: rawTcData.activities || data.activities || rawTcData.excursions || data.excursions || [],
+    
+    // Excursions (if separate from activities)
+    excursions: rawTcData.excursions || data.excursions || [],
     
     // Itinerary / day program
     itinerary: data.itinerary || data.day_by_day || [],
@@ -184,6 +201,7 @@ function processAndReturnTravel(data: any, rawTcData: any, travelId: string) {
 
   console.log(`[Import TC] Processed travel: ${travel.title}`);
   console.log(`[Import TC] Hotels: ${travel.hotels?.length || 0}, Flights: ${travel.flights?.length || 0}, Cars: ${travel.carRentals?.length || 0}, Images: ${travel.images?.length || 0}`);
+  console.log(`[Import TC] Cruises: ${travel.cruises?.length || 0}, Transfers: ${travel.transfers?.length || 0}, Activities: ${travel.activities?.length || 0}`);
   console.log(`[Import TC] Destinations with descriptions: ${travel.destinations?.filter((d: any) => d.description)?.length || 0}`);
 
   return new Response(

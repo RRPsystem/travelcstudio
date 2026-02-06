@@ -1184,6 +1184,89 @@ export function TravelManagement() {
                   </div>
                 </div>
               )}
+
+              {/* Cruises (read-only) */}
+              {editingTravel?.cruises?.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    🚢 Cruises ({editingTravel?.cruises?.length || 0})
+                  </label>
+                  <div className="space-y-2">
+                    {editingTravel?.cruises?.map((cruise: any, idx: number) => (
+                      <div key={idx} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">🚢</span>
+                          <span className="font-medium">
+                            {cruise.shipName || cruise.name || cruise.company || 'Cruise'}
+                          </span>
+                          {cruise.cabinType && <span className="text-sm text-gray-500">({cruise.cabinType})</span>}
+                        </div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          {cruise.departurePort && <span className="mr-2">📍 {cruise.departurePort}</span>}
+                          {cruise.arrivalPort && cruise.arrivalPort !== cruise.departurePort && <span>→ {cruise.arrivalPort}</span>}
+                          {cruise.nights && <span className="ml-2">({cruise.nights} nachten)</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Transfers (read-only) */}
+              {editingTravel?.transfers?.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    🚐 Transfers ({editingTravel?.transfers?.length || 0})
+                  </label>
+                  <div className="space-y-2">
+                    {editingTravel?.transfers?.map((transfer: any, idx: number) => (
+                      <div key={idx} className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">🚐</span>
+                          <span className="font-medium">
+                            {transfer.pickupLocation || transfer.from || 'Ophalen'} → {transfer.dropoffLocation || transfer.to || 'Afzetten'}
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          {transfer.type && <span className="mr-2">Type: {transfer.type}</span>}
+                          {transfer.date && <span className="mr-2">📅 {transfer.date}</span>}
+                          {transfer.time && <span>🕐 {transfer.time}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Activities/Excursions (read-only) */}
+              {(editingTravel?.activities?.length > 0 || editingTravel?.excursions?.length > 0) && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    🎯 Activiteiten & Excursies ({(editingTravel?.activities?.length || 0) + (editingTravel?.excursions?.length || 0)})
+                  </label>
+                  <div className="space-y-2">
+                    {[...(editingTravel?.activities || []), ...(editingTravel?.excursions || [])].map((activity: any, idx: number) => (
+                      <div key={idx} className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">🎯</span>
+                          <span className="font-medium">
+                            {activity.name || activity.title || 'Activiteit'}
+                          </span>
+                          {activity.duration && <span className="text-sm text-gray-500">({activity.duration})</span>}
+                        </div>
+                        {activity.description && (
+                          <p className="text-sm text-gray-600 mt-1 line-clamp-2">{activity.description}</p>
+                        )}
+                        <div className="text-sm text-gray-600 mt-1">
+                          {activity.location && <span className="mr-2">📍 {activity.location}</span>}
+                          {activity.date && <span className="mr-2">📅 {activity.date}</span>}
+                          {activity.price && <span>💰 €{activity.price}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

@@ -19,3 +19,8 @@ ALTER TABLE travelc_travels ADD COLUMN IF NOT EXISTS hero_style TEXT DEFAULT 'sl
 ALTER TABLE travelc_travels ADD COLUMN IF NOT EXISTS continents JSONB DEFAULT '[]';
 ALTER TABLE travelc_travels ADD COLUMN IF NOT EXISTS video_start_time INTEGER DEFAULT 0;
 ALTER TABLE travelc_travels ADD COLUMN IF NOT EXISTS video_end_time INTEGER;
+
+-- New columns for cruises, transfers, excursions
+ALTER TABLE travelc_travels ADD COLUMN IF NOT EXISTS cruises JSONB DEFAULT '[]';
+ALTER TABLE travelc_travels ADD COLUMN IF NOT EXISTS transfers JSONB DEFAULT '[]';
+ALTER TABLE travelc_travels ADD COLUMN IF NOT EXISTS excursions JSONB DEFAULT '[]';
