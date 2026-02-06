@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plane, Plus, Edit2, Trash2, Eye, ArrowLeft, Save, Image as ImageIcon, Loader2, Download, ToggleLeft, ToggleRight, Hotel, MapPin, Calendar, Euro, Video, Images, Star } from 'lucide-react';
+import { Plane, Edit2, Trash2, ArrowLeft, Save, Loader2, Download, Hotel, MapPin, Car, Check, X, Image as ImageIcon, Calendar, Euro, Star } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -14,18 +14,28 @@ interface Travel {
   number_of_days?: number;
   price_per_person?: number;
   price_description?: string;
+  currency?: string;
   destinations?: any[];
   countries?: string[];
   hotels?: any[];
+  flights?: any[];
+  car_rentals?: any[];
+  activities?: any[];
   images?: string[];
   hero_image?: string;
   hero_video_url?: string;
   route_map_url?: string;
   itinerary?: any[];
-  included?: string[];
-  excluded?: string[];
+  included?: any[];
+  excluded?: any[];
   highlights?: string[];
+  selling_points?: string[];
   practical_info?: any;
+  price_breakdown?: any;
+  travelers?: any;
+  ai_summary?: string;
+  all_texts?: any;
+  raw_tc_data?: any;
   created_at: string;
   updated_at: string;
 }
@@ -514,17 +524,134 @@ export function TravelManagement() {
           {formData.hotels.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Hotels ({formData.hotels.length})</label>
-              <div className="flex flex-wrap gap-2">
+              <div className="space-y-2">
                 {formData.hotels.map((hotel: any, idx: number) => (
-                  <span key={idx} className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm flex items-center gap-1">
-                    <Hotel className="w-3 h-3" />
-                    {hotel.name || hotel}
-                    {hotel.stars && ` ★${hotel.stars}`}
-                  </span>
+                  <div key={idx} className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Hotel className="w-4 h-4 text-green-600" />
+                      <span className="font-medium">{hotel.name || hotel}</span>
+                      {hotel.stars && <span className="text-yellow-500">{'★'.repeat(hotel.stars)}</span>}
+                      {hotel.nights && <span className="text-sm text-gray-500">({hotel.nights} nachten)</span>}
+                    </div>
+                    {hotel.city && <p className="text-sm text-gray-600 mt-1">📍 {hotel.city}</p>}
+                    {hotel.mealPlan && <p className="text-sm text-gray-600">🍽️ {hotel.mealPlanDescription || hotel.mealPlan}</p>}
+                    {hotel.description && <p className="text-sm text-gray-500 mt-1 line-clamp-2">{hotel.description}</p>}
+                    {hotel.images?.length > 0 && (
+                      <div className="flex gap-2 mt-2">
+                        {hotel.images.slice(0, 3).map((img: string, i: number) => (
+                          <img key={i} src={img} alt="" className="w-16 h-12 object-cover rounded" />
+                        ))}
+                        {hotel.images.length > 3 && <span className="text-xs text-gray-400">+{hotel.images.length - 3} meer</span>}
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
           )}
+
+          {/* Flights Preview */}
+          {editingTravel?.flights?.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Vluchten ({editingTravel.flights.length})</label>
+              <div className="space-y-2">
+                {editingTravel.flights.map((flight: any, idx: number) => (
+                  <div key={idx} className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
+                    <Plane className="w-4 h-4 text-blue-600" />
+                    <div>
+                      <span className="font-medium">{flight.departureAirport || flight.departureCity}</span>
+                      <span className="mx-2">→</span>
+                      <span className="font-medium">{flight.arrivalAirport || flight.arrivalCity}</span>
+                      {flight.carrier && <span className="ml-2 text-sm text-gray-500">({flight.carrier} {flight.flightNumber})</span>}
+                    </div>
+                    {flight.departureDate && <span className="text-sm text-gray-500">{flight.departureDate}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Car Rentals Preview */}
+          {editingTravel?.car_rentals?.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Huurauto's ({editingTravel.car_rentals.length})</label>
+              <div className="space-y-2">
+                {editingTravel.car_rentals.map((car: any, idx: number) => (
+                  <div key={idx} className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Car className="w-4 h-4 text-orange-600" />
+                      <span className="font-medium">{car.company} - {car.category || car.carType}</span>
+                      {car.days && <span className="text-sm text-gray-500">({car.days} dagen)</span>}
+                    </div>
+                    {car.pickupLocation && <p className="text-sm text-gray-600 mt-1">📍 Ophalen: {car.pickupLocation}</p>}
+                    {car.dropoffLocation && car.dropoffLocation !== car.pickupLocation && (
+                      <p className="text-sm text-gray-600">📍 Inleveren: {car.dropoffLocation}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Images Gallery */}
+          {editingTravel?.images?.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Afbeeldingen ({editingTravel.images.length})</label>
+              <div className="grid grid-cols-6 gap-2">
+                {editingTravel.images.slice(0, 12).map((img: string, idx: number) => (
+                  <img key={idx} src={img} alt="" className="w-full h-20 object-cover rounded-lg" />
+                ))}
+                {editingTravel.images.length > 12 && (
+                  <div className="w-full h-20 bg-gray-100 rounded-lg flex items-center justify-center text-gray-500 text-sm">
+                    +{editingTravel.images.length - 12} meer
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Itinerary Preview */}
+          {editingTravel?.itinerary?.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Dagprogramma ({editingTravel.itinerary.length} dagen)</label>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {editingTravel.itinerary.map((day: any, idx: number) => (
+                  <div key={idx} className="p-2 bg-gray-50 border rounded-lg">
+                    <span className="font-medium text-sm">Dag {day.dayNumber || idx + 1}: {day.title || day.destination || ''}</span>
+                    {day.description && <p className="text-xs text-gray-500 line-clamp-1">{day.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Included/Excluded */}
+          <div className="grid grid-cols-2 gap-4">
+            {editingTravel?.included?.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Inclusief ({editingTravel.included.length})</label>
+                <ul className="text-sm space-y-1 max-h-32 overflow-y-auto">
+                  {editingTravel.included.map((item: any, idx: number) => (
+                    <li key={idx} className="flex items-center gap-1 text-green-700">
+                      <Check className="w-3 h-3" /> {typeof item === 'string' ? item : item.description || item.name}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {editingTravel?.excluded?.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Exclusief ({editingTravel.excluded.length})</label>
+                <ul className="text-sm space-y-1 max-h-32 overflow-y-auto">
+                  {editingTravel.excluded.map((item: any, idx: number) => (
+                    <li key={idx} className="flex items-center gap-1 text-red-700">
+                      <X className="w-3 h-3" /> {typeof item === 'string' ? item : item.description || item.name}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
 
           {/* Save Button */}
           <div className="flex justify-end gap-3 pt-4 border-t">
