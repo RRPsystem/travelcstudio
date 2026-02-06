@@ -5,6 +5,7 @@ import { AgentManagement } from './AgentManagement';
 import { BrandForm } from './BrandForm';
 import { NewsManagement } from './NewsManagement';
 import { DestinationManagement } from './DestinationManagement';
+import { TravelManagement } from './TravelManagement';
 import { TemplateManager } from './TemplateManager';
 import { TripCatalogManager } from './TripCatalogManager';
 import RoadmapBoard from '../Brand/RoadmapBoard';
@@ -649,6 +650,7 @@ export function AdminDashboard() {
           {activeSection === 'agents' && <AgentManagement />}
           {activeSection === 'admin-news' && <NewsManagement />}
           {activeSection === 'destinations' && <DestinationManagement />}
+          {activeSection === 'trips' && <TravelManagement />}
           {activeSection === 'trip-catalog' && <TripCatalogManager />}
           {activeSection === 'wordpress-catalog' && <WordPressCatalogSync />}
           {activeSection === 'podcast' && <PodcastManagement />}
