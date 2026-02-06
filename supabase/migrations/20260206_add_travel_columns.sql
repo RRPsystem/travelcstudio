@@ -3,6 +3,7 @@
 
 ALTER TABLE travelc_travels ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'EUR';
 ALTER TABLE travelc_travels ADD COLUMN IF NOT EXISTS flights JSONB DEFAULT '[]';
+ALTER TABLE travelc_travels ADD COLUMN IF NOT EXISTS transports JSONB DEFAULT '[]';
 ALTER TABLE travelc_travels ADD COLUMN IF NOT EXISTS car_rentals JSONB DEFAULT '[]';
 ALTER TABLE travelc_travels ADD COLUMN IF NOT EXISTS activities JSONB DEFAULT '[]';
 ALTER TABLE travelc_travels ADD COLUMN IF NOT EXISTS selling_points JSONB DEFAULT '[]';

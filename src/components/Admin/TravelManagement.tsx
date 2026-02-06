@@ -19,6 +19,7 @@ interface Travel {
   countries?: string[];
   hotels?: any[];
   flights?: any[];
+  transports?: any[];
   car_rentals?: any[];
   activities?: any[];
   images?: string[];
@@ -199,6 +200,7 @@ export function TravelManagement() {
         countries: data.countries || [],
         hotels: data.hotels || [],
         flights: data.flights || [],
+        transports: data.transports || [],
         car_rentals: data.carRentals || [],
         activities: data.activities || [],
         images: data.images || [],
@@ -569,13 +571,37 @@ export function TravelManagement() {
             </div>
           )}
 
-          {/* Flights Preview */}
-          {editingTravel?.flights?.length > 0 && (
+          {/* Flights/Transports Preview */}
+          {(editingTravel?.flights?.length > 0 || editingTravel?.transports?.length > 0) && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Vluchten ({editingTravel.flights.length})</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Vluchten/Vervoer ({(editingTravel.flights?.length || 0) + (editingTravel.transports?.length || 0)})
+              </label>
               <div className="space-y-2">
-                {editingTravel.flights.map((flight: any, idx: number) => (
-                  <div key={idx} className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
+                {/* Show transports from raw TC data */}
+                {editingTravel.transports?.map((transport: any, idx: number) => (
+                  <div key={`t-${idx}`} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Plane className="w-4 h-4 text-blue-600" />
+                      <span className="font-medium">
+                        {transport.departure?.city || transport.departure?.name || transport.from || 'Vertrek'}
+                      </span>
+                      <span>→</span>
+                      <span className="font-medium">
+                        {transport.arrival?.city || transport.arrival?.name || transport.to || 'Aankomst'}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      {transport.carrier && <span className="mr-2">✈️ {transport.carrier}</span>}
+                      {transport.flightNumber && <span className="mr-2">{transport.flightNumber}</span>}
+                      {transport.departure?.date && <span className="mr-2">📅 {transport.departure.date}</span>}
+                      {transport.departure?.time && <span>🕐 {transport.departure.time}</span>}
+                    </div>
+                  </div>
+                ))}
+                {/* Fallback to flights if no transports */}
+                {!editingTravel.transports?.length && editingTravel.flights?.map((flight: any, idx: number) => (
+                  <div key={`f-${idx}`} className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
                     <Plane className="w-4 h-4 text-blue-600" />
                     <div>
                       <span className="font-medium">{flight.departureAirport || flight.departureCity}</span>

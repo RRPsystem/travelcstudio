@@ -64,8 +64,12 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Builder API returns both formatted data AND raw TC data
+    // We need both: data for formatted fields, raw.detail for transports/cars
     const travelData = result.data;
-    return processAndReturnTravel(travelData, travelId);
+    const rawTcData = result.raw?.detail || {};
+    
+    return processAndReturnTravel(travelData, rawTcData, travelId);
 
   } catch (error) {
     console.error("Import error:", error);
@@ -76,13 +80,15 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-function processAndReturnTravel(data: any, travelId: string) {
+function processAndReturnTravel(data: any, rawTcData: any, travelId: string) {
   // Log raw data for debugging
-  console.log(`[Import TC] Raw data keys:`, Object.keys(data));
+  console.log(`[Import TC] Formatted data keys:`, Object.keys(data));
+  console.log(`[Import TC] Raw TC data keys:`, Object.keys(rawTcData));
+  console.log(`[Import TC] Raw transports:`, rawTcData.transports?.length || 0);
+  console.log(`[Import TC] Raw cars:`, rawTcData.cars?.length || 0);
   
   // Map builder API response to our format
-  // Builder API uses: featured_image, all_images, duration_nights, duration_days, 
-  // intro_text, short_description, trip_highlights, price_per_person, etc.
+  // Use formatted data for most fields, but raw TC data for transports/cars
   const travel = {
     id: data.tc_idea_id || data.id || travelId,
     title: data.title || data.name || `Reis ${travelId}`,
@@ -98,24 +104,31 @@ function processAndReturnTravel(data: any, travelId: string) {
     // All images
     images: data.all_images || data.images || [],
     
-    // Destinations - builder uses destination_names array and destinations array
-    destinations: data.destinations || [],
+    // Destinations - from formatted data (has descriptions)
+    destinations: data.destinations || rawTcData.destinations || [],
     destinationNames: data.destination_names || [],
     
     // Countries
     countries: data.countries || [],
     
     // Hotels with full details
-    hotels: data.hotels || [],
+    hotels: data.hotels || rawTcData.hotels || [],
     
-    // Flights - check multiple possible locations
-    flights: data.flights || data.transports?.filter((t: any) => t.type === 'flight' || t.type === 'FLIGHT') || [],
+    // Transports (flights) - from RAW TC data (not in formatted data)
+    transports: rawTcData.transports || [],
+    
+    // Flights - extract from transports or use formatted flights
+    flights: data.flights || rawTcData.transports?.filter((t: any) => 
+      t.type === 'FLIGHT' || t.type === 'flight' || t.transportType === 'FLIGHT'
+    ) || [],
     
     // Other transports (trains, ferries, etc.)
-    otherTransports: data.other_transports || [],
+    otherTransports: data.other_transports || rawTcData.transports?.filter((t: any) => 
+      t.type !== 'FLIGHT' && t.type !== 'flight' && t.transportType !== 'FLIGHT'
+    ) || [],
     
-    // Car rentals - map from cars array if car_rentals is empty
-    carRentals: data.car_rentals || data.cars || [],
+    // Car rentals - from RAW TC data
+    carRentals: rawTcData.cars || data.car_rentals || [],
     
     // Activities
     activities: data.activities || [],
@@ -149,6 +162,9 @@ function processAndReturnTravel(data: any, travelId: string) {
     
     // Route map
     routeMapUrl: data.route_map_url || data.routeMapUrl || "",
+    
+    // Store raw TC data for reference
+    rawTcData: rawTcData,
   };
 
   console.log(`[Import TC] Processed travel: ${travel.title}`);
