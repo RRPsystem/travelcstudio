@@ -216,10 +216,11 @@ export function TravelManagement() {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Load travels
+      // Load travels - only admin-authored (brand travels stay in brand panel)
       const { data: travelsData, error: travelsError } = await supabase
         .from('travelc_travels')
         .select('*')
+        .or('author_type.eq.admin,author_type.is.null')
         .order('created_at', { ascending: false });
 
       if (travelsError) throw travelsError;
