@@ -66,7 +66,7 @@ interface TravelAssignment {
 }
 
 type ViewMode = 'list' | 'create' | 'edit' | 'assignments';
-type EditTab = 'general' | 'photos' | 'components' | 'categories';
+type EditTab = 'general' | 'photos' | 'components';
 type HeroStyle = 'slideshow' | 'grid' | 'single' | 'video' | 'wide';
 
 // Helper function to strip HTML tags
@@ -113,11 +113,14 @@ export function TravelManagement() {
     price_description: '',
     destinations: [] as any[],
     countries: [] as string[],
+    continents: [] as string[],
     hotels: [] as any[],
     images: [] as string[],
     hero_image: '',
     hero_video_url: '',
     hero_style: 'slideshow' as HeroStyle,
+    video_start_time: 0,
+    video_end_time: 0,
     route_map_url: '',
     itinerary: [] as any[],
     included: [] as string[],
@@ -282,6 +285,7 @@ export function TravelManagement() {
         highlights: d.highlights || []
       })),
       countries: travel.countries || [],
+      continents: (travel as any).continents || [],
       hotels: (travel.hotels || []).map((h: any) => ({
         ...h,
         description: stripHtml(h.description || '')
@@ -290,6 +294,8 @@ export function TravelManagement() {
       hero_image: travel.hero_image || '',
       hero_video_url: travel.hero_video_url || '',
       hero_style: (travel as any).hero_style || 'slideshow',
+      video_start_time: (travel as any).video_start_time || 0,
+      video_end_time: (travel as any).video_end_time || 0,
       route_map_url: travel.route_map_url || '',
       itinerary: travel.itinerary || [],
       included: travel.included || [],
@@ -425,9 +431,8 @@ export function TravelManagement() {
   if (viewMode === 'edit' && editingTravel) {
     const tabs = [
       { id: 'general', label: 'Algemeen', icon: '📋' },
-      { id: 'photos', label: 'Header & Foto\'s', icon: '�️' },
+      { id: 'photos', label: 'Header & Foto\'s', icon: '🖼️' },
       { id: 'components', label: 'Componenten', icon: '🧩' },
-      { id: 'categories', label: 'Categorieën', icon: '🏷️' },
     ];
 
     return (
@@ -551,6 +556,95 @@ export function TravelManagement() {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={6}
                   className="w-full px-3 py-2 border rounded-lg"
+                />
+              </div>
+
+              {/* Continents & Countries */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">🌍 Continenten</label>
+                  <div className="flex flex-wrap gap-2">
+                    {['Europa', 'Azië', 'Afrika', 'Noord-Amerika', 'Zuid-Amerika', 'Oceanië', 'Antarctica'].map(cont => (
+                      <label key={cont} className="flex items-center gap-1 px-3 py-1 bg-gray-50 rounded-full cursor-pointer hover:bg-gray-100">
+                        <input
+                          type="checkbox"
+                          checked={formData.continents.includes(cont)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFormData({ ...formData, continents: [...formData.continents, cont] });
+                            } else {
+                              setFormData({ ...formData, continents: formData.continents.filter(c => c !== cont) });
+                            }
+                          }}
+                          className="w-3 h-3"
+                        />
+                        <span className="text-sm">{cont}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">🏳️ Landen</label>
+                  <div className="flex flex-wrap gap-1 p-2 bg-gray-50 rounded-lg min-h-10">
+                    {formData.countries.map((country, idx) => (
+                      <span key={idx} className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-sm">{country}</span>
+                    ))}
+                    {formData.countries.length === 0 && <span className="text-gray-400 text-sm">Geen landen</span>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Categories */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">📂 Categorieën</label>
+                <div className="flex flex-wrap gap-2">
+                  {['Rondreis', 'Fly & Drive', 'Stedentrip', 'Strandvakantie', 'Avontuur', 'Luxe', 'Budget', 'Familie', 'Romantisch', 'Actief', 'Cruise', 'Safari'].map(cat => (
+                    <label key={cat} className="flex items-center gap-1 px-3 py-1 bg-gray-50 rounded-full cursor-pointer hover:bg-gray-100">
+                      <input
+                        type="checkbox"
+                        checked={formData.categories.includes(cat)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData({ ...formData, categories: [...formData.categories, cat] });
+                          } else {
+                            setFormData({ ...formData, categories: formData.categories.filter(c => c !== cat) });
+                          }
+                        }}
+                        className="w-3 h-3"
+                      />
+                      <span className="text-sm">{cat}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Themes */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">🏷️ Thema's</label>
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {formData.themes.map((theme, idx) => (
+                    <span key={idx} className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-sm flex items-center gap-1">
+                      {theme}
+                      <button
+                        onClick={() => setFormData({ ...formData, themes: formData.themes.filter((_, i) => i !== idx) })}
+                        className="text-purple-500 hover:text-red-500"
+                      >×</button>
+                    </span>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  placeholder="+ Nieuw thema toevoegen (Enter)"
+                  className="px-3 py-2 border rounded-lg text-sm w-64"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const input = e.target as HTMLInputElement;
+                      if (input.value && !formData.themes.includes(input.value)) {
+                        setFormData({ ...formData, themes: [...formData.themes, input.value] });
+                        input.value = '';
+                      }
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -701,14 +795,48 @@ export function TravelManagement() {
               {/* Hero Video URL */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Hero Video (YouTube)</label>
-                <input
-                  type="text"
-                  value={formData.hero_video_url}
-                  onChange={(e) => setFormData({ ...formData, hero_video_url: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                  placeholder="https://www.youtube.com/watch?v=..."
-                />
-                <p className="text-xs text-gray-500 mt-1">YouTube video URL voor de hero sectie</p>
+                <div className="flex gap-2 items-start">
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={formData.hero_video_url}
+                      onChange={(e) => setFormData({ ...formData, hero_video_url: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg"
+                      placeholder="https://www.youtube.com/watch?v=..."
+                    />
+                    <p className="text-xs text-gray-500 mt-1">YouTube video URL voor de hero sectie</p>
+                  </div>
+                  <button
+                    onClick={() => { setMediaSelectorMode('hero'); setShowMediaSelector(true); }}
+                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm"
+                  >
+                    📁 Media
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Start tijd (seconden)</label>
+                    <input
+                      type="number"
+                      value={formData.video_start_time}
+                      onChange={(e) => setFormData({ ...formData, video_start_time: parseInt(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                      placeholder="0"
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Eind tijd (seconden, 0 = hele video)</label>
+                    <input
+                      type="number"
+                      value={formData.video_end_time}
+                      onChange={(e) => setFormData({ ...formData, video_end_time: parseInt(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                      placeholder="0"
+                      min="0"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* SlidingMediaSelector */}
@@ -1029,68 +1157,6 @@ export function TravelManagement() {
             </div>
           )}
 
-          {/* TAB: Categorieën */}
-          {editTab === 'categories' && (
-            <div className="space-y-6">
-              {/* Themes from TC */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  🏷️ Thema's (uit Travel Compositor)
-                </label>
-                <div className="flex flex-wrap gap-2 p-4 bg-gray-50 rounded-lg min-h-16">
-                  {formData.themes.length > 0 ? formData.themes.map((theme, idx) => (
-                    <span key={idx} className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
-                      {theme}
-                    </span>
-                  )) : (
-                    <span className="text-gray-400 text-sm">Geen thema's geïmporteerd</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Custom Categories */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  📂 Categorieën (voor filters)
-                </label>
-                <div className="space-y-2">
-                  {['Rondreis', 'Fly & Drive', 'Stedentrip', 'Strandvakantie', 'Avontuur', 'Luxe', 'Budget', 'Familie', 'Romantisch', 'Actief'].map(cat => (
-                    <label key={cat} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.categories.includes(cat)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setFormData({ ...formData, categories: [...formData.categories, cat] });
-                          } else {
-                            setFormData({ ...formData, categories: formData.categories.filter(c => c !== cat) });
-                          }
-                        }}
-                        className="w-4 h-4 text-blue-600 rounded"
-                      />
-                      <span>{cat}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Countries */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  🌍 Landen
-                </label>
-                <div className="flex flex-wrap gap-2 p-4 bg-gray-50 rounded-lg">
-                  {formData.countries.length > 0 ? formData.countries.map((country, idx) => (
-                    <span key={idx} className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
-                      {country}
-                    </span>
-                  )) : (
-                    <span className="text-gray-400 text-sm">Geen landen</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     );
