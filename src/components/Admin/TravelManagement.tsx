@@ -23,6 +23,9 @@ interface Travel {
   transports?: any[];
   car_rentals?: any[];
   activities?: any[];
+  cruises?: any[];
+  transfers?: any[];
+  excursions?: any[];
   images?: string[];
   hero_image?: string;
   hero_video_url?: string;
@@ -1185,7 +1188,7 @@ export function TravelManagement() {
                 </div>
               )}
 
-              {/* Cruises (read-only) */}
+              {/* Cruises (read-only) - TC fields: cruiseLine, shipId, selectedCategory, group, cabin, departure, arrival, nights, stars */}
               {editingTravel?.cruises?.length > 0 && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1197,14 +1200,19 @@ export function TravelManagement() {
                         <div className="flex items-center gap-2">
                           <span className="text-lg">🚢</span>
                           <span className="font-medium">
-                            {cruise.shipName || cruise.name || cruise.company || 'Cruise'}
+                            {cruise.cruiseLine || cruise.shipId || 'Cruise'}
                           </span>
-                          {cruise.cabinType && <span className="text-sm text-gray-500">({cruise.cabinType})</span>}
+                          {cruise.stars && <span className="text-sm text-yellow-500">{'⭐'.repeat(Math.min(cruise.stars, 5))}</span>}
                         </div>
-                        <div className="text-sm text-gray-600 mt-1">
-                          {cruise.departurePort && <span className="mr-2">📍 {cruise.departurePort}</span>}
-                          {cruise.arrivalPort && cruise.arrivalPort !== cruise.departurePort && <span>→ {cruise.arrivalPort}</span>}
-                          {cruise.nights && <span className="ml-2">({cruise.nights} nachten)</span>}
+                        <div className="text-sm text-gray-600 mt-1 space-y-1">
+                          {cruise.selectedCategory && <div>🛏️ {cruise.selectedCategory} ({cruise.group || cruise.cabin})</div>}
+                          <div>
+                            {cruise.departure && <span className="mr-2">� Vertrek: {new Date(cruise.departure).toLocaleDateString('nl-NL')} {new Date(cruise.departure).toLocaleTimeString('nl-NL', {hour:'2-digit', minute:'2-digit'})}</span>}
+                          </div>
+                          <div>
+                            {cruise.arrival && <span className="mr-2">📅 Aankomst: {new Date(cruise.arrival).toLocaleDateString('nl-NL')} {new Date(cruise.arrival).toLocaleTimeString('nl-NL', {hour:'2-digit', minute:'2-digit'})}</span>}
+                          </div>
+                          {cruise.nights && <div>🌙 {cruise.nights} nachten</div>}
                         </div>
                       </div>
                     ))}
@@ -1212,7 +1220,7 @@ export function TravelManagement() {
                 </div>
               )}
 
-              {/* Transfers (read-only) */}
+              {/* Transfers (read-only) - TC: transports with transportType !== FLIGHT, has segment[] with departureAirportName/arrivalAirportName */}
               {editingTravel?.transfers?.length > 0 && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1224,13 +1232,15 @@ export function TravelManagement() {
                         <div className="flex items-center gap-2">
                           <span className="text-lg">🚐</span>
                           <span className="font-medium">
-                            {transfer.pickupLocation || transfer.from || 'Ophalen'} → {transfer.dropoffLocation || transfer.to || 'Afzetten'}
+                            {transfer.segment?.[0]?.departureAirportName || transfer.originCode || 'Vertrek'} → {transfer.segment?.[0]?.arrivalAirportName || transfer.targetCode || 'Aankomst'}
                           </span>
                         </div>
                         <div className="text-sm text-gray-600 mt-1">
-                          {transfer.type && <span className="mr-2">Type: {transfer.type}</span>}
-                          {transfer.date && <span className="mr-2">📅 {transfer.date}</span>}
-                          {transfer.time && <span>🕐 {transfer.time}</span>}
+                          {transfer.company && <span className="mr-2">🏢 {transfer.company}</span>}
+                          {transfer.fare && <span className="mr-2">🚗 {transfer.fare}</span>}
+                          {transfer.departureDate && <span className="mr-2">📅 {transfer.departureDate}</span>}
+                          {transfer.departureTime && <span>🕐 {transfer.departureTime}</span>}
+                          {transfer.duration && <span className="ml-2">⏱️ {transfer.duration}</span>}
                         </div>
                       </div>
                     ))}
@@ -1238,7 +1248,7 @@ export function TravelManagement() {
                 </div>
               )}
 
-              {/* Activities/Excursions (read-only) */}
+              {/* Activities/Tickets/Excursions (read-only) */}
               {(editingTravel?.activities?.length > 0 || editingTravel?.excursions?.length > 0) && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1250,7 +1260,7 @@ export function TravelManagement() {
                         <div className="flex items-center gap-2">
                           <span className="text-lg">🎯</span>
                           <span className="font-medium">
-                            {activity.name || activity.title || 'Activiteit'}
+                            {activity.name || activity.title || activity.product || 'Activiteit'}
                           </span>
                           {activity.duration && <span className="text-sm text-gray-500">({activity.duration})</span>}
                         </div>
@@ -1260,7 +1270,7 @@ export function TravelManagement() {
                         <div className="text-sm text-gray-600 mt-1">
                           {activity.location && <span className="mr-2">📍 {activity.location}</span>}
                           {activity.date && <span className="mr-2">📅 {activity.date}</span>}
-                          {activity.price && <span>💰 €{activity.price}</span>}
+                          {activity.day && <span className="mr-2">� Dag {activity.day}</span>}
                         </div>
                       </div>
                     ))}

@@ -129,40 +129,29 @@ function processAndReturnTravel(data: any, rawTcData: any, travelId: string) {
     // Hotels with full details
     hotels: data.hotels || rawTcData.hotels || [],
     
-    // Transports (flights) - from RAW TC data (not in formatted data)
+    // Transports (all) - from RAW TC data
     transports: rawTcData.transports || [],
     
-    // Flights - extract from transports or use formatted flights
-    flights: data.flights || rawTcData.transports?.filter((t: any) => 
-      t.type === 'FLIGHT' || t.type === 'flight' || t.transportType === 'FLIGHT'
+    // Flights - transportType === 'FLIGHT'
+    flights: rawTcData.transports?.filter((t: any) => 
+      t.transportType === 'FLIGHT'
+    ) || data.flights || [],
+    
+    // Transfers - transportType !== 'FLIGHT' (e.g. CAR/DAYTRIP transfers)
+    transfers: rawTcData.transports?.filter((t: any) => 
+      t.transportType !== 'FLIGHT'
     ) || [],
     
-    // Cruises - from transports or separate cruises array
-    cruises: rawTcData.cruises || rawTcData.transports?.filter((t: any) => 
-      t.type === 'CRUISE' || t.type === 'cruise' || t.type === 'SHIP' || 
-      t.type === 'FERRY' || t.transportType === 'CRUISE'
-    ) || data.cruises || [],
+    // Cruises - separate array in TC raw data
+    cruises: rawTcData.cruises || [],
     
-    // Transfers - pickup/dropoff between locations
-    transfers: rawTcData.transfers || data.transfers || rawTcData.transports?.filter((t: any) => 
-      t.type === 'TRANSFER' || t.type === 'transfer' || t.type === 'SHUTTLE' ||
-      t.type === 'PRIVATE_TRANSFER' || t.transportType === 'TRANSFER'
-    ) || [],
-    
-    // Other transports (trains, ferries, etc.)
-    otherTransports: data.other_transports || rawTcData.transports?.filter((t: any) => 
-      t.type !== 'FLIGHT' && t.type !== 'flight' && t.transportType !== 'FLIGHT' &&
-      t.type !== 'CRUISE' && t.type !== 'cruise' && t.type !== 'SHIP' &&
-      t.type !== 'TRANSFER' && t.type !== 'transfer'
-    ) || [],
-    
-    // Car rentals - from RAW TC data
+    // Car rentals - separate array in TC raw data
     carRentals: rawTcData.cars || data.car_rentals || [],
     
-    // Activities/Excursions - from activities array or excursions
-    activities: rawTcData.activities || data.activities || rawTcData.excursions || data.excursions || [],
+    // Tickets/Activities/Excursions - from TC tickets array
+    activities: rawTcData.tickets || rawTcData.activities || data.activities || [],
     
-    // Excursions (if separate from activities)
+    // Excursions (if separate)
     excursions: rawTcData.excursions || data.excursions || [],
     
     // Itinerary / day program
