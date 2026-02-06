@@ -1,5 +1,4 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,24 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface TravelCompositorResponse {
-  id: number;
-  title: string;
-  description?: string;
-  introText?: string;
-  numberOfNights?: number;
-  numberOfDays?: number;
-  pricePerPerson?: number;
-  priceDescription?: string;
-  imageUrl?: string;
-  destinations?: any[];
-  hotels?: any[];
-  itinerary?: any[];
-  included?: string[];
-  excluded?: string[];
-  highlights?: string[];
-  counters?: any;
-}
+// Use the builder API endpoint that has TC credentials configured
+const BUILDER_API_URL = "https://www.ai-websitestudio.nl/api/travelbro/get-travel";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -41,59 +24,45 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log(`Importing travel from TC: ${travelId}`);
+    console.log(`[Import TC] Importing travel from TC via builder API: ${travelId}`);
 
-    // Get TC API credentials from database
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Call the builder API which has TC credentials
+    const response = await fetch(BUILDER_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: travelId,
+        micrositeId: "rondreis-planner",
+        language: "NL"
+      })
+    });
 
-    const { data: tcSettings } = await supabase
-      .from("api_settings")
-      .select("api_key, api_url")
-      .eq("provider", "TravelCompositor")
-      .maybeSingle();
-
-    // Use default TC API URL if not configured
-    const tcApiUrl = tcSettings?.api_url || "https://api.travelcompositor.com";
-    const tcApiKey = tcSettings?.api_key;
-
-    // Fetch travel info from Travel Compositor API
-    const travelInfoUrl = `${tcApiUrl}/api/v1/travels/${travelId}`;
-    console.log(`Fetching from: ${travelInfoUrl}`);
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-    if (tcApiKey) {
-      headers["Authorization"] = `Bearer ${tcApiKey}`;
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Import TC] Builder API error: ${response.status}`, errorText);
+      return new Response(
+        JSON.stringify({ 
+          error: `API error: ${response.status}`,
+          message: "Kon reis niet ophalen. Controleer of het Travel Compositor ID correct is."
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    const travelInfoResponse = await fetch(travelInfoUrl, { headers });
+    const result = await response.json();
+    console.log(`[Import TC] Received data:`, JSON.stringify(result).substring(0, 500));
 
-    if (!travelInfoResponse.ok) {
-      // Try alternative endpoint format
-      const altUrl = `${tcApiUrl}/travels/${travelId}/info`;
-      console.log(`Trying alternative URL: ${altUrl}`);
-      
-      const altResponse = await fetch(altUrl, { headers });
-      
-      if (!altResponse.ok) {
-        console.error(`TC API error: ${travelInfoResponse.status}`);
-        return new Response(
-          JSON.stringify({ 
-            error: `Travel Compositor API error: ${travelInfoResponse.status}`,
-            message: "Kon reis niet ophalen. Controleer of het Travel Compositor ID correct is."
-          }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      const altData = await altResponse.json();
-      return processAndReturnTravel(altData, travelId);
+    if (!result.success) {
+      return new Response(
+        JSON.stringify({ 
+          error: result.error || "Import failed",
+          message: "Kon reis niet ophalen van Travel Compositor"
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    const travelData = await travelInfoResponse.json();
+    const travelData = result.data;
     return processAndReturnTravel(travelData, travelId);
 
   } catch (error) {
