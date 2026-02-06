@@ -1164,15 +1164,18 @@ export function TravelManagement() {
                 title={componentMediaSelector?.type === 'destination' ? 'Foto toevoegen aan bestemming' : 'Foto toevoegen aan hotel'}
               />
 
-              {/* Flights/Transports (read-only) */}
-              {(editingTravel?.transports?.length > 0 || editingTravel?.flights?.length > 0) && (
+              {/* Flights only (read-only) - filter out non-FLIGHT transports */}
+              {(() => {
+                const flightsOnly = (editingTravel?.transports || []).filter((t: any) => t.transportType === 'FLIGHT');
+                const allFlights = [...flightsOnly, ...(editingTravel?.flights || []).filter((f: any) => !flightsOnly.some((t: any) => t.id === f.id))];
+                return allFlights.length > 0 ? (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <Plane className="w-4 h-4 inline mr-1" />
-                    Vluchten/Vervoer ({(editingTravel?.transports?.length || 0) + (editingTravel?.flights?.length || 0)})
+                    Vluchten ({allFlights.length})
                   </label>
                   <div className="space-y-2">
-                    {editingTravel?.transports?.map((transport: any, idx: number) => (
+                    {allFlights.map((transport: any, idx: number) => (
                       <div key={`t-${idx}`} className="p-3 bg-sky-50 border border-sky-200 rounded-lg">
                         <div className="flex items-center gap-2">
                           <Plane className="w-4 h-4 text-sky-600" />
@@ -1189,7 +1192,8 @@ export function TravelManagement() {
                     ))}
                   </div>
                 </div>
-              )}
+                ) : null;
+              })()}
 
               {/* Car Rentals (read-only) - TC fields: product, imageUrl, pickupDate/Location/Time, dropoffDate/Location/Time, transmissionType, mileage */}
               {editingTravel?.car_rentals?.length > 0 && (
