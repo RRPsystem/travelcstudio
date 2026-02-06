@@ -65,6 +65,7 @@ interface TravelAssignment {
 }
 
 type ViewMode = 'list' | 'create' | 'edit' | 'assignments';
+type EditTab = 'general' | 'texts' | 'photos' | 'components';
 
 export function TravelManagement() {
   const { user } = useAuth();
@@ -74,10 +75,12 @@ export function TravelManagement() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [editingTravel, setEditingTravel] = useState<Travel | null>(null);
+  const [editTab, setEditTab] = useState<EditTab>('general');
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importTcId, setImportTcId] = useState('');
   const [importError, setImportError] = useState('');
+  const [selectedImages, setSelectedImages] = useState<Set<number>>(new Set());
 
   const [formData, setFormData] = useState({
     travel_compositor_id: '',
@@ -387,125 +390,410 @@ export function TravelManagement() {
 
   // Edit view
   if (viewMode === 'edit' && editingTravel) {
+    const tabs = [
+      { id: 'general', label: 'Algemeen', icon: '📋' },
+      { id: 'texts', label: 'Teksten', icon: '📝' },
+      { id: 'photos', label: 'Foto\'s', icon: '🖼️' },
+      { id: 'components', label: 'Componenten', icon: '🧩' },
+    ];
+
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => { setViewMode('list'); setEditingTravel(null); setEditTab('general'); }}
+              className="p-2 hover:bg-gray-100 rounded-lg"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h2 className="text-2xl font-bold">Reis Bewerken</h2>
+          </div>
           <button
-            onClick={() => { setViewMode('list'); setEditingTravel(null); }}
-            className="p-2 hover:bg-gray-100 rounded-lg"
+            onClick={handleSave}
+            disabled={saving}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
           >
-            <ArrowLeft className="w-5 h-5" />
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Opslaan
           </button>
-          <h2 className="text-2xl font-bold">Reis Bewerken</h2>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border p-6 space-y-6">
-          {/* Basic Info */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Titel</label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Slug</label>
-              <input
-                type="text"
-                value={formData.slug}
-                onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg"
-              />
-            </div>
-          </div>
+        {/* Tabs */}
+        <div className="flex gap-2 border-b">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setEditTab(tab.id as EditTab)}
+              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+                editTab === tab.id 
+                  ? 'border-blue-600 text-blue-600' 
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <span className="mr-2">{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Intro Tekst</label>
-            <textarea
-              value={formData.intro_text}
-              onChange={(e) => setFormData({ ...formData, intro_text: e.target.value })}
-              rows={2}
-              className="w-full px-3 py-2 border rounded-lg"
-            />
-          </div>
+        <div className="bg-white rounded-xl shadow-sm border p-6">
+          {/* TAB: Algemeen */}
+          {editTab === 'general' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Titel</label>
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Slug</label>
+                  <input
+                    type="text"
+                    value={formData.slug}
+                    onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg"
+                  />
+                </div>
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Beschrijving</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={4}
-              className="w-full px-3 py-2 border rounded-lg"
-            />
-          </div>
+              <div className="grid grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nachten</label>
+                  <input
+                    type="number"
+                    value={formData.number_of_nights}
+                    onChange={(e) => setFormData({ ...formData, number_of_nights: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Dagen</label>
+                  <input
+                    type="number"
+                    value={formData.number_of_days}
+                    onChange={(e) => setFormData({ ...formData, number_of_days: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Prijs p.p.</label>
+                  <input
+                    type="number"
+                    value={formData.price_per_person}
+                    onChange={(e) => setFormData({ ...formData, price_per_person: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">TC ID</label>
+                  <input
+                    type="text"
+                    value={formData.travel_compositor_id}
+                    disabled
+                    className="w-full px-3 py-2 border rounded-lg bg-gray-50"
+                  />
+                </div>
+              </div>
 
-          {/* Details */}
-          <div className="grid grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nachten</label>
-              <input
-                type="number"
-                value={formData.number_of_nights}
-                onChange={(e) => setFormData({ ...formData, number_of_nights: parseInt(e.target.value) || 0 })}
-                className="w-full px-3 py-2 border rounded-lg"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Dagen</label>
-              <input
-                type="number"
-                value={formData.number_of_days}
-                onChange={(e) => setFormData({ ...formData, number_of_days: parseInt(e.target.value) || 0 })}
-                className="w-full px-3 py-2 border rounded-lg"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Prijs p.p.</label>
-              <input
-                type="number"
-                value={formData.price_per_person}
-                onChange={(e) => setFormData({ ...formData, price_per_person: parseFloat(e.target.value) || 0 })}
-                className="w-full px-3 py-2 border rounded-lg"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">TC ID</label>
-              <input
-                type="text"
-                value={formData.travel_compositor_id}
-                disabled
-                className="w-full px-3 py-2 border rounded-lg bg-gray-50"
-              />
-            </div>
-          </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Intro Tekst</label>
+                <textarea
+                  value={formData.intro_text}
+                  onChange={(e) => setFormData({ ...formData, intro_text: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border rounded-lg"
+                />
+              </div>
 
-          {/* Media */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Hero Afbeelding URL</label>
-              <input
-                type="text"
-                value={formData.hero_image}
-                onChange={(e) => setFormData({ ...formData, hero_image: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg"
-              />
-              {formData.hero_image && (
-                <img src={formData.hero_image} alt="Hero" className="mt-2 h-32 object-cover rounded-lg" />
-              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Beschrijving</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={6}
+                  className="w-full px-3 py-2 border rounded-lg"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Hero Video URL</label>
-              <input
-                type="text"
-                value={formData.hero_video_url}
-                onChange={(e) => setFormData({ ...formData, hero_video_url: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg"
-              />
+          )}
+
+          {/* TAB: Teksten */}
+          {editTab === 'texts' && (
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Intro Tekst</label>
+                <textarea
+                  value={formData.intro_text}
+                  onChange={(e) => setFormData({ ...formData, intro_text: e.target.value })}
+                  rows={4}
+                  className="w-full px-3 py-2 border rounded-lg"
+                  placeholder="Korte introductie van de reis..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Volledige Beschrijving</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={10}
+                  className="w-full px-3 py-2 border rounded-lg"
+                  placeholder="Uitgebreide beschrijving van de reis..."
+                />
+              </div>
+
+              {/* Highlights Editor */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Highlights</label>
+                <div className="space-y-2">
+                  {formData.highlights.map((highlight, idx) => (
+                    <div key={idx} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={highlight}
+                        onChange={(e) => {
+                          const newHighlights = [...formData.highlights];
+                          newHighlights[idx] = e.target.value;
+                          setFormData({ ...formData, highlights: newHighlights });
+                        }}
+                        className="flex-1 px-3 py-2 border rounded-lg"
+                      />
+                      <button
+                        onClick={() => {
+                          const newHighlights = formData.highlights.filter((_, i) => i !== idx);
+                          setFormData({ ...formData, highlights: newHighlights });
+                        }}
+                        className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => setFormData({ ...formData, highlights: [...formData.highlights, ''] })}
+                    className="px-4 py-2 text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50"
+                  >
+                    + Highlight toevoegen
+                  </button>
+                </div>
+              </div>
+
+              {/* Included Editor */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Inclusief</label>
+                <div className="space-y-2">
+                  {formData.included.map((item, idx) => (
+                    <div key={idx} className="flex gap-2">
+                      <span className="px-3 py-2 text-green-600"><Check className="w-4 h-4" /></span>
+                      <input
+                        type="text"
+                        value={typeof item === 'string' ? item : (item as any).description || ''}
+                        onChange={(e) => {
+                          const newIncluded = [...formData.included];
+                          newIncluded[idx] = e.target.value;
+                          setFormData({ ...formData, included: newIncluded });
+                        }}
+                        className="flex-1 px-3 py-2 border rounded-lg"
+                      />
+                      <button
+                        onClick={() => {
+                          const newIncluded = formData.included.filter((_, i) => i !== idx);
+                          setFormData({ ...formData, included: newIncluded });
+                        }}
+                        className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => setFormData({ ...formData, included: [...formData.included, ''] })}
+                    className="px-4 py-2 text-green-600 border border-green-300 rounded-lg hover:bg-green-50"
+                  >
+                    + Inclusief toevoegen
+                  </button>
+                </div>
+              </div>
+
+              {/* Excluded Editor */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Exclusief</label>
+                <div className="space-y-2">
+                  {formData.excluded.map((item, idx) => (
+                    <div key={idx} className="flex gap-2">
+                      <span className="px-3 py-2 text-red-600"><X className="w-4 h-4" /></span>
+                      <input
+                        type="text"
+                        value={typeof item === 'string' ? item : (item as any).description || ''}
+                        onChange={(e) => {
+                          const newExcluded = [...formData.excluded];
+                          newExcluded[idx] = e.target.value;
+                          setFormData({ ...formData, excluded: newExcluded });
+                        }}
+                        className="flex-1 px-3 py-2 border rounded-lg"
+                      />
+                      <button
+                        onClick={() => {
+                          const newExcluded = formData.excluded.filter((_, i) => i !== idx);
+                          setFormData({ ...formData, excluded: newExcluded });
+                        }}
+                        className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => setFormData({ ...formData, excluded: [...formData.excluded, ''] })}
+                    className="px-4 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50"
+                  >
+                    + Exclusief toevoegen
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* TAB: Foto's */}
+          {editTab === 'photos' && (
+            <div className="space-y-6">
+              {/* Hero Image */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Hero Afbeelding</label>
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={formData.hero_image}
+                      onChange={(e) => setFormData({ ...formData, hero_image: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg"
+                      placeholder="URL van hero afbeelding..."
+                    />
+                  </div>
+                  {formData.hero_image && (
+                    <img src={formData.hero_image} alt="Hero" className="h-20 w-32 object-cover rounded-lg" />
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Klik op een foto hieronder om deze als hero te selecteren</p>
+              </div>
+
+              {/* Image Gallery */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Foto Galerij ({formData.images.length} foto's)
+                  </label>
+                  <div className="flex gap-2">
+                    <span className="text-xs text-gray-500">{selectedImages.size} geselecteerd</span>
+                    {selectedImages.size > 0 && (
+                      <button
+                        onClick={() => {
+                          const newImages = formData.images.filter((_, idx) => !selectedImages.has(idx));
+                          setFormData({ ...formData, images: newImages });
+                          setSelectedImages(new Set());
+                        }}
+                        className="text-xs text-red-600 hover:underline"
+                      >
+                        Verwijder geselecteerde
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="grid grid-cols-6 gap-3 max-h-96 overflow-y-auto p-2 bg-gray-50 rounded-lg">
+                  {formData.images.map((img, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`relative group cursor-pointer rounded-lg overflow-hidden border-2 ${
+                        selectedImages.has(idx) ? 'border-blue-500' : 'border-transparent'
+                      } ${formData.hero_image === img ? 'ring-2 ring-yellow-400' : ''}`}
+                    >
+                      <img 
+                        src={img} 
+                        alt="" 
+                        className="w-full h-24 object-cover"
+                        onClick={() => {
+                          const newSelected = new Set(selectedImages);
+                          if (newSelected.has(idx)) {
+                            newSelected.delete(idx);
+                          } else {
+                            newSelected.add(idx);
+                          }
+                          setSelectedImages(newSelected);
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => setFormData({ ...formData, hero_image: img })}
+                          className="p-1 bg-yellow-500 text-white rounded text-xs"
+                          title="Als hero instellen"
+                        >
+                          ⭐
+                        </button>
+                        <button
+                          onClick={() => {
+                            const newImages = formData.images.filter((_, i) => i !== idx);
+                            setFormData({ ...formData, images: newImages });
+                          }}
+                          className="p-1 bg-red-500 text-white rounded text-xs"
+                          title="Verwijderen"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                      {formData.hero_image === img && (
+                        <div className="absolute top-1 left-1 bg-yellow-500 text-white text-xs px-1 rounded">
+                          Hero
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Add Image URL */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Foto URL toevoegen</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="https://..."
+                    className="flex-1 px-3 py-2 border rounded-lg"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const input = e.target as HTMLInputElement;
+                        if (input.value) {
+                          setFormData({ ...formData, images: [...formData.images, input.value] });
+                          input.value = '';
+                        }
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={(e) => {
+                      const input = (e.target as HTMLElement).previousElementSibling as HTMLInputElement;
+                      if (input.value) {
+                        setFormData({ ...formData, images: [...formData.images, input.value] });
+                        input.value = '';
+                      }
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Toevoegen
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: Componenten */}
+          {editTab === 'components' && (
+            <div className="space-y-6">
 
           {/* Destinations Preview */}
           {formData.destinations.length > 0 && (
@@ -694,52 +982,8 @@ export function TravelManagement() {
               </div>
             </div>
           )}
-
-          {/* Included/Excluded */}
-          <div className="grid grid-cols-2 gap-4">
-            {editingTravel?.included?.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Inclusief ({editingTravel.included.length})</label>
-                <ul className="text-sm space-y-1 max-h-32 overflow-y-auto">
-                  {editingTravel.included.map((item: any, idx: number) => (
-                    <li key={idx} className="flex items-center gap-1 text-green-700">
-                      <Check className="w-3 h-3" /> {typeof item === 'string' ? item : item.description || item.name}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {editingTravel?.excluded?.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Exclusief ({editingTravel.excluded.length})</label>
-                <ul className="text-sm space-y-1 max-h-32 overflow-y-auto">
-                  {editingTravel.excluded.map((item: any, idx: number) => (
-                    <li key={idx} className="flex items-center gap-1 text-red-700">
-                      <X className="w-3 h-3" /> {typeof item === 'string' ? item : item.description || item.name}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-
-          {/* Save Button */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <button
-              onClick={() => { setViewMode('list'); setEditingTravel(null); }}
-              className="px-4 py-2 border rounded-lg hover:bg-gray-50"
-            >
-              Annuleren
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-            >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Opslaan
-            </button>
-          </div>
+            </div>
+          )}
         </div>
       </div>
     );
