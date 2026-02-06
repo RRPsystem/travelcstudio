@@ -42,6 +42,9 @@ interface Travel {
   ai_summary?: string;
   all_texts?: any;
   raw_tc_data?: any;
+  source_microsite?: string;
+  author_type?: string;
+  author_id?: string;
   enabled_for_brands: boolean;
   enabled_for_franchise: boolean;
   is_mandatory: boolean;
@@ -118,7 +121,19 @@ export function TravelManagement() {
   const [microsites, setMicrosites] = useState<Array<{id: string, name: string, hasCredentials: boolean}>>([]);
   const [loadingMicrosites, setLoadingMicrosites] = useState(false);
   const [bulkImporting, setBulkImporting] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{current: number, total: number, results: Array<{id: string, status: string, title?: string}>} | null>(null);
+  const [selectedTravels, setSelectedTravels] = useState<Set<string>>(new Set());
   const [selectedImages, setSelectedImages] = useState<Set<number>>(new Set());
+
+  // Touroperator logo mapping per microsite
+  const micrositeLogos: Record<string, {name: string, logo: string, color: string}> = {
+    'rondreis-planner': { name: 'Rondreis Planner', logo: '🌍', color: 'bg-green-100 text-green-800' },
+    'reisbureaunederland': { name: 'Reisbureau Nederland', logo: '🇳🇱', color: 'bg-blue-100 text-blue-800' },
+    'traveltime': { name: 'Travel Time', logo: '⏰', color: 'bg-purple-100 text-purple-800' },
+    'travel-time': { name: 'Travel Time', logo: '⏰', color: 'bg-purple-100 text-purple-800' },
+    'vakantieplaneet': { name: 'Vakantie Planeet', logo: '🪐', color: 'bg-orange-100 text-orange-800' },
+    'vakantie-planeet': { name: 'Vakantie Planeet', logo: '🪐', color: 'bg-orange-100 text-orange-800' },
+  };
   const [showMediaSelector, setShowMediaSelector] = useState(false);
   const [mediaSelectorMode, setMediaSelectorMode] = useState<'hero' | 'gallery'>('gallery');
 
@@ -309,6 +324,7 @@ export function TravelManagement() {
         ai_summary: data.aiSummary || '',
         all_texts: data.allTexts || {},
         raw_tc_data: data,
+        source_microsite: micrositeId,
         author_id: user?.id
       };
 
@@ -327,6 +343,101 @@ export function TravelManagement() {
     } finally {
       setImporting(false);
     }
+  };
+
+  const handleBulkImport = async () => {
+    const ids = importTcId.split(/[,;\s]+/).map(id => id.trim()).filter(id => id.length > 0);
+    if (ids.length === 0) { setImportError('Voer één of meer TC IDs in (komma-gescheiden)'); return; }
+    if (ids.length === 1) { handleImportFromTC(); return; }
+
+    setBulkImporting(true);
+    setImportError('');
+    const results: Array<{id: string, status: string, title?: string}> = [];
+    setBulkProgress({ current: 0, total: ids.length, results });
+
+    for (let i = 0; i < ids.length; i++) {
+      const tcId = ids[i];
+      try {
+        const { data, error } = await supabase!.functions.invoke('import-travel-compositor', {
+          body: { travelId: tcId, micrositeId: micrositeId }
+        });
+        if (error || !data?.title) {
+          results.push({ id: tcId, status: 'error', title: error?.message || 'Kon niet ophalen' });
+        } else {
+          // Check if exists
+          const { data: existing } = await supabase!.from('travelc_travels').select('id').eq('travel_compositor_id', tcId).maybeSingle();
+          if (existing) {
+            results.push({ id: tcId, status: 'exists', title: data.title });
+          } else {
+            const travelData = {
+              travel_compositor_id: tcId, title: data.title, slug: generateSlug(data.title),
+              description: data.description || '', intro_text: data.introText || '',
+              number_of_nights: data.numberOfNights || 0, number_of_days: data.numberOfDays || 0,
+              price_per_person: data.pricePerPerson || 0, price_description: data.priceDescription || '',
+              currency: data.currency || 'EUR', destinations: data.destinations || [],
+              countries: data.countries || [], hotels: data.hotels || [],
+              flights: data.flights || [], transports: data.transports || [],
+              car_rentals: data.carRentals || [], activities: data.activities || [],
+              cruises: data.cruises || [], transfers: data.transfers || [],
+              excursions: data.excursions || [], images: data.images || [],
+              hero_image: data.heroImage || data.images?.[0] || '',
+              hero_video_url: data.heroVideoUrl || '', route_map_url: data.routeMapUrl || '',
+              itinerary: data.itinerary || [], included: data.included || [],
+              excluded: data.excluded || [], highlights: data.highlights || [],
+              selling_points: data.sellingPoints || [], practical_info: data.practicalInfo || {},
+              price_breakdown: data.priceBreakdown || {}, travelers: data.travelers || {},
+              ai_summary: data.aiSummary || '', all_texts: data.allTexts || {},
+              raw_tc_data: data, source_microsite: micrositeId, author_id: user?.id
+            };
+            const { error: insertError } = await supabase!.from('travelc_travels').insert([travelData]);
+            if (insertError) {
+              results.push({ id: tcId, status: 'error', title: insertError.message });
+            } else {
+              results.push({ id: tcId, status: 'success', title: data.title });
+            }
+          }
+        }
+      } catch (err: any) {
+        results.push({ id: tcId, status: 'error', title: err.message });
+      }
+      setBulkProgress({ current: i + 1, total: ids.length, results: [...results] });
+    }
+
+    setImportTcId('');
+    await loadData();
+    setBulkImporting(false);
+  };
+
+  const handleBulkToggleBrands = async (enabled: boolean) => {
+    if (selectedTravels.size === 0) return;
+    try {
+      await supabase!.from('travelc_travels').update({ enabled_for_brands: enabled }).in('id', Array.from(selectedTravels));
+      setSelectedTravels(new Set());
+      await loadData();
+    } catch (error) {
+      console.error('Bulk toggle error:', error);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedTravels.size === travels.length) {
+      setSelectedTravels(new Set());
+    } else {
+      setSelectedTravels(new Set(travels.map(t => t.id)));
+    }
+  };
+
+  const toggleSelectTravel = (id: string) => {
+    const next = new Set(selectedTravels);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelectedTravels(next);
+  };
+
+  const getMicrositeBadge = (microsite?: string) => {
+    if (!microsite) return null;
+    const info = micrositeLogos[microsite];
+    if (!info) return <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{microsite}</span>;
+    return <span className={`text-xs px-2 py-0.5 rounded-full ${info.color} font-medium`}>{info.logo} {info.name}</span>;
   };
 
   const handleEdit = (travel: Travel) => {
@@ -1472,22 +1583,61 @@ export function TravelManagement() {
             type="text"
             value={importTcId}
             onChange={(e) => { setImportTcId(e.target.value); setImportError(''); }}
-            placeholder="Travel Compositor ID (bijv. 35338738)"
+            placeholder="TC ID(s) - meerdere komma-gescheiden (bijv. 35338738, 35338739, 35338740)"
             className="flex-1 px-4 py-2 border rounded-lg"
           />
           <button
-            onClick={handleImportFromTC}
-            disabled={importing}
+            onClick={handleBulkImport}
+            disabled={importing || bulkImporting}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
           >
-            {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            Importeren
+            {(importing || bulkImporting) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            {bulkImporting ? `${bulkProgress?.current || 0}/${bulkProgress?.total || 0}` : 'Importeren'}
           </button>
         </div>
+        <p className="text-xs text-gray-500 mt-1">Voer meerdere TC IDs in (komma-gescheiden) voor bulk import</p>
         {importError && (
           <p className="mt-2 text-red-600 text-sm">{importError}</p>
         )}
+        {bulkProgress && bulkProgress.results.length > 0 && (
+          <div className="mt-3 space-y-1 max-h-40 overflow-y-auto">
+            {bulkProgress.results.map((r, idx) => (
+              <div key={idx} className={`text-xs px-3 py-1.5 rounded flex items-center gap-2 ${
+                r.status === 'success' ? 'bg-green-50 text-green-700' :
+                r.status === 'exists' ? 'bg-yellow-50 text-yellow-700' :
+                'bg-red-50 text-red-700'
+              }`}>
+                <span>{r.status === 'success' ? '✅' : r.status === 'exists' ? '⚠️' : '❌'}</span>
+                <span className="font-mono">{r.id}</span>
+                <span>{r.status === 'exists' ? 'Bestaat al' : r.title}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Bulk Actions Bar */}
+      {selectedTravels.size > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
+          <span className="text-sm font-medium text-blue-800">
+            {selectedTravels.size} reis(en) geselecteerd
+          </span>
+          <div className="flex gap-2">
+            <button onClick={() => handleBulkToggleBrands(true)}
+              className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 flex items-center gap-1">
+              <Check className="w-4 h-4" /> Brands AAN
+            </button>
+            <button onClick={() => handleBulkToggleBrands(false)}
+              className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 flex items-center gap-1">
+              <X className="w-4 h-4" /> Brands UIT
+            </button>
+            <button onClick={() => setSelectedTravels(new Set())}
+              className="px-4 py-2 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300">
+              Deselecteer
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Travels List */}
       <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
@@ -1495,6 +1645,10 @@ export function TravelManagement() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-3 py-3 text-center w-10">
+                  <input type="checkbox" checked={selectedTravels.size === travels.length && travels.length > 0}
+                    onChange={toggleSelectAll} className="rounded border-gray-300" />
+                </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Afbeelding</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reis</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Details</th>
@@ -1506,7 +1660,11 @@ export function TravelManagement() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {travels.map((travel) => (
-                <tr key={travel.id} className="hover:bg-gray-50">
+                <tr key={travel.id} className={`hover:bg-gray-50 ${selectedTravels.has(travel.id) ? 'bg-blue-50' : ''}`}>
+                  <td className="px-3 py-3 text-center">
+                    <input type="checkbox" checked={selectedTravels.has(travel.id)}
+                      onChange={() => toggleSelectTravel(travel.id)} className="rounded border-gray-300" />
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     {travel.hero_image ? (
                       <img src={travel.hero_image} alt={travel.title} className="w-20 h-14 object-cover rounded-lg" />
@@ -1518,7 +1676,10 @@ export function TravelManagement() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="text-sm font-medium text-gray-900">{travel.title}</div>
-                    <div className="text-xs text-gray-500">TC: {travel.travel_compositor_id}</div>
+                    <div className="text-xs text-gray-500 flex items-center gap-2">
+                      <span>TC: {travel.travel_compositor_id}</span>
+                      {getMicrositeBadge(travel.source_microsite)}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3 text-xs text-gray-600">
@@ -1570,7 +1731,7 @@ export function TravelManagement() {
               ))}
               {travels.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                     <Plane className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>Nog geen reizen geïmporteerd</p>
                     <p className="text-sm">Gebruik het import veld hierboven om een reis toe te voegen</p>

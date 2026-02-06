@@ -363,6 +363,7 @@ Deno.serve(async (req: Request) => {
         ai_summary: importData.aiSummary || "",
         all_texts: importData.allTexts || {},
         raw_tc_data: importData,
+        source_microsite: microsite_id || "rondreis-planner",
         author_id: author_id || null,
         author_type: author_type || "admin",
       };
@@ -445,6 +446,64 @@ Deno.serve(async (req: Request) => {
 
       return new Response(
         JSON.stringify({ success: true }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    // ============================================
+    // ACTION: bulk-toggle-brands (POST) - Toggle enabled_for_brands for multiple travels
+    // ============================================
+    if (action === "bulk-toggle-brands" && req.method === "POST") {
+      const body = await req.json();
+      const { travel_ids, enabled } = body;
+
+      if (!Array.isArray(travel_ids) || travel_ids.length === 0) {
+        return new Response(
+          JSON.stringify({ error: "travel_ids array is required" }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+
+      const { error } = await supabase
+        .from("travelc_travels")
+        .update({ enabled_for_brands: enabled })
+        .in("id", travel_ids);
+
+      if (error) throw error;
+
+      return new Response(
+        JSON.stringify({ success: true, count: travel_ids.length }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    // ============================================
+    // ACTION: run-migration (POST) - Run a one-time migration
+    // ============================================
+    if (action === "run-migration" && req.method === "POST") {
+      // Add source_microsite column if it doesn't exist
+      const { error } = await supabase.rpc("exec_sql", {
+        sql_query: "ALTER TABLE travelc_travels ADD COLUMN IF NOT EXISTS source_microsite TEXT;"
+      }).maybeSingle();
+
+      // If rpc doesn't exist, try direct approach
+      if (error) {
+        // Try adding via a dummy update to check if column exists
+        const { error: testError } = await supabase
+          .from("travelc_travels")
+          .update({ source_microsite: null })
+          .eq("id", "00000000-0000-0000-0000-000000000000");
+        
+        if (testError && testError.message?.includes("source_microsite")) {
+          return new Response(
+            JSON.stringify({ success: false, error: "Column source_microsite does not exist. Please run in Supabase SQL Editor: ALTER TABLE travelc_travels ADD COLUMN IF NOT EXISTS source_microsite TEXT;" }),
+            { status: 400, headers: corsHeaders }
+          );
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, message: "Migration completed" }),
         { status: 200, headers: corsHeaders }
       );
     }
