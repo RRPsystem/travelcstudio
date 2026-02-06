@@ -421,6 +421,100 @@ export function TravelManagement() {
     setBulkImporting(false);
   };
 
+  const handleImportAllFromMicrosite = async () => {
+    if (!micrositeId) return;
+    const msName = micrositeLogos[micrositeId]?.name || micrositeId;
+    if (!confirm(`Alle reizen van "${msName}" ophalen en importeren?\n\nDit kan even duren.`)) return;
+
+    setBulkImporting(true);
+    setImportError('');
+    setBulkProgress({ current: 0, total: 0, results: [] });
+
+    try {
+      // Step 1: Get list of all travels from builder API
+      const { data: { session } } = await supabase!.auth.getSession();
+      const listRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-external-api`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${session?.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: `https://www.ai-websitestudio.nl/api/travelbro/list-travels?micrositeId=${micrositeId}&language=NL`,
+          method: 'GET'
+        })
+      });
+      const listResult = await listRes.json();
+      
+      if (!listResult.success || !listResult.data?.travels?.length) {
+        setImportError(listResult.data?.error || 'Geen reizen gevonden voor deze microsite. Is het list-travels endpoint beschikbaar op de builder?');
+        setBulkImporting(false);
+        return;
+      }
+
+      const travelList = listResult.data.travels;
+      const results: Array<{id: string, status: string, title?: string}> = [];
+      setBulkProgress({ current: 0, total: travelList.length, results });
+
+      // Step 2: Import each travel
+      for (let i = 0; i < travelList.length; i++) {
+        const item = travelList[i];
+        const tcId = String(item.id);
+        try {
+          // Check if already exists
+          const { data: existing } = await supabase!.from('travelc_travels').select('id').eq('travel_compositor_id', tcId).maybeSingle();
+          if (existing) {
+            results.push({ id: tcId, status: 'exists', title: item.title || 'Bestaat al' });
+          } else {
+            // Fetch full travel data
+            const { data, error } = await supabase!.functions.invoke('import-travel-compositor', {
+              body: { travelId: tcId, micrositeId: micrositeId }
+            });
+            if (error || !data?.title) {
+              results.push({ id: tcId, status: 'error', title: error?.message || 'Kon niet ophalen' });
+            } else {
+              const travelData = {
+                travel_compositor_id: tcId, title: data.title, slug: generateSlug(data.title),
+                description: data.description || '', intro_text: data.introText || '',
+                number_of_nights: data.numberOfNights || 0, number_of_days: data.numberOfDays || 0,
+                price_per_person: data.pricePerPerson || 0, price_description: data.priceDescription || '',
+                currency: data.currency || 'EUR', destinations: data.destinations || [],
+                countries: data.countries || [], hotels: data.hotels || [],
+                flights: data.flights || [], transports: data.transports || [],
+                car_rentals: data.carRentals || [], activities: data.activities || [],
+                cruises: data.cruises || [], transfers: data.transfers || [],
+                excursions: data.excursions || [], images: data.images || [],
+                hero_image: data.heroImage || data.images?.[0] || '',
+                hero_video_url: data.heroVideoUrl || '', route_map_url: data.routeMapUrl || '',
+                itinerary: data.itinerary || [], included: data.included || [],
+                excluded: data.excluded || [], highlights: data.highlights || [],
+                selling_points: data.sellingPoints || [], practical_info: data.practicalInfo || {},
+                price_breakdown: data.priceBreakdown || {}, travelers: data.travelers || {},
+                ai_summary: data.aiSummary || '', all_texts: data.allTexts || {},
+                raw_tc_data: data, source_microsite: micrositeId, author_id: user?.id
+              };
+              const { error: insertError } = await supabase!.from('travelc_travels').insert([travelData]);
+              if (insertError) {
+                results.push({ id: tcId, status: 'error', title: insertError.message });
+              } else {
+                results.push({ id: tcId, status: 'success', title: data.title });
+              }
+            }
+          }
+        } catch (err: any) {
+          results.push({ id: tcId, status: 'error', title: err.message });
+        }
+        setBulkProgress({ current: i + 1, total: travelList.length, results: [...results] });
+      }
+
+      await loadData();
+      const successCount = results.filter(r => r.status === 'success').length;
+      const existsCount = results.filter(r => r.status === 'exists').length;
+      alert(`Import klaar!\n\n✅ ${successCount} nieuw geïmporteerd\n⚠️ ${existsCount} bestonden al\n❌ ${results.filter(r => r.status === 'error').length} fouten`);
+    } catch (error: any) {
+      setImportError(error.message || 'Fout bij ophalen reizen lijst');
+    } finally {
+      setBulkImporting(false);
+    }
+  };
+
   const handleBulkToggleBrands = async (enabled: boolean) => {
     if (selectedTravels.size === 0) return;
     try {
@@ -1590,13 +1684,21 @@ export function TravelManagement() {
               <option value="rondreis-planner">Rondreis Planner</option>
             )}
           </select>
+          <button
+            onClick={handleImportAllFromMicrosite}
+            disabled={bulkImporting || !micrositeId}
+            className="mt-2 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 flex items-center gap-2"
+          >
+            {bulkImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Importeer alle reizen van deze microsite
+          </button>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 mt-3">
           <input
             type="text"
             value={importTcId}
             onChange={(e) => { setImportTcId(e.target.value); setImportError(''); }}
-            placeholder="TC ID(s) - meerdere komma-gescheiden (bijv. 35338738, 35338739, 35338740)"
+            placeholder="Of voer TC ID(s) in - komma-gescheiden (bijv. 35338738, 35338739)"
             className="flex-1 px-4 py-2 border rounded-lg"
           />
           <button
