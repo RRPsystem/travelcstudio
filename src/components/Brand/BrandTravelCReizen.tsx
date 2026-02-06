@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { RouteMap } from '../shared/RouteMap';
+import { SlidingMediaSelector } from '../shared/SlidingMediaSelector';
 import {
-  Plane, MapPin, Calendar, Euro, Hotel, Eye, ArrowLeft,
-  Star, Ship, Car, Check, X, Image
+  Plane, MapPin, Calendar, Euro, Hotel, Eye, ArrowLeft, Edit2, Trash2,
+  Star, Ship, Car, Check, X, Image, Download, Loader2, Save, Plus
 } from 'lucide-react';
 
 interface Travel {
@@ -20,12 +21,17 @@ interface Travel {
   price_description: string;
   hero_image: string;
   hero_video_url: string;
+  hero_style: string;
+  video_start_time: number;
+  video_end_time: number;
   images: string[];
   destinations: any[];
   countries: string[];
+  continents: string[];
   hotels: any[];
   flights: any[];
   transfers: any[];
+  transports: any[];
   cruises: any[];
   car_rentals: any[];
   activities: any[];
@@ -36,10 +42,11 @@ interface Travel {
   highlights: any[];
   categories: string[];
   themes: string[];
-  continents: string[];
   enabled_for_brands: boolean;
   enabled_for_franchise: boolean;
   is_mandatory: boolean;
+  author_type: string;
+  author_id: string;
   created_at: string;
 }
 
@@ -59,38 +66,72 @@ interface Assignment {
   status: string;
 }
 
+type ViewMode = 'list' | 'detail' | 'edit';
+type EditTab = 'general' | 'photos' | 'components' | 'routemap';
+type HeroStyle = 'slideshow' | 'grid' | 'single' | 'video' | 'wide';
+
+const stripHtml = (html: string): string => {
+  if (!html) return '';
+  return html.replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+};
+
 export function BrandTravelCReizen() {
   const { user, effectiveBrandId } = useAuth();
   const [travels, setTravels] = useState<Travel[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedTravel, setSelectedTravel] = useState<Travel | null>(null);
-  const [filter, setFilter] = useState<'all' | 'active' | 'mandatory'>('all');
+  const [editingTravel, setEditingTravel] = useState<Travel | null>(null);
+  const [filter, setFilter] = useState<'all' | 'active' | 'own' | 'mandatory'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Import state
+  const [importTcId, setImportTcId] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState('');
+
+  // Edit state
+  const [editTab, setEditTab] = useState<EditTab>('general');
+  const [saving, setSaving] = useState(false);
+  const [showMediaSelector, setShowMediaSelector] = useState(false);
+  const [mediaSelectorMode, setMediaSelectorMode] = useState<'hero' | 'gallery'>('gallery');
+  const [selectedImages, setSelectedImages] = useState<Set<number>>(new Set());
+  const [componentMediaSelector, setComponentMediaSelector] = useState<{type: 'destination' | 'hotel', index: number} | null>(null);
+
+  const [formData, setFormData] = useState({
+    title: '', slug: '', description: '', intro_text: '',
+    number_of_nights: 0, number_of_days: 0, price_per_person: 0, price_description: '',
+    destinations: [] as any[], countries: [] as string[], continents: [] as string[],
+    hotels: [] as any[], images: [] as string[],
+    hero_image: '', hero_video_url: '', hero_style: 'slideshow' as HeroStyle,
+    video_start_time: 0, video_end_time: 0, route_map_url: '',
+    itinerary: [] as any[], included: [] as string[], excluded: [] as string[],
+    highlights: [] as string[], categories: [] as string[], themes: [] as string[],
+  });
+
   const brandId = effectiveBrandId || user?.brand_id;
+  const apiBase = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/travelc-api`;
 
   useEffect(() => {
     if (brandId) loadData();
   }, [brandId]);
 
-  const apiBase = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/travelc-api`;
-
   const loadData = async () => {
     if (!brandId) return;
     setLoading(true);
     try {
-      // Load travels that are enabled for brands or mandatory
+      // Load admin travels (enabled for brands or mandatory) + own brand travels
       const { data: travelsData, error: travelsError } = await supabase!
         .from('travelc_travels')
         .select('*')
-        .or('enabled_for_brands.eq.true,is_mandatory.eq.true')
+        .or(`enabled_for_brands.eq.true,is_mandatory.eq.true,author_id.eq.${user?.id}`)
         .order('created_at', { ascending: false });
 
       if (travelsError) throw travelsError;
       setTravels(travelsData || []);
 
-      // Load brand assignments via Edge Function (bypasses RLS)
+      // Load brand assignments via Edge Function
       const res = await fetch(`${apiBase}?action=assignments&brand_id=${brandId}`);
       const result = await res.json();
       setAssignments(result.assignments || []);
@@ -106,8 +147,11 @@ export function BrandTravelCReizen() {
   };
 
   const isActive = (travelId: string): boolean => {
-    const assignment = getAssignment(travelId);
-    return assignment?.is_active || false;
+    return getAssignment(travelId)?.is_active || false;
+  };
+
+  const isOwnTravel = (travel: Travel): boolean => {
+    return travel.author_id === user?.id || travel.author_type === 'brand';
   };
 
   const callToggleApi = async (travelId: string, field?: string, value?: any) => {
@@ -138,10 +182,113 @@ export function BrandTravelCReizen() {
     await callToggleApi(travelId, field, value);
   };
 
+  // ============================================
+  // IMPORT
+  // ============================================
+  const handleImportFromTC = async () => {
+    if (!importTcId.trim()) { setImportError('Voer een Travel Compositor ID in'); return; }
+    setImporting(true);
+    setImportError('');
+    try {
+      const res = await fetch(`${apiBase}?action=import-travel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tc_id: importTcId.trim(), author_id: user?.id, author_type: 'brand' }),
+      });
+      const result = await res.json();
+      if (!result.success) { setImportError(result.error || 'Fout bij importeren'); return; }
+
+      setImportTcId('');
+      await loadData();
+      alert(`Reis "${result.title}" succesvol geïmporteerd!`);
+    } catch (error: any) {
+      setImportError(error.message || 'Fout bij importeren');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  // ============================================
+  // EDIT
+  // ============================================
+  const handleEdit = (travel: Travel) => {
+    setEditingTravel(travel);
+    setFormData({
+      title: travel.title, slug: travel.slug,
+      description: stripHtml(travel.description || ''),
+      intro_text: stripHtml(travel.intro_text || ''),
+      number_of_nights: travel.number_of_nights || 0,
+      number_of_days: travel.number_of_days || 0,
+      price_per_person: travel.price_per_person || 0,
+      price_description: travel.price_description || '',
+      destinations: (travel.destinations || []).map((d: any) => ({ ...d, description: stripHtml(d.description || ''), highlights: d.highlights || [] })),
+      countries: travel.countries || [],
+      continents: travel.continents || [],
+      hotels: (travel.hotels || []).map((h: any) => ({ ...h, description: stripHtml(h.description || '') })),
+      images: travel.images || [],
+      hero_image: travel.hero_image || '',
+      hero_video_url: travel.hero_video_url || '',
+      hero_style: (travel.hero_style as HeroStyle) || 'slideshow',
+      video_start_time: travel.video_start_time || 0,
+      video_end_time: travel.video_end_time || 0,
+      route_map_url: '',
+      itinerary: travel.itinerary || [],
+      included: travel.included || [],
+      excluded: travel.excluded || [],
+      highlights: travel.highlights || [],
+      categories: travel.categories || [],
+      themes: travel.themes || [],
+    });
+    setEditTab('general');
+    setViewMode('edit');
+  };
+
+  const handleSave = async () => {
+    if (!formData.title.trim()) { alert('Titel is verplicht'); return; }
+    if (!editingTravel) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`${apiBase}?action=save-travel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          travel_id: editingTravel.id,
+          data: { ...formData, slug: formData.slug || formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') }
+        }),
+      });
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error);
+      await loadData();
+      setViewMode('list');
+      setEditingTravel(null);
+    } catch (error: any) {
+      alert(`Fout bij opslaan: ${error.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (travel: Travel) => {
+    if (!confirm(`Weet je zeker dat je "${travel.title}" wilt verwijderen?`)) return;
+    try {
+      const res = await fetch(`${apiBase}?action=delete-travel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ travel_id: travel.id }),
+      });
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error);
+      await loadData();
+    } catch (error: any) {
+      alert(`Fout bij verwijderen: ${error.message}`);
+    }
+  };
+
   // Filter travels
   const filteredTravels = travels.filter(t => {
     if (filter === 'active' && !isActive(t.id)) return false;
     if (filter === 'mandatory' && !t.is_mandatory) return false;
+    if (filter === 'own' && !isOwnTravel(t)) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return t.title.toLowerCase().includes(q) ||
@@ -152,9 +299,406 @@ export function BrandTravelCReizen() {
   });
 
   // ============================================
+  // EDIT VIEW
+  // ============================================
+  if (viewMode === 'edit' && editingTravel) {
+    const tabs = [
+      { id: 'general', label: 'Algemeen', icon: '📋' },
+      { id: 'photos', label: "Header & Foto's", icon: '🖼️' },
+      { id: 'components', label: 'Componenten', icon: '🧩' },
+      { id: 'routemap', label: 'Routekaart', icon: '🗺️' },
+    ];
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button onClick={() => { setViewMode('list'); setEditingTravel(null); setEditTab('general'); }} className="p-2 hover:bg-gray-100 rounded-lg">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h2 className="text-2xl font-bold">Reis Bewerken</h2>
+          </div>
+          <button onClick={handleSave} disabled={saving} className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Opslaan
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-2 border-b">
+          {tabs.map(tab => (
+            <button key={tab.id} onClick={() => setEditTab(tab.id as EditTab)}
+              className={`px-4 py-2 font-medium border-b-2 transition-colors ${editTab === tab.id ? 'border-orange-600 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+              <span className="mr-2">{tab.icon}</span>{tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border p-6">
+          {/* TAB: Algemeen */}
+          {editTab === 'general' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Titel</label>
+                  <input type="text" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Slug</label>
+                  <input type="text" value={formData.slug} onChange={(e) => setFormData({ ...formData, slug: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nachten</label>
+                  <input type="number" value={formData.number_of_nights} onChange={(e) => setFormData({ ...formData, number_of_nights: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 border rounded-lg" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Dagen</label>
+                  <input type="number" value={formData.number_of_days} onChange={(e) => setFormData({ ...formData, number_of_days: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 border rounded-lg" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Prijs p.p.</label>
+                  <input type="number" value={formData.price_per_person} onChange={(e) => setFormData({ ...formData, price_per_person: parseFloat(e.target.value) || 0 })} className="w-full px-3 py-2 border rounded-lg" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Intro Tekst</label>
+                <textarea value={formData.intro_text} onChange={(e) => setFormData({ ...formData, intro_text: e.target.value })} rows={3} className="w-full px-3 py-2 border rounded-lg" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Beschrijving</label>
+                <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={6} className="w-full px-3 py-2 border rounded-lg" />
+              </div>
+
+              {/* Continents */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Continenten</label>
+                <div className="flex flex-wrap gap-2">
+                  {['Europa', 'Azië', 'Afrika', 'Noord-Amerika', 'Zuid-Amerika', 'Oceanië'].map(cont => (
+                    <label key={cont} className="flex items-center gap-1 px-3 py-1 bg-gray-50 rounded-full cursor-pointer hover:bg-gray-100">
+                      <input type="checkbox" checked={formData.continents.includes(cont)}
+                        onChange={(e) => {
+                          if (e.target.checked) setFormData({ ...formData, continents: [...formData.continents, cont] });
+                          else setFormData({ ...formData, continents: formData.continents.filter(c => c !== cont) });
+                        }} className="w-3 h-3" />
+                      <span className="text-sm">{cont}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Countries */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Landen</label>
+                <div className="flex flex-wrap gap-1 p-2 bg-gray-50 rounded-lg min-h-10">
+                  {formData.countries.map((country, idx) => (
+                    <span key={idx} className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-sm">{country}</span>
+                  ))}
+                  {formData.countries.length === 0 && <span className="text-gray-400 text-sm">Geen landen</span>}
+                </div>
+              </div>
+
+              {/* Themes */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Thema's</label>
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {formData.themes.map((theme, idx) => (
+                    <span key={idx} className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-sm flex items-center gap-1">
+                      {theme}
+                      <button onClick={() => setFormData({ ...formData, themes: formData.themes.filter((_, i) => i !== idx) })} className="text-purple-500 hover:text-red-500">×</button>
+                    </span>
+                  ))}
+                </div>
+                <input type="text" placeholder="+ Nieuw thema (Enter)" className="px-3 py-2 border rounded-lg text-sm w-64"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const input = e.target as HTMLInputElement;
+                      if (input.value && !formData.themes.includes(input.value)) {
+                        setFormData({ ...formData, themes: [...formData.themes, input.value] });
+                        input.value = '';
+                      }
+                    }
+                  }} />
+              </div>
+            </div>
+          )}
+
+          {/* TAB: Header & Foto's */}
+          {editTab === 'photos' && (
+            <div className="space-y-6">
+              {/* Hero Style */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Hero Stijl</label>
+                <div className="grid grid-cols-5 gap-3">
+                  {[
+                    { id: 'slideshow', label: 'Slideshow', icon: '▶️' },
+                    { id: 'grid', label: 'Grid', icon: '🖼️' },
+                    { id: 'single', label: 'Enkele Foto', icon: '📷' },
+                    { id: 'video', label: 'Video', icon: '📺' },
+                    { id: 'wide', label: 'Breed', icon: '🌅' },
+                  ].map(style => (
+                    <button key={style.id} onClick={() => setFormData({ ...formData, hero_style: style.id as HeroStyle })}
+                      className={`p-3 rounded-lg border-2 text-center transition-all ${formData.hero_style === style.id ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                      <div className="text-xl mb-1">{style.icon}</div>
+                      <div className="text-xs font-medium">{style.label}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Hero Image */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Hero Afbeelding</label>
+                <div className="flex gap-4 items-start">
+                  {formData.hero_image ? (
+                    <div className="relative">
+                      <img src={formData.hero_image} alt="Hero" className="h-32 w-48 object-cover rounded-lg" />
+                      <button onClick={() => setFormData({ ...formData, hero_image: '' })} className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full"><X className="w-3 h-3" /></button>
+                    </div>
+                  ) : (
+                    <div className="h-32 w-48 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400"><Image className="w-8 h-8" /></div>
+                  )}
+                  <button onClick={() => { setMediaSelectorMode('hero'); setShowMediaSelector(true); }} className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2">
+                    <Image className="w-4 h-4" /> Kies Hero
+                  </button>
+                </div>
+              </div>
+
+              {/* Video URL */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Hero Video (YouTube)</label>
+                <input type="text" value={formData.hero_video_url} onChange={(e) => setFormData({ ...formData, hero_video_url: e.target.value })} className="w-full px-3 py-2 border rounded-lg" placeholder="https://www.youtube.com/watch?v=..." />
+                <div className="grid grid-cols-2 gap-4 mt-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Start (sec)</label>
+                    <input type="number" value={formData.video_start_time} onChange={(e) => setFormData({ ...formData, video_start_time: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 border rounded-lg text-sm" min="0" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Eind (sec, 0=heel)</label>
+                    <input type="number" value={formData.video_end_time} onChange={(e) => setFormData({ ...formData, video_end_time: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 border rounded-lg text-sm" min="0" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Gallery */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">Foto Galerij ({formData.images.length})</label>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setMediaSelectorMode('gallery'); setShowMediaSelector(true); }} className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm flex items-center gap-1">
+                      <Plus className="w-3 h-3" /> Toevoegen
+                    </button>
+                    {selectedImages.size > 0 && (
+                      <button onClick={() => { setFormData({ ...formData, images: formData.images.filter((_, idx) => !selectedImages.has(idx)) }); setSelectedImages(new Set()); }}
+                        className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm">Verwijder ({selectedImages.size})</button>
+                    )}
+                  </div>
+                </div>
+                <div className="grid grid-cols-6 gap-3 max-h-96 overflow-y-auto p-2 bg-gray-50 rounded-lg">
+                  {formData.images.map((img, idx) => (
+                    <div key={idx} className={`relative group cursor-pointer rounded-lg overflow-hidden border-2 ${selectedImages.has(idx) ? 'border-orange-500' : 'border-transparent'} ${formData.hero_image === img ? 'ring-2 ring-yellow-400' : ''}`}>
+                      <img src={img} alt="" className="w-full h-24 object-cover"
+                        onClick={() => { const s = new Set(selectedImages); if (s.has(idx)) s.delete(idx); else s.add(idx); setSelectedImages(s); }} />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <button onClick={() => setFormData({ ...formData, hero_image: img })} className="p-1 bg-yellow-500 text-white rounded text-xs" title="Als hero">⭐</button>
+                        <button onClick={() => setFormData({ ...formData, images: formData.images.filter((_, i) => i !== idx) })} className="p-1 bg-red-500 text-white rounded text-xs" title="Verwijder">🗑️</button>
+                      </div>
+                      {formData.hero_image === img && <div className="absolute top-1 left-1 bg-yellow-500 text-white text-xs px-1 rounded">Hero</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <SlidingMediaSelector isOpen={showMediaSelector} onClose={() => setShowMediaSelector(false)}
+                onSelect={(url) => { if (mediaSelectorMode === 'hero') setFormData({ ...formData, hero_image: url }); else setFormData({ ...formData, images: [...formData.images, url] }); setShowMediaSelector(false); }}
+                onSelectMultiple={(urls) => { setFormData({ ...formData, images: [...formData.images, ...urls] }); setShowMediaSelector(false); }}
+                title={mediaSelectorMode === 'hero' ? 'Kies Hero Afbeelding' : "Foto's Toevoegen"} allowMultiple={mediaSelectorMode === 'gallery'} />
+            </div>
+          )}
+
+          {/* TAB: Componenten */}
+          {editTab === 'components' && (
+            <div className="space-y-6">
+              {/* Destinations */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2"><MapPin className="w-4 h-4 inline mr-1" />Bestemmingen ({formData.destinations.length})</label>
+                <div className="space-y-4">
+                  {formData.destinations.map((dest: any, idx: number) => (
+                    <div key={idx} className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-center gap-2 mb-3">
+                        <MapPin className="w-5 h-5 text-blue-600" />
+                        <input type="text" value={dest.name || dest.city || ''} onChange={(e) => { const d = [...formData.destinations]; d[idx] = { ...d[idx], name: e.target.value }; setFormData({ ...formData, destinations: d }); }}
+                          className="font-medium bg-white px-2 py-1 border rounded" placeholder="Naam" />
+                        {dest.country && <span className="text-sm text-gray-500">({dest.country})</span>}
+                        {dest.nights > 0 && <span className="text-sm text-gray-500">{dest.nights}n</span>}
+                      </div>
+                      <textarea value={dest.description || ''} onChange={(e) => { const d = [...formData.destinations]; d[idx] = { ...d[idx], description: e.target.value }; setFormData({ ...formData, destinations: d }); }}
+                        className="w-full px-3 py-2 border rounded-lg text-sm" rows={2} placeholder="Beschrijving..." />
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-xs text-gray-500">Foto's: {dest.images?.length || 0}</span>
+                        <button onClick={() => setComponentMediaSelector({ type: 'destination', index: idx })} className="text-xs px-2 py-1 bg-blue-100 text-blue-600 rounded hover:bg-blue-200">+ Foto</button>
+                      </div>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {(dest.images || []).slice(0, 4).map((img: string, i: number) => (
+                          <div key={i} className="relative group">
+                            <img src={img} alt="" className="w-16 h-12 object-cover rounded" />
+                            <button onClick={() => { const d = [...formData.destinations]; d[idx] = { ...d[idx], images: (d[idx].images || []).filter((_: any, ii: number) => ii !== i) }; setFormData({ ...formData, destinations: d }); }}
+                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs opacity-0 group-hover:opacity-100">×</button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Hotels */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2"><Hotel className="w-4 h-4 inline mr-1" />Hotels ({formData.hotels.length})</label>
+                <div className="space-y-4">
+                  {formData.hotels.map((hotel: any, idx: number) => (
+                    <div key={idx} className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Hotel className="w-5 h-5 text-green-600" />
+                        <input type="text" value={hotel.name || ''} onChange={(e) => { const h = [...formData.hotels]; h[idx] = { ...h[idx], name: e.target.value }; setFormData({ ...formData, hotels: h }); }}
+                          className="font-medium bg-white px-2 py-1 border rounded" placeholder="Naam hotel" />
+                        {hotel.stars > 0 && <span className="text-yellow-500">{'★'.repeat(hotel.stars)}</span>}
+                      </div>
+                      <textarea value={hotel.description || ''} onChange={(e) => { const h = [...formData.hotels]; h[idx] = { ...h[idx], description: e.target.value }; setFormData({ ...formData, hotels: h }); }}
+                        className="w-full px-3 py-2 border rounded-lg text-sm" rows={2} placeholder="Beschrijving..." />
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-xs text-gray-500">Foto's: {hotel.images?.length || 0}</span>
+                        <button onClick={() => setComponentMediaSelector({ type: 'hotel', index: idx })} className="text-xs px-2 py-1 bg-green-100 text-green-600 rounded hover:bg-green-200">+ Foto</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Component Media Selector */}
+              <SlidingMediaSelector isOpen={componentMediaSelector !== null} onClose={() => setComponentMediaSelector(null)}
+                onSelect={(url) => {
+                  if (componentMediaSelector) {
+                    if (componentMediaSelector.type === 'destination') {
+                      const d = [...formData.destinations]; d[componentMediaSelector.index] = { ...d[componentMediaSelector.index], images: [...(d[componentMediaSelector.index].images || []), url] };
+                      setFormData({ ...formData, destinations: d });
+                    } else {
+                      const h = [...formData.hotels]; h[componentMediaSelector.index] = { ...h[componentMediaSelector.index], images: [...(h[componentMediaSelector.index].images || []), url] };
+                      setFormData({ ...formData, hotels: h });
+                    }
+                  }
+                  setComponentMediaSelector(null);
+                }}
+                title={componentMediaSelector?.type === 'destination' ? 'Foto toevoegen aan bestemming' : 'Foto toevoegen aan hotel'} />
+
+              {/* Flights (read-only) */}
+              {(() => {
+                const flightsOnly = (editingTravel?.transports || []).filter((t: any) => t.transportType === 'FLIGHT');
+                const allFlights = [...flightsOnly, ...(editingTravel?.flights || []).filter((f: any) => !flightsOnly.some((t: any) => t.id === f.id))];
+                return allFlights.length > 0 ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2"><Plane className="w-4 h-4 inline mr-1" />Vluchten ({allFlights.length})</label>
+                    <div className="space-y-2">
+                      {allFlights.map((t: any, idx: number) => (
+                        <div key={idx} className="p-3 bg-sky-50 border border-sky-200 rounded-lg flex items-center gap-2">
+                          <Plane className="w-4 h-4 text-sky-600" />
+                          <span className="font-medium text-sm">{t.originCode || t.from || 'Vertrek'} → {t.targetCode || t.to || 'Aankomst'}</span>
+                          {t.company && <span className="text-sm text-gray-500">({t.company})</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
+              {/* Car Rentals (read-only) */}
+              {editingTravel?.car_rentals?.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2"><Car className="w-4 h-4 inline mr-1" />Huurauto's ({editingTravel.car_rentals.length})</label>
+                  {editingTravel.car_rentals.map((car: any, idx: number) => (
+                    <div key={idx} className="p-3 bg-orange-50 border border-orange-200 rounded-lg flex items-center gap-3">
+                      {car.imageUrl && <img src={car.imageUrl} alt="" className="w-20 h-14 object-contain rounded" />}
+                      <div><strong>{car.product || 'Huurauto'}</strong><div className="text-xs text-gray-500">{car.pickupLocation} → {car.dropoffLocation}</div></div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Cruises (read-only) */}
+              {editingTravel?.cruises?.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2"><Ship className="w-4 h-4 inline mr-1" />Cruises ({editingTravel.cruises.length})</label>
+                  {editingTravel.cruises.map((c: any, idx: number) => (
+                    <div key={idx} className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2">
+                      <Ship className="w-4 h-4 text-blue-600" />
+                      <span className="font-medium text-sm">{c.cruiseLine || 'Cruise'}</span>
+                      {c.nights > 0 && <span className="text-sm text-gray-500">{c.nights}n</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: Routekaart */}
+          {editTab === 'routemap' && (
+            <div className="space-y-6">
+              <h3 className="text-lg font-semibold flex items-center gap-2">🗺️ Routekaart</h3>
+              <p className="text-sm text-gray-500">Kaart met genummerde markers per bestemming. Coördinaten worden automatisch opgezocht.</p>
+              {formData.destinations.length >= 2 ? (
+                <RouteMap
+                  destinations={formData.destinations.map((d: any) => ({
+                    name: d.name || d.title || '', country: d.country || '',
+                    lat: d.geolocation?.latitude || d.lat || 0, lng: d.geolocation?.longitude || d.lng || 0,
+                    image: d.imageUrls?.[0] || d.images?.[0] || d.image || '',
+                    description: d.description || '', nights: d.nights || 0,
+                  }))}
+                  height="500px"
+                  onGeocodingComplete={(geocoded) => {
+                    const updatedDests = formData.destinations.map((d: any) => {
+                      const geo = geocoded.find((g: any) => g.name === (d.name || d.title));
+                      if (geo && geo.lat && geo.lng) return { ...d, geolocation: { latitude: geo.lat, longitude: geo.lng } };
+                      return d;
+                    });
+                    setFormData({ ...formData, destinations: updatedDests });
+                  }}
+                />
+              ) : (
+                <div className="flex items-center justify-center bg-gray-100 rounded-lg h-64">
+                  <p className="text-gray-500 text-sm">Minimaal 2 bestemmingen nodig</p>
+                </div>
+              )}
+              {formData.destinations.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Bestemmingen ({formData.destinations.length})</h4>
+                  <div className="space-y-1">
+                    {formData.destinations.map((d: any, idx: number) => (
+                      <div key={idx} className="flex items-center gap-3 text-sm p-2 bg-gray-50 rounded">
+                        <span className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">{idx + 1}</span>
+                        <span className="font-medium">{d.name || d.title}</span>
+                        {d.nights > 0 && <span className="text-gray-500">({d.nights}n)</span>}
+                        {d.geolocation?.latitude ? (
+                          <span className="text-xs text-green-600 ml-auto">📍 {d.geolocation.latitude.toFixed(2)}, {d.geolocation.longitude.toFixed(2)}</span>
+                        ) : (
+                          <span className="text-xs text-orange-500 ml-auto">⏳ Wordt opgezocht...</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================
   // DETAIL VIEW
   // ============================================
-  if (selectedTravel) {
+  if (viewMode === 'detail' && selectedTravel) {
     const travel = selectedTravel;
     const assignment = getAssignment(travel.id);
     const destinations = travel.destinations || [];
@@ -164,13 +708,16 @@ export function BrandTravelCReizen() {
 
     return (
       <div className="max-w-5xl mx-auto">
-        {/* Back button */}
-        <button
-          onClick={() => setSelectedTravel(null)}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
-        >
-          <ArrowLeft className="w-4 h-4" /> Terug naar overzicht
-        </button>
+        <div className="flex items-center justify-between mb-4">
+          <button onClick={() => { setViewMode('list'); setSelectedTravel(null); }} className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
+            <ArrowLeft className="w-4 h-4" /> Terug naar overzicht
+          </button>
+          {isOwnTravel(travel) && (
+            <button onClick={() => handleEdit(travel)} className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2 text-sm">
+              <Edit2 className="w-4 h-4" /> Bewerken
+            </button>
+          )}
+        </div>
 
         {/* Hero */}
         {travel.hero_image && (
@@ -193,49 +740,27 @@ export function BrandTravelCReizen() {
           <h3 className="font-semibold text-orange-800 mb-3">Jouw instellingen voor deze reis</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={assignment?.is_active || false}
-                onChange={() => handleToggleActive(travel.id)}
-                className="w-4 h-4 text-orange-600 rounded"
-              />
+              <input type="checkbox" checked={assignment?.is_active || false} onChange={() => handleToggleActive(travel.id)} className="w-4 h-4 text-orange-600 rounded" />
               <span className="text-sm">Actief op website</span>
             </label>
             {assignment?.is_active && (
               <>
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={assignment?.is_featured || false}
-                    onChange={() => handleToggleFeatured(travel.id)}
-                    className="w-4 h-4 text-orange-600 rounded"
-                  />
+                  <input type="checkbox" checked={assignment?.is_featured || false} onChange={() => handleToggleFeatured(travel.id)} className="w-4 h-4 text-orange-600 rounded" />
                   <span className="text-sm">Uitgelicht</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={assignment?.show_hotels ?? true}
-                    onChange={() => handleToggleSetting(travel.id, 'show_hotels', !(assignment?.show_hotels ?? true))}
-                    className="w-4 h-4 text-orange-600 rounded"
-                  />
+                  <input type="checkbox" checked={assignment?.show_hotels ?? true} onChange={() => handleToggleSetting(travel.id, 'show_hotels', !(assignment?.show_hotels ?? true))} className="w-4 h-4 text-orange-600 rounded" />
                   <span className="text-sm">Toon hotels</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={assignment?.show_prices ?? true}
-                    onChange={() => handleToggleSetting(travel.id, 'show_prices', !(assignment?.show_prices ?? true))}
-                    className="w-4 h-4 text-orange-600 rounded"
-                  />
+                  <input type="checkbox" checked={assignment?.show_prices ?? true} onChange={() => handleToggleSetting(travel.id, 'show_prices', !(assignment?.show_prices ?? true))} className="w-4 h-4 text-orange-600 rounded" />
                   <span className="text-sm">Toon prijzen</span>
                 </label>
               </>
             )}
           </div>
-          {travel.is_mandatory && (
-            <p className="text-xs text-orange-600 mt-2">⚠️ Deze reis is verplicht en verschijnt altijd op je website.</p>
-          )}
+          {travel.is_mandatory && <p className="text-xs text-orange-600 mt-2">Deze reis is verplicht en verschijnt altijd op je website.</p>}
         </div>
 
         {/* Intro */}
@@ -263,19 +788,8 @@ export function BrandTravelCReizen() {
         {/* Route Map */}
         {destinations.length >= 2 && (
           <div className="bg-white rounded-xl p-6 mb-6 shadow-sm border">
-            <h2 className="text-lg font-bold mb-3">🗺️ Routekaart</h2>
-            <RouteMap
-              destinations={destinations.map((d: any) => ({
-                name: d.name || d.title || '',
-                country: d.country || '',
-                lat: d.geolocation?.latitude || d.lat || 0,
-                lng: d.geolocation?.longitude || d.lng || 0,
-                image: d.imageUrls?.[0] || d.images?.[0] || d.image || '',
-                description: d.description || '',
-                nights: d.nights || 0,
-              }))}
-              height="400px"
-            />
+            <h2 className="text-lg font-bold mb-3">Routekaart</h2>
+            <RouteMap destinations={destinations.map((d: any) => ({ name: d.name || '', country: d.country || '', lat: d.geolocation?.latitude || 0, lng: d.geolocation?.longitude || 0, image: d.imageUrls?.[0] || d.images?.[0] || '', description: d.description || '', nights: d.nights || 0 }))} height="400px" />
           </div>
         )}
 
@@ -284,22 +798,18 @@ export function BrandTravelCReizen() {
           <div className="bg-white rounded-xl p-6 mb-6 shadow-sm border">
             <h2 className="text-lg font-bold mb-3">Bestemmingen ({destinations.length})</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {destinations.map((dest: any, idx: number) => {
-                const img = dest.imageUrls?.[0] || dest.images?.[0] || '';
-                return (
-                  <div key={idx} className="flex gap-3 bg-gray-50 rounded-lg overflow-hidden">
-                    {img && <img src={img} alt={dest.name} className="w-24 h-20 object-cover flex-shrink-0" />}
-                    <div className="py-2 pr-2">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">{idx + 1}</span>
-                        <span className="font-medium text-sm">{dest.name}</span>
-                      </div>
-                      {dest.nights > 0 && <span className="text-xs text-gray-500">{dest.nights} nachten</span>}
-                      {dest.description && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{dest.description.replace(/<[^>]*>/g, '').substring(0, 100)}</p>}
+              {destinations.map((dest: any, idx: number) => (
+                <div key={idx} className="flex gap-3 bg-gray-50 rounded-lg overflow-hidden">
+                  {(dest.imageUrls?.[0] || dest.images?.[0]) && <img src={dest.imageUrls?.[0] || dest.images?.[0]} alt={dest.name} className="w-24 h-20 object-cover flex-shrink-0" />}
+                  <div className="py-2 pr-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">{idx + 1}</span>
+                      <span className="font-medium text-sm">{dest.name}</span>
                     </div>
+                    {dest.nights > 0 && <span className="text-xs text-gray-500">{dest.nights} nachten</span>}
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -315,7 +825,6 @@ export function BrandTravelCReizen() {
                   <div className="py-2">
                     <span className="font-medium text-sm">{hotel.name}</span>
                     {hotel.stars > 0 && <div className="text-yellow-500 text-xs">{'★'.repeat(hotel.stars)}</div>}
-                    {hotel.location && <span className="text-xs text-gray-500">{hotel.location}</span>}
                   </div>
                 </div>
               ))}
@@ -330,11 +839,7 @@ export function BrandTravelCReizen() {
             {flights.map((f: any, idx: number) => (
               <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg mb-2">
                 <Plane className="w-4 h-4 text-blue-500" />
-                <div className="text-sm">
-                  <strong>{f.departureAirport} → {f.arrivalAirport}</strong>
-                  {f.departureDate && <span className="text-gray-500 ml-2">{f.departureDate}</span>}
-                  {f.airline && <span className="text-gray-500 ml-2">({f.airline})</span>}
-                </div>
+                <div className="text-sm"><strong>{f.departureAirport} → {f.arrivalAirport}</strong>{f.departureDate && <span className="text-gray-500 ml-2">{f.departureDate}</span>}</div>
               </div>
             ))}
           </div>
@@ -347,10 +852,7 @@ export function BrandTravelCReizen() {
             {travel.cruises.map((c: any, idx: number) => (
               <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg mb-2">
                 <Ship className="w-4 h-4 text-blue-500" />
-                <div className="text-sm">
-                  <strong>{c.cruiseLine} - {c.selectedCategory}</strong>
-                  {c.nights > 0 && <span className="text-gray-500 ml-2">{c.nights} nachten</span>}
-                </div>
+                <div className="text-sm"><strong>{c.cruiseLine} - {c.selectedCategory}</strong>{c.nights > 0 && <span className="text-gray-500 ml-2">{c.nights}n</span>}</div>
               </div>
             ))}
           </div>
@@ -363,10 +865,7 @@ export function BrandTravelCReizen() {
             {travel.car_rentals.map((car: any, idx: number) => (
               <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg mb-2">
                 <Car className="w-4 h-4 text-green-500" />
-                <div className="text-sm">
-                  <strong>{car.product}</strong>
-                  {car.pickupLocation && <span className="text-gray-500 ml-2">{car.pickupLocation} → {car.dropoffLocation}</span>}
-                </div>
+                <div className="text-sm"><strong>{car.product}</strong>{car.pickupLocation && <span className="text-gray-500 ml-2">{car.pickupLocation} → {car.dropoffLocation}</span>}</div>
               </div>
             ))}
           </div>
@@ -395,34 +894,24 @@ export function BrandTravelCReizen() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             {travel.included?.length > 0 && (
               <div className="bg-white rounded-xl p-6 shadow-sm border">
-                <h2 className="text-lg font-bold mb-3 text-green-700">✅ Inclusief</h2>
-                <ul className="space-y-1">
-                  {travel.included.map((item: any, i: number) => (
-                    <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-                      <Check className="w-3 h-3 text-green-500 mt-1 flex-shrink-0" />
-                      {typeof item === 'string' ? item : item.text || item.description || ''}
-                    </li>
-                  ))}
-                </ul>
+                <h2 className="text-lg font-bold mb-3 text-green-700">Inclusief</h2>
+                <ul className="space-y-1">{travel.included.map((item: any, i: number) => (
+                  <li key={i} className="text-sm text-gray-700 flex items-start gap-2"><Check className="w-3 h-3 text-green-500 mt-1 flex-shrink-0" />{typeof item === 'string' ? item : item.text || item.description || ''}</li>
+                ))}</ul>
               </div>
             )}
             {travel.excluded?.length > 0 && (
               <div className="bg-white rounded-xl p-6 shadow-sm border">
-                <h2 className="text-lg font-bold mb-3 text-red-700">❌ Exclusief</h2>
-                <ul className="space-y-1">
-                  {travel.excluded.map((item: any, i: number) => (
-                    <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-                      <X className="w-3 h-3 text-red-500 mt-1 flex-shrink-0" />
-                      {typeof item === 'string' ? item : item.text || item.description || ''}
-                    </li>
-                  ))}
-                </ul>
+                <h2 className="text-lg font-bold mb-3 text-red-700">Exclusief</h2>
+                <ul className="space-y-1">{travel.excluded.map((item: any, i: number) => (
+                  <li key={i} className="text-sm text-gray-700 flex items-start gap-2"><X className="w-3 h-3 text-red-500 mt-1 flex-shrink-0" />{typeof item === 'string' ? item : item.text || item.description || ''}</li>
+                ))}</ul>
               </div>
             )}
           </div>
         )}
 
-        {/* Photo Gallery */}
+        {/* Photos */}
         {travel.images?.length > 1 && (
           <div className="bg-white rounded-xl p-6 mb-6 shadow-sm border">
             <h2 className="text-lg font-bold mb-3">Foto's ({travel.images.length})</h2>
@@ -444,9 +933,25 @@ export function BrandTravelCReizen() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">TravelC Reizen</h1>
-        <p className="text-gray-600">
-          Reizen beschikbaar gesteld door de admin. Activeer reizen voor je website en pas instellingen aan.
-        </p>
+        <p className="text-gray-600">Beheer je reizen: importeer van Travel Compositor, bewerk en activeer voor je website.</p>
+      </div>
+
+      {/* Import Section */}
+      <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-6 border border-orange-200 mb-6">
+        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+          <Download className="w-5 h-5 text-orange-600" />
+          Importeer van Travel Compositor
+        </h3>
+        <div className="flex gap-3">
+          <input type="text" value={importTcId} onChange={(e) => { setImportTcId(e.target.value); setImportError(''); }}
+            placeholder="Travel Compositor ID (bijv. 35338738)" className="flex-1 px-4 py-2 border rounded-lg" />
+          <button onClick={handleImportFromTC} disabled={importing}
+            className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2">
+            {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Importeren
+          </button>
+        </div>
+        {importError && <p className="mt-2 text-red-600 text-sm">{importError}</p>}
       </div>
 
       {/* Filters */}
@@ -454,27 +959,18 @@ export function BrandTravelCReizen() {
         <div className="flex bg-gray-100 rounded-lg p-1">
           {[
             { key: 'all', label: 'Alle' },
+            { key: 'own', label: 'Eigen reizen' },
             { key: 'active', label: 'Actief' },
             { key: 'mandatory', label: 'Verplicht' },
           ].map(f => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key as any)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                filter === f.key ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
+            <button key={f.key} onClick={() => setFilter(f.key as any)}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${filter === f.key ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
               {f.label}
             </button>
           ))}
         </div>
-        <input
-          type="text"
-          placeholder="Zoek op naam, land..."
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          className="px-3 py-1.5 border rounded-lg text-sm flex-1 max-w-xs"
-        />
+        <input type="text" placeholder="Zoek op naam, land..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+          className="px-3 py-1.5 border rounded-lg text-sm flex-1 max-w-xs" />
         <span className="text-sm text-gray-500">{filteredTravels.length} reizen</span>
       </div>
 
@@ -486,6 +982,7 @@ export function BrandTravelCReizen() {
         <div className="text-center py-16 bg-white rounded-xl border">
           <Plane className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500">Geen reizen gevonden</p>
+          <p className="text-sm text-gray-400 mt-1">Importeer een reis via Travel Compositor ID</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -493,31 +990,25 @@ export function BrandTravelCReizen() {
             const assignment = getAssignment(travel.id);
             const active = assignment?.is_active || false;
             const featured = assignment?.is_featured || false;
+            const own = isOwnTravel(travel);
             const image = travel.hero_image || travel.images?.[0] || '';
 
             return (
-              <div
-                key={travel.id}
-                className={`bg-white rounded-xl border overflow-hidden shadow-sm hover:shadow-md transition-all ${
-                  active ? 'border-green-300 ring-1 ring-green-200' : 'border-gray-200'
-                }`}
-              >
+              <div key={travel.id}
+                className={`bg-white rounded-xl border overflow-hidden shadow-sm hover:shadow-md transition-all ${active ? 'border-green-300 ring-1 ring-green-200' : 'border-gray-200'}`}>
                 {/* Image */}
-                <div className="relative h-40 cursor-pointer" onClick={() => setSelectedTravel(travel)}>
+                <div className="relative h-40 cursor-pointer" onClick={() => { setSelectedTravel(travel); setViewMode('detail'); }}>
                   {image ? (
                     <img src={image} alt={travel.title} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                      <Image className="w-8 h-8 text-gray-300" />
-                    </div>
+                    <div className="w-full h-full bg-gray-100 flex items-center justify-center"><Image className="w-8 h-8 text-gray-300" /></div>
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-3">
                     <h3 className="text-white font-bold text-sm leading-tight">{travel.title}</h3>
                   </div>
-                  {travel.is_mandatory && (
-                    <span className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-medium">Verplicht</span>
-                  )}
+                  {travel.is_mandatory && <span className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-medium">Verplicht</span>}
+                  {own && <span className="absolute top-2 left-2 bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full font-medium">Eigen reis</span>}
                   {featured && (
                     <span className="absolute top-2 right-2 bg-yellow-500 text-white text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
                       <Star className="w-3 h-3" /> Uitgelicht
@@ -528,48 +1019,32 @@ export function BrandTravelCReizen() {
                 {/* Info */}
                 <div className="p-3">
                   <div className="flex items-center gap-3 text-xs text-gray-500 mb-2">
-                    {travel.number_of_nights > 0 && (
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" /> {travel.number_of_nights}n
-                      </span>
-                    )}
-                    {travel.destinations?.length > 0 && (
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3 h-3" /> {travel.destinations.length}
-                      </span>
-                    )}
-                    {travel.hotels?.length > 0 && (
-                      <span className="flex items-center gap-1">
-                        <Hotel className="w-3 h-3" /> {travel.hotels.length}
-                      </span>
-                    )}
-                    {travel.price_per_person > 0 && (
-                      <span className="flex items-center gap-1 font-semibold text-gray-700">
-                        <Euro className="w-3 h-3" /> {Number(travel.price_per_person).toLocaleString()}
-                      </span>
-                    )}
+                    {travel.number_of_nights > 0 && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {travel.number_of_nights}n</span>}
+                    {travel.destinations?.length > 0 && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {travel.destinations.length}</span>}
+                    {travel.hotels?.length > 0 && <span className="flex items-center gap-1"><Hotel className="w-3 h-3" /> {travel.hotels.length}</span>}
+                    {travel.price_per_person > 0 && <span className="flex items-center gap-1 font-semibold text-gray-700"><Euro className="w-3 h-3" /> {Number(travel.price_per_person).toLocaleString()}</span>}
                   </div>
-
-                  {travel.countries?.length > 0 && (
-                    <p className="text-xs text-blue-600 mb-2">{travel.countries.join(' · ')}</p>
-                  )}
+                  {travel.countries?.length > 0 && <p className="text-xs text-blue-600 mb-2">{travel.countries.join(' · ')}</p>}
 
                   {/* Actions */}
                   <div className="flex items-center justify-between pt-2 border-t">
-                    <button
-                      onClick={() => setSelectedTravel(travel)}
-                      className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
-                    >
-                      <Eye className="w-3 h-3" /> Bekijken
-                    </button>
-
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => { setSelectedTravel(travel); setViewMode('detail'); }} className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1">
+                        <Eye className="w-3 h-3" /> Bekijken
+                      </button>
+                      {own && (
+                        <>
+                          <button onClick={() => handleEdit(travel)} className="text-xs text-orange-500 hover:text-orange-700 flex items-center gap-1">
+                            <Edit2 className="w-3 h-3" /> Bewerken
+                          </button>
+                          <button onClick={() => handleDelete(travel)} className="text-xs text-red-400 hover:text-red-600 flex items-center gap-1">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </>
+                      )}
+                    </div>
                     <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={active}
-                        onChange={() => handleToggleActive(travel.id)}
-                        className="sr-only peer"
-                      />
+                      <input type="checkbox" checked={active} onChange={() => handleToggleActive(travel.id)} className="sr-only peer" />
                       <div className="w-9 h-5 bg-gray-200 peer-focus:ring-2 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
                       <span className="ml-2 text-xs font-medium text-gray-600">{active ? 'Actief' : 'Inactief'}</span>
                     </label>

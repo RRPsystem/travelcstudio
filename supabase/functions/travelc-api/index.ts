@@ -275,8 +275,182 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // ============================================
+    // ACTION: import-travel (POST) - Import from Travel Compositor
+    // ============================================
+    if (action === "import-travel" && req.method === "POST") {
+      const body = await req.json();
+      const { tc_id, author_id, author_type } = body;
+
+      if (!tc_id) {
+        return new Response(
+          JSON.stringify({ error: "tc_id is required" }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+
+      // Check if already exists
+      const { data: existing } = await supabase
+        .from("travelc_travels")
+        .select("id, title")
+        .eq("travel_compositor_id", tc_id)
+        .maybeSingle();
+
+      if (existing) {
+        return new Response(
+          JSON.stringify({ error: `Deze reis bestaat al: "${existing.title}"`, existing_id: existing.id }),
+          { status: 409, headers: corsHeaders }
+        );
+      }
+
+      // Call import edge function
+      const importRes = await fetch(`${supabaseUrl}/functions/v1/import-travel-compositor`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({ travelId: tc_id }),
+      });
+
+      const importData = await importRes.json();
+      if (!importData || !importData.title) {
+        return new Response(
+          JSON.stringify({ error: "Kon reis niet ophalen van Travel Compositor" }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+
+      // Generate slug
+      const slug = importData.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+
+      const travelData: Record<string, any> = {
+        travel_compositor_id: tc_id,
+        title: importData.title,
+        slug,
+        description: importData.description || "",
+        intro_text: importData.introText || "",
+        number_of_nights: importData.numberOfNights || 0,
+        number_of_days: importData.numberOfDays || (importData.numberOfNights ? importData.numberOfNights + 1 : 0),
+        price_per_person: importData.pricePerPerson || 0,
+        price_description: importData.priceDescription || "",
+        currency: importData.currency || "EUR",
+        destinations: importData.destinations || [],
+        countries: importData.countries || [],
+        hotels: importData.hotels || [],
+        flights: importData.flights || [],
+        transports: importData.transports || [],
+        car_rentals: importData.carRentals || [],
+        activities: importData.activities || [],
+        cruises: importData.cruises || [],
+        transfers: importData.transfers || [],
+        excursions: importData.excursions || [],
+        images: importData.images || [],
+        hero_image: importData.heroImage || importData.images?.[0] || "",
+        hero_video_url: importData.heroVideoUrl || "",
+        route_map_url: importData.routeMapUrl || "",
+        itinerary: importData.itinerary || [],
+        included: importData.included || [],
+        excluded: importData.excluded || [],
+        highlights: importData.highlights || [],
+        selling_points: importData.sellingPoints || [],
+        practical_info: importData.practicalInfo || {},
+        price_breakdown: importData.priceBreakdown || {},
+        travelers: importData.travelers || {},
+        ai_summary: importData.aiSummary || "",
+        all_texts: importData.allTexts || {},
+        raw_tc_data: importData,
+        author_id: author_id || null,
+        author_type: author_type || "admin",
+      };
+
+      const { data: inserted, error: insertError } = await supabase
+        .from("travelc_travels")
+        .insert([travelData])
+        .select("id, title")
+        .single();
+
+      if (insertError) throw insertError;
+
+      return new Response(
+        JSON.stringify({ success: true, travel: inserted, title: inserted.title }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    // ============================================
+    // ACTION: save-travel (POST) - Update travel data
+    // ============================================
+    if (action === "save-travel" && req.method === "POST") {
+      const body = await req.json();
+      const { travel_id, data: travelUpdate } = body;
+
+      if (!travel_id || !travelUpdate) {
+        return new Response(
+          JSON.stringify({ error: "travel_id and data are required" }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+
+      // Generate slug if title changed
+      if (travelUpdate.title && !travelUpdate.slug) {
+        travelUpdate.slug = travelUpdate.title
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "");
+      }
+
+      const { error } = await supabase
+        .from("travelc_travels")
+        .update(travelUpdate)
+        .eq("id", travel_id);
+
+      if (error) throw error;
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    // ============================================
+    // ACTION: delete-travel (POST) - Delete a travel
+    // ============================================
+    if (action === "delete-travel" && req.method === "POST") {
+      const body = await req.json();
+      const { travel_id } = body;
+
+      if (!travel_id) {
+        return new Response(
+          JSON.stringify({ error: "travel_id is required" }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+
+      // Delete assignments first
+      await supabase
+        .from("travelc_travel_brand_assignments")
+        .delete()
+        .eq("travel_id", travel_id);
+
+      const { error } = await supabase
+        .from("travelc_travels")
+        .delete()
+        .eq("id", travel_id);
+
+      if (error) throw error;
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
     return new Response(
-      JSON.stringify({ error: "Unknown action. Use: list, get, categories, toggle-assignment, assignments" }),
+      JSON.stringify({ error: "Unknown action" }),
       { status: 400, headers: corsHeaders }
     );
 
