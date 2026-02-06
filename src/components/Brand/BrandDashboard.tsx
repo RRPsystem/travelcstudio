@@ -9,6 +9,7 @@ import { NewsApproval } from './NewsApproval';
 import { DestinationApproval } from './DestinationApproval';
 import { TripApproval } from './TripApproval';
 import { TripManager } from './TripManager';
+import { BrandTravelCReizen } from './BrandTravelCReizen';
 import { PageManagement } from './PageManagement';
 import { QuickStart } from './QuickStart';
 import { AgentManagement } from './AgentManagement';
@@ -104,7 +105,7 @@ export function BrandDashboard() {
         db.supabase.from('websites').select('id', { count: 'exact' }).eq('brand_id', effectiveBrandId),
         db.supabase.from('news_items').select('id', { count: 'exact' }).eq('brand_id', effectiveBrandId),
         db.supabase.from('agents').select('id', { count: 'exact' }).eq('brand_id', effectiveBrandId),
-        db.supabase.from('trips').select('id', { count: 'exact' }).eq('brand_id', effectiveBrandId)
+        db.supabase.from('travelc_travel_brand_assignments').select('id', { count: 'exact' }).eq('brand_id', effectiveBrandId).eq('is_active', true)
       ]);
 
       let pagesCount = 0;
@@ -818,7 +819,7 @@ export function BrandDashboard() {
           )}
           {activeSection === 'trips' && (
             <div className="p-6">
-              <TripManager />
+              <BrandTravelCReizen />
             </div>
           )}
           {activeSection === 'credits' && <div className="p-6"><CreditWallet /></div>}
