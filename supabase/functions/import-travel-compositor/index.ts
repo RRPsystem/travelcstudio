@@ -7,7 +7,8 @@ const corsHeaders = {
 };
 
 // Use the builder API endpoint that has TC credentials configured
-const BUILDER_API_URL = "https://www.ai-websitestudio.nl/api/travelbro/get-travel";
+// GET endpoint: only fetches data (doesn't save to Supabase)
+const BUILDER_API_BASE = "https://www.ai-websitestudio.nl/api/travelbro/get-travel";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -15,7 +16,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { travelId } = await req.json();
+    const { travelId, micrositeId } = await req.json();
 
     if (!travelId) {
       return new Response(
@@ -24,17 +25,18 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log(`[Import TC] Importing travel from TC via builder API: ${travelId}`);
+    // Use provided micrositeId or default to rondreis-planner
+    const microsite = micrositeId || "rondreis-planner";
+    
+    // Build GET URL with query parameters
+    const apiUrl = `${BUILDER_API_BASE}?id=${encodeURIComponent(travelId)}&micrositeId=${encodeURIComponent(microsite)}&language=NL`;
+    
+    console.log(`[Import TC] Fetching from: ${apiUrl}`);
 
-    // Call the builder API which has TC credentials
-    const response = await fetch(BUILDER_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: travelId,
-        micrositeId: "rondreis-planner",
-        language: "NL"
-      })
+    // Call the builder API which has TC credentials (GET request)
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" }
     });
 
     if (!response.ok) {
