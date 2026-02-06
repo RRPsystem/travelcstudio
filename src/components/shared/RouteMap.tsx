@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -17,11 +17,8 @@ interface RouteMapProps {
   height?: string;
   showPolyline?: boolean;
   polylineColor?: string;
-  mapboxToken?: string;
   onGeocodingComplete?: (destinations: Destination[]) => void;
 }
-
-const DEFAULT_MAPBOX_TOKEN = 'pk.eyJ1Ijoicm9icm9iYXMiLCJhIjoiY200djkxd2drMDA5dTJqc2Q1MXpvYTR6NCJ9.XEsEVOmAPcOUkfcTms-VbA';
 
 // Geocode a destination name using Nominatim (free, no API key needed)
 async function geocodeAddress(address: string): Promise<[number, number] | null> {
@@ -69,7 +66,6 @@ export function RouteMap({
   height = '400px',
   showPolyline = true,
   polylineColor = '#2A81CB',
-  mapboxToken = DEFAULT_MAPBOX_TOKEN,
   onGeocodingComplete,
 }: RouteMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -77,12 +73,30 @@ export function RouteMap({
   const [geocodedDests, setGeocodedDests] = useState<Destination[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const geocodingDoneRef = useRef(false);
+  const onGeocodingCompleteRef = useRef(onGeocodingComplete);
+  onGeocodingCompleteRef.current = onGeocodingComplete;
+
+  // Stable key for destinations to prevent re-render loops
+  const destsKey = JSON.stringify(destinations.map(d => d.name + (d.country || '')));
 
   // Geocode destinations that don't have lat/lng
   useEffect(() => {
     if (!destinations || destinations.length === 0) {
       setLoading(false);
       setError('Geen bestemmingen beschikbaar');
+      return;
+    }
+
+    // Skip if already geocoded for these destinations
+    if (geocodingDoneRef.current) return;
+
+    // Check if all already have coords
+    const allHaveCoords = destinations.every(d => d.lat && d.lng && d.lat !== 0 && d.lng !== 0);
+    if (allHaveCoords) {
+      setGeocodedDests(destinations);
+      setLoading(false);
+      geocodingDoneRef.current = true;
       return;
     }
 
@@ -118,20 +132,21 @@ export function RouteMap({
       if (!cancelled) {
         setGeocodedDests(results);
         setLoading(false);
+        geocodingDoneRef.current = true;
 
         if (results.length < 2) {
           setError('Niet genoeg bestemmingen met coördinaten gevonden');
         }
 
-        if (onGeocodingComplete && results.length > 0) {
-          onGeocodingComplete(results);
+        if (onGeocodingCompleteRef.current && results.length > 0) {
+          onGeocodingCompleteRef.current(results);
         }
       }
     }
 
     geocodeAll();
     return () => { cancelled = true; };
-  }, [destinations]);
+  }, [destsKey]);
 
   // Render map when geocoded destinations are ready
   useEffect(() => {
@@ -152,13 +167,11 @@ export function RouteMap({
       6
     );
 
-    // Mapbox tiles (same as RBS plugin)
-    const tileUrl = `https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=${mapboxToken}&language=nl`;
-    L.tileLayer(tileUrl, {
-      maxZoom: 18,
-      attribution: '&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      id: 'mapbox/streets-v11',
-    } as any).addTo(map);
+    // OpenStreetMap tiles (no API key needed, no CSP issues)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
 
     // Add markers
     const markerGroup = L.featureGroup();
@@ -206,7 +219,7 @@ export function RouteMap({
         mapInstanceRef.current = null;
       }
     };
-  }, [geocodedDests, loading, showPolyline, polylineColor, mapboxToken]);
+  }, [geocodedDests, loading, showPolyline, polylineColor]);
 
   if (error && geocodedDests.length < 2) {
     return (
