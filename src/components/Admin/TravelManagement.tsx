@@ -130,8 +130,8 @@ export function TravelManagement() {
     'rondreis-planner': { name: 'Rondreis Planner', logo: '🌍', color: 'bg-green-100 text-green-800' },
     'reisbureaunederland': { name: 'Reisbureau Nederland', logo: '🇳🇱', color: 'bg-blue-100 text-blue-800' },
     'symphonytravel': { name: 'Symphony Travel', logo: '🎵', color: 'bg-purple-100 text-purple-800' },
-    'pacificislandtravel': { name: 'Pacific Island Travel', logo: '🌴', color: 'bg-teal-100 text-teal-800' },
-    'newreisplan': { name: 'New Reisplan', logo: '✨', color: 'bg-orange-100 text-orange-800' },
+    'pacificislandtravel': { name: 'Travel Time', logo: '⏰', color: 'bg-teal-100 text-teal-800' },
+    'newreisplan': { name: 'Travel Time Europa', logo: '🌍⏰', color: 'bg-orange-100 text-orange-800' },
   };
 
   // Hardcoded fallback microsites (in case builder API doesn't return all)
@@ -139,8 +139,8 @@ export function TravelManagement() {
     { id: 'rondreis-planner', name: 'Rondreis Planner', hasCredentials: true },
     { id: 'reisbureaunederland', name: 'Reisbureau Nederland', hasCredentials: true },
     { id: 'symphonytravel', name: 'Symphony Travel', hasCredentials: true },
-    { id: 'pacificislandtravel', name: 'Pacific Island Travel', hasCredentials: true },
-    { id: 'newreisplan', name: 'New Reisplan', hasCredentials: true },
+    { id: 'pacificislandtravel', name: 'Travel Time', hasCredentials: true },
+    { id: 'newreisplan', name: 'Travel Time Europa', hasCredentials: true },
   ];
   const [showMediaSelector, setShowMediaSelector] = useState(false);
   const [mediaSelectorMode, setMediaSelectorMode] = useState<'hero' | 'gallery'>('gallery');
