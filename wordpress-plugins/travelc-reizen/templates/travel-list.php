@@ -67,7 +67,7 @@ ksort($all_categories);
 <!-- Travel Cards (Traveler Style - horizontal) -->
 <div class="travelc-reizen travelc-layout-traveler" id="travelc-list">
     <?php foreach ($travels as $travel): 
-        $detail_url = add_query_arg('reis', $travel['slug'], get_permalink());
+        $detail_url = home_url('/reizen/' . $travel['slug'] . '/');
         $image = !empty($travel['first_image']) ? $travel['first_image'] : ($travel['hero_image'] ?? '');
         $price = !empty($travel['display_price']) ? $travel['display_price'] : ($travel['price_per_person'] ?? 0);
         $title = !empty($travel['display_title']) ? $travel['display_title'] : $travel['title'];
