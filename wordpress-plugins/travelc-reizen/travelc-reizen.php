@@ -2,26 +2,44 @@
 /**
  * Plugin Name: TravelC Reizen
  * Description: Toont reizen vanuit TravelCStudio op je WordPress website via shortcodes.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: RBS / TravelCStudio
  * Text Domain: travelc-reizen
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('TRAVELC_REIZEN_VERSION', '1.0.0');
+define('TRAVELC_REIZEN_VERSION', '1.1.0');
 define('TRAVELC_REIZEN_PATH', plugin_dir_path(__FILE__));
 define('TRAVELC_REIZEN_URL', plugin_dir_url(__FILE__));
 
 // ============================================
-// Admin Settings
+// Admin Menu (top-level)
 // ============================================
 add_action('admin_menu', function() {
-    add_options_page(
+    add_menu_page(
         'TravelC Reizen',
         'TravelC Reizen',
         'manage_options',
         'travelc-reizen',
+        'travelc_reizen_overview_page',
+        'dashicons-airplane',
+        30
+    );
+    add_submenu_page(
+        'travelc-reizen',
+        'Overzicht',
+        'Overzicht',
+        'manage_options',
+        'travelc-reizen',
+        'travelc_reizen_overview_page'
+    );
+    add_submenu_page(
+        'travelc-reizen',
+        'Instellingen',
+        'Instellingen',
+        'manage_options',
+        'travelc-reizen-settings',
         'travelc_reizen_settings_page'
     );
 });
@@ -31,6 +49,114 @@ add_action('admin_init', function() {
     register_setting('travelc_reizen', 'travelc_brand_id');
     register_setting('travelc_reizen', 'travelc_mapbox_token');
 });
+
+// Admin JS for copy-to-clipboard
+add_action('admin_footer', function() {
+    $screen = get_current_screen();
+    if (!$screen || strpos($screen->id, 'travelc-reizen') === false) return;
+    ?>
+    <script>
+    function travelcCopyShortcode(btn) {
+        var code = btn.previousElementSibling.textContent;
+        navigator.clipboard.writeText(code).then(function() {
+            var orig = btn.textContent;
+            btn.textContent = 'Gekopieerd!';
+            btn.style.color = '#46b450';
+            setTimeout(function() { btn.textContent = orig; btn.style.color = ''; }, 2000);
+        });
+    }
+    </script>
+    <?php
+});
+
+function travelc_reizen_overview_page() {
+    $brand_id = get_option('travelc_brand_id', '');
+    $configured = !empty($brand_id);
+    ?>
+    <div class="wrap">
+        <h1 style="display:flex;align-items:center;gap:8px;">
+            <span class="dashicons dashicons-airplane" style="font-size:28px;width:28px;height:28px;"></span>
+            TravelC Reizen
+        </h1>
+
+        <?php if (!$configured): ?>
+        <div class="notice notice-warning" style="margin:20px 0;">
+            <p><strong>Let op:</strong> Stel eerst je Brand ID in bij <a href="<?php echo admin_url('admin.php?page=travelc-reizen-settings'); ?>">Instellingen</a> voordat de shortcodes werken.</p>
+        </div>
+        <?php else: ?>
+        <div class="notice notice-success" style="margin:20px 0;">
+            <p>Brand ID ingesteld: <code><?php echo esc_html($brand_id); ?></code></p>
+        </div>
+        <?php endif; ?>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px;">
+            <!-- Reis Overzicht -->
+            <div style="background:#fff;border:1px solid #ccd0d4;border-radius:8px;padding:24px;">
+                <h2 style="margin-top:0;">Reis Overzicht (grid/lijst)</h2>
+                <p>Toont een overzicht van alle reizen die voor jouw brand zijn geactiveerd.</p>
+                <div style="background:#f0f0f1;border-radius:6px;padding:12px;margin:12px 0;display:flex;align-items:center;gap:8px;">
+                    <code style="flex:1;font-size:14px;">[travelc_reizen]</code>
+                    <button type="button" class="button button-small" onclick="travelcCopyShortcode(this)">Kopieer</button>
+                </div>
+                <h4 style="margin-bottom:8px;">Parameters:</h4>
+                <table class="widefat striped" style="font-size:13px;">
+                    <thead><tr><th>Parameter</th><th>Standaard</th><th>Beschrijving</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>limit</code></td><td>12</td><td>Max aantal reizen</td></tr>
+                        <tr><td><code>category</code></td><td>-</td><td>Filter op categorie slug</td></tr>
+                        <tr><td><code>continent</code></td><td>-</td><td>Filter op continent</td></tr>
+                        <tr><td><code>featured</code></td><td>false</td><td>Alleen uitgelichte reizen</td></tr>
+                        <tr><td><code>layout</code></td><td>grid</td><td>grid of list</td></tr>
+                        <tr><td><code>columns</code></td><td>3</td><td>Aantal kolommen (grid)</td></tr>
+                    </tbody>
+                </table>
+                <h4 style="margin:16px 0 8px;">Voorbeelden:</h4>
+                <div style="background:#f0f0f1;border-radius:6px;padding:12px;margin:6px 0;display:flex;align-items:center;gap:8px;">
+                    <code style="flex:1;">[travelc_reizen limit="6" columns="2"]</code>
+                    <button type="button" class="button button-small" onclick="travelcCopyShortcode(this)">Kopieer</button>
+                </div>
+                <div style="background:#f0f0f1;border-radius:6px;padding:12px;margin:6px 0;display:flex;align-items:center;gap:8px;">
+                    <code style="flex:1;">[travelc_reizen featured="true" layout="list"]</code>
+                    <button type="button" class="button button-small" onclick="travelcCopyShortcode(this)">Kopieer</button>
+                </div>
+            </div>
+
+            <!-- Reis Detail -->
+            <div style="background:#fff;border:1px solid #ccd0d4;border-radius:8px;padding:24px;">
+                <h2 style="margin-top:0;">Reis Detail (enkele reis)</h2>
+                <p>Toont de volledige detailpagina van een reis. Gebruik dit op een pagina met slug <code>/reizen</code>.</p>
+                <div style="background:#f0f0f1;border-radius:6px;padding:12px;margin:12px 0;display:flex;align-items:center;gap:8px;">
+                    <code style="flex:1;font-size:14px;">[travelc_reis]</code>
+                    <button type="button" class="button button-small" onclick="travelcCopyShortcode(this)">Kopieer</button>
+                </div>
+                <h4 style="margin-bottom:8px;">Hoe werkt het:</h4>
+                <ol style="font-size:13px;line-height:1.8;">
+                    <li>Maak een WordPress pagina met slug <strong>reizen</strong></li>
+                    <li>Plaats <code>[travelc_reis]</code> op die pagina</li>
+                    <li>De reis wordt automatisch geladen via de URL: <code>/reizen/reis-slug</code></li>
+                    <li>Of via parameter: <code>?reis=reis-slug</code></li>
+                </ol>
+                <h4 style="margin:16px 0 8px;">Vaste reis tonen:</h4>
+                <div style="background:#f0f0f1;border-radius:6px;padding:12px;margin:6px 0;display:flex;align-items:center;gap:8px;">
+                    <code style="flex:1;">[travelc_reis slug="rondreis-thailand-14-dagen"]</code>
+                    <button type="button" class="button button-small" onclick="travelcCopyShortcode(this)">Kopieer</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Setup -->
+        <div style="background:#fff;border:1px solid #ccd0d4;border-radius:8px;padding:24px;margin-top:20px;">
+            <h2 style="margin-top:0;">Snelle Setup</h2>
+            <ol style="font-size:14px;line-height:2;">
+                <li>Ga naar <a href="<?php echo admin_url('admin.php?page=travelc-reizen-settings'); ?>">Instellingen</a> en vul je <strong>Brand ID</strong> in</li>
+                <li>Maak een pagina <strong>"Reizen"</strong> aan met shortcode <code>[travelc_reizen]</code></li>
+                <li>Maak een pagina <strong>"Reis Detail"</strong> aan (slug: <code>reizen</code>) met shortcode <code>[travelc_reis]</code></li>
+                <li>Klaar! Reizen worden automatisch opgehaald uit TravelCStudio</li>
+            </ol>
+        </div>
+    </div>
+    <?php
+}
 
 function travelc_reizen_settings_page() {
     ?>
@@ -112,7 +238,7 @@ function travelc_api_request($params = []) {
 add_action('wp_enqueue_scripts', function() {
     // Only load when shortcode is used
     global $post;
-    if (!is_a($post, 'WP_Post') || !has_shortcode($post->post_content, 'travelc_reizen') && !has_shortcode($post->post_content, 'travelc_reis')) {
+    if (!is_a($post, 'WP_Post') || (!has_shortcode($post->post_content, 'travelc_reizen') && !has_shortcode($post->post_content, 'travelc_reis'))) {
         return;
     }
 

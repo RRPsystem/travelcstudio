@@ -545,6 +545,304 @@
     font-size: 14px;
 }
 
+/* ============================================
+   Traveler Style - Filter Bar
+   ============================================ */
+.travelc-filter-bar {
+    background: #fff;
+    border-radius: var(--travelc-radius);
+    box-shadow: var(--travelc-shadow-lg);
+    padding: 24px 28px;
+    margin-bottom: 20px;
+}
+.travelc-filter-bar__inner {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.travelc-filter-group {
+    flex: 1;
+    min-width: 160px;
+}
+.travelc-filter-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--travelc-text);
+    margin-bottom: 6px;
+}
+.travelc-filter-input,
+.travelc-filter-select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--travelc-border);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--travelc-text);
+    background: #fff;
+    transition: border-color 0.2s;
+}
+.travelc-filter-input:focus,
+.travelc-filter-select:focus {
+    outline: none;
+    border-color: var(--travelc-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+.travelc-filter-btn {
+    padding: 10px 28px;
+    background: var(--travelc-primary);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+.travelc-filter-btn:hover {
+    background: var(--travelc-primary-dark);
+}
+
+/* Results Header */
+.travelc-results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding: 0 4px;
+}
+.travelc-results-count {
+    font-size: 14px;
+    color: var(--travelc-primary);
+}
+.travelc-results-count strong {
+    font-weight: 700;
+}
+.travelc-sort-select {
+    padding: 6px 12px;
+    border: 1px solid var(--travelc-border);
+    border-radius: 6px;
+    font-size: 13px;
+    background: #fff;
+    color: var(--travelc-text);
+}
+
+/* ============================================
+   Traveler Style - Horizontal Cards
+   ============================================ */
+.travelc-layout-traveler {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.travelc-tcard {
+    display: flex;
+    background: #fff;
+    border-radius: var(--travelc-radius);
+    overflow: hidden;
+    box-shadow: var(--travelc-shadow);
+    transition: box-shadow 0.2s;
+}
+.travelc-tcard:hover {
+    box-shadow: var(--travelc-shadow-lg);
+}
+
+/* Image */
+.travelc-tcard__image-link {
+    display: block;
+    width: 280px;
+    min-height: 200px;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+}
+.travelc-tcard__image-link img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s;
+}
+.travelc-tcard:hover .travelc-tcard__image-link img {
+    transform: scale(1.05);
+}
+.travelc-tcard__no-image {
+    width: 100%;
+    height: 100%;
+    background: var(--travelc-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--travelc-text-light);
+    font-size: 13px;
+}
+.travelc-tcard__badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #ef4444;
+    color: #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+/* Info */
+.travelc-tcard__info {
+    flex: 1;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.travelc-tcard__title-link {
+    text-decoration: none;
+    color: inherit;
+}
+.travelc-tcard__title {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0 0 8px;
+    line-height: 1.3;
+    color: var(--travelc-text);
+}
+.travelc-tcard__title-link:hover .travelc-tcard__title {
+    color: var(--travelc-primary);
+}
+.travelc-tcard__destinations {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--travelc-text-light);
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+.travelc-tcard__destinations svg {
+    color: var(--travelc-primary);
+    flex-shrink: 0;
+}
+.travelc-tcard__routelink {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--travelc-primary);
+    font-weight: 600;
+    font-size: 12px;
+    text-decoration: none;
+    margin-left: 8px;
+}
+.travelc-tcard__routelink:hover {
+    text-decoration: underline;
+}
+.travelc-tcard__excerpt {
+    font-size: 14px;
+    color: var(--travelc-text-light);
+    line-height: 1.5;
+    margin: 0 0 8px;
+    flex: 1;
+}
+.travelc-tcard__meta {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 6px;
+}
+.travelc-tcard__meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--travelc-text-light);
+}
+.travelc-tcard__meta-item svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+.travelc-tcard__countries {
+    font-size: 13px;
+    color: var(--travelc-primary);
+    font-weight: 500;
+}
+
+/* Price Block */
+.travelc-tcard__price-block {
+    width: 180px;
+    flex-shrink: 0;
+    background: var(--travelc-primary);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 16px;
+    text-align: center;
+}
+.travelc-tcard__price-type {
+    font-size: 12px;
+    opacity: 0.85;
+    margin-bottom: 4px;
+}
+.travelc-tcard__price-amount {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+.travelc-tcard__price-sub {
+    font-size: 11px;
+    opacity: 0.7;
+    margin-bottom: 12px;
+}
+.travelc-tcard__cta-btn {
+    display: inline-block;
+    padding: 8px 20px;
+    background: #fff;
+    color: var(--travelc-primary);
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.2s, transform 0.2s;
+}
+.travelc-tcard__cta-btn:hover {
+    background: #f0f7ff;
+    transform: scale(1.05);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .travelc-tcard {
+        flex-direction: column;
+    }
+    .travelc-tcard__image-link {
+        width: 100%;
+        height: 200px;
+    }
+    .travelc-tcard__price-block {
+        width: 100%;
+        flex-direction: row;
+        gap: 12px;
+        padding: 16px;
+    }
+    .travelc-tcard__price-sub {
+        margin-bottom: 0;
+    }
+    .travelc-filter-bar__inner {
+        flex-direction: column;
+    }
+    .travelc-filter-group {
+        width: 100%;
+    }
+}
+
 /* Error / Empty */
 .travelc-error,
 .travelc-empty {
