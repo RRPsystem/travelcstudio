@@ -190,14 +190,10 @@ ksort($all_categories);
     <p class="travelc-empty">Geen reizen gevonden.</p>
 <?php endif; ?>
 
-<!-- Routekaart Sliding Panel -->
+<!-- Routekaart Sliding Panel — full-height map -->
 <div class="travelc-routepanel" id="travelc-routepanel">
-    <div class="travelc-routepanel__header">
-        <h3 class="travelc-routepanel__title" id="travelc-routepanel-title">Routekaart</h3>
-        <button type="button" class="travelc-routepanel__close" id="travelc-routepanel-close">&times;</button>
-    </div>
+    <button type="button" class="travelc-routepanel__close" id="travelc-routepanel-close">&times;</button>
     <div class="travelc-routepanel__map" id="travelc-routepanel-map"></div>
-    <div class="travelc-routepanel__stops" id="travelc-routepanel-stops"></div>
 </div>
 <div class="travelc-routepanel__overlay" id="travelc-routepanel-overlay"></div>
 
@@ -267,27 +263,17 @@ ksort($all_categories);
         if (!panel || !window.L) return;
         panel.classList.add('is-open');
         overlay.classList.add('is-open');
-        document.getElementById('travelc-routepanel-title').textContent = title || 'Routekaart';
 
-        // Build stops list
-        var stopsEl = document.getElementById('travelc-routepanel-stops');
-        stopsEl.innerHTML = '';
-        destinations.forEach(function(d, i) {
-            var stop = document.createElement('div');
-            stop.className = 'travelc-routepanel__stop';
-            stop.innerHTML = '<span class="travelc-routepanel__stop-num">' + (i + 1) + '</span> ' + d.name;
-            stopsEl.appendChild(stop);
-        });
-
-        // Init or reset map
+        // Init or reset map — fills entire panel
         setTimeout(function() {
             var mapEl = document.getElementById('travelc-routepanel-map');
             if (panelMap) { panelMap.remove(); panelMap = null; }
-            panelMap = L.map(mapEl);
+            panelMap = L.map(mapEl, { zoomControl: true });
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap'
+                attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>'
             }).addTo(panelMap);
 
+            var primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--travelc-primary').trim() || '#2a9d8f';
             var latlngs = [];
             destinations.forEach(function(d, i) {
                 if (d.lat && d.lng) {
@@ -297,21 +283,21 @@ ksort($all_categories);
                         icon: L.divIcon({
                             className: 'travelc-map-number',
                             html: '<span>' + (i + 1) + '</span>',
-                            iconSize: [28, 28],
-                            iconAnchor: [14, 14]
+                            iconSize: [30, 30],
+                            iconAnchor: [15, 15]
                         })
                     }).addTo(panelMap);
-                    marker.bindPopup('<strong>' + d.name + '</strong>');
+                    marker.bindPopup('<div style="text-align:center"><strong style="font-size:15px;">' + (i + 1) + '. ' + d.name + '</strong></div>');
                 }
             });
 
             if (latlngs.length > 1) {
-                L.polyline(latlngs, { color: getComputedStyle(document.documentElement).getPropertyValue('--travelc-primary').trim() || '#2a9d8f', weight: 3, opacity: 0.7 }).addTo(panelMap);
+                L.polyline(latlngs, { color: primaryColor, weight: 3, opacity: 0.8, dashArray: '8 6' }).addTo(panelMap);
             }
             if (latlngs.length > 0) {
-                panelMap.fitBounds(latlngs, { padding: [30, 30] });
+                panelMap.fitBounds(latlngs, { padding: [40, 40] });
             }
-        }, 100);
+        }, 150);
     }
 
     function closeRoutePanel() {
