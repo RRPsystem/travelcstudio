@@ -147,9 +147,11 @@ ksort($all_categories);
             </a>
 
             <?php if (!empty($dest_names)): ?>
-                <div class="travelc-tcard__destinations">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                    <span><?php echo esc_html(implode(' · ', array_slice($dest_names, 0, 6))); ?></span>
+                <div class="travelc-tcard__dest-row">
+                    <div class="travelc-tcard__destinations">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                        <span><?php echo esc_html(implode(' · ', array_slice($dest_names, 0, 6))); ?></span>
+                    </div>
                     <?php if (count($dest_names) >= 2 && !empty($dest_json)): ?>
                         <button type="button" class="travelc-tcard__routelink" data-destinations='<?php echo esc_attr(json_encode($dest_json)); ?>' data-title="<?php echo esc_attr($title); ?>">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
@@ -164,10 +166,10 @@ ksort($all_categories);
             <?php endif; ?>
 
             <?php if ($nights > 0): ?>
-                <span class="travelc-tcard__nights-pill">
+                <div class="travelc-tcard__meta-bar">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                     <?php echo esc_html($nights); ?> nachten
-                </span>
+                </div>
             <?php endif; ?>
         </div>
 
