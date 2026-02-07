@@ -3,8 +3,8 @@
    ============================================ */
 
 :root {
-    --travelc-primary: #2563eb;
-    --travelc-primary-dark: #1d4ed8;
+    --travelc-primary: #2a9d8f;
+    --travelc-primary-dark: #238b80;
     --travelc-text: #1f2937;
     --travelc-text-light: #6b7280;
     --travelc-bg: #f9fafb;
@@ -654,8 +654,8 @@
 /* Image */
 .travelc-tcard__image-link {
     display: block;
-    width: 280px;
-    min-height: 200px;
+    width: 320px;
+    min-height: 220px;
     flex-shrink: 0;
     position: relative;
     overflow: hidden;
@@ -679,20 +679,35 @@
     color: var(--travelc-text-light);
     font-size: 13px;
 }
-.travelc-tcard__badge {
+
+/* Heart icon */
+.travelc-tcard__heart {
     position: absolute;
-    top: 10px;
-    right: 10px;
-    background: #ef4444;
-    color: #fff;
-    width: 32px;
-    height: 32px;
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    background: rgba(255,255,255,0.9);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
     cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+    z-index: 2;
+}
+.travelc-tcard__heart svg {
+    color: #ef4444;
+    stroke: #ef4444;
+    width: 18px;
+    height: 18px;
+}
+.travelc-tcard__heart:hover {
+    background: #fff;
+    transform: scale(1.1);
+}
+.travelc-tcard__heart.is-liked svg {
+    fill: #ef4444;
 }
 
 /* Info */
@@ -708,9 +723,9 @@
     color: inherit;
 }
 .travelc-tcard__title {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 700;
-    margin: 0 0 8px;
+    margin: 0 0 10px;
     line-height: 1.3;
     color: var(--travelc-text);
 }
@@ -739,43 +754,45 @@
     font-size: 12px;
     text-decoration: none;
     margin-left: 8px;
+    background: rgba(42, 157, 143, 0.1);
+    padding: 3px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(42, 157, 143, 0.3);
 }
 .travelc-tcard__routelink:hover {
-    text-decoration: underline;
+    background: rgba(42, 157, 143, 0.2);
+    text-decoration: none;
 }
 .travelc-tcard__excerpt {
     font-size: 14px;
     color: var(--travelc-text-light);
-    line-height: 1.5;
-    margin: 0 0 8px;
+    line-height: 1.6;
+    margin: 0 0 12px;
     flex: 1;
 }
-.travelc-tcard__meta {
-    display: flex;
-    gap: 14px;
-    margin-bottom: 6px;
-}
-.travelc-tcard__meta-item {
+
+/* Nights pill badge */
+.travelc-tcard__nights-pill {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
     font-size: 13px;
     color: var(--travelc-text-light);
+    background: var(--travelc-bg);
+    border: 1px solid var(--travelc-border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    margin-top: auto;
 }
-.travelc-tcard__meta-item svg {
-    width: 14px;
-    height: 14px;
+.travelc-tcard__nights-pill svg {
+    width: 12px;
+    height: 12px;
     flex-shrink: 0;
-}
-.travelc-tcard__countries {
-    font-size: 13px;
-    color: var(--travelc-primary);
-    font-weight: 500;
 }
 
 /* Price Block */
 .travelc-tcard__price-block {
-    width: 180px;
+    width: 190px;
     flex-shrink: 0;
     background: var(--travelc-primary);
     color: #fff;
@@ -783,7 +800,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 20px 16px;
+    padding: 24px 16px;
     text-align: center;
 }
 .travelc-tcard__price-type {
@@ -792,7 +809,7 @@
     margin-bottom: 4px;
 }
 .travelc-tcard__price-amount {
-    font-size: 28px;
+    font-size: 32px;
     font-weight: 800;
     line-height: 1.2;
 }
@@ -803,9 +820,10 @@
 }
 .travelc-tcard__cta-btn {
     display: inline-block;
-    padding: 8px 20px;
+    padding: 8px 24px;
     background: #fff;
     color: var(--travelc-primary);
+    border: 2px solid #fff;
     border-radius: 20px;
     font-size: 13px;
     font-weight: 600;
@@ -813,7 +831,8 @@
     transition: background 0.2s, transform 0.2s;
 }
 .travelc-tcard__cta-btn:hover {
-    background: #f0f7ff;
+    background: transparent;
+    color: #fff;
     transform: scale(1.05);
 }
 
@@ -824,7 +843,7 @@
     }
     .travelc-tcard__image-link {
         width: 100%;
-        height: 200px;
+        height: 220px;
     }
     .travelc-tcard__price-block {
         width: 100%;
