@@ -9,7 +9,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('TRAVELC_REIZEN_VERSION', '1.1.0');
+define('TRAVELC_REIZEN_VERSION', '1.2.0');
 define('TRAVELC_REIZEN_PATH', plugin_dir_path(__FILE__));
 define('TRAVELC_REIZEN_URL', plugin_dir_url(__FILE__));
 
@@ -233,6 +233,22 @@ function travelc_api_request($params = []) {
 }
 
 // ============================================
+// Brand Settings Helper (cached 1 hour)
+// ============================================
+function travelc_get_brand_settings() {
+    $cache_key = 'travelc_brand_settings';
+    $cached = get_transient($cache_key);
+    if ($cached !== false) return $cached;
+
+    $result = travelc_api_request(['action' => 'brand-settings']);
+    if (!is_wp_error($result) && !empty($result['brand'])) {
+        set_transient($cache_key, $result['brand'], HOUR_IN_SECONDS);
+        return $result['brand'];
+    }
+    return ['primary_color' => '#2a9d8f', 'secondary_color' => '#d34e4a'];
+}
+
+// ============================================
 // Enqueue Assets
 // ============================================
 add_action('wp_enqueue_scripts', function() {
@@ -249,6 +265,12 @@ add_action('wp_enqueue_scripts', function() {
     // Plugin CSS & JS
     wp_enqueue_style('travelc-reizen', TRAVELC_REIZEN_URL . 'assets/css/travelc-reizen.css', [], TRAVELC_REIZEN_VERSION);
     wp_enqueue_script('travelc-reizen', TRAVELC_REIZEN_URL . 'assets/js/travelc-reizen.js', ['leaflet'], TRAVELC_REIZEN_VERSION, true);
+
+    // Inject brand colors as CSS variables
+    $brand = travelc_get_brand_settings();
+    $primary = esc_attr($brand['primary_color'] ?? '#2a9d8f');
+    $secondary = esc_attr($brand['secondary_color'] ?? '#d34e4a');
+    wp_add_inline_style('travelc-reizen', ":root { --travelc-primary: {$primary}; --travelc-primary-dark: {$primary}; --travelc-secondary: {$secondary}; }");
 });
 
 // ============================================

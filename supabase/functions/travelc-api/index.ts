@@ -508,6 +508,34 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // ============================================
+    // ACTION: brand-settings - Get brand colors/info for WP plugin
+    // ============================================
+    if (action === "brand-settings") {
+      if (!brandId) {
+        return new Response(
+          JSON.stringify({ error: "brand_id is required" }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+
+      const { data: brand, error } = await supabase
+        .from("brands")
+        .select("id, name, slug, primary_color, secondary_color, logo_url")
+        .eq("id", brandId)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          brand: brand || null,
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: "Unknown action" }),
       { status: 400, headers: corsHeaders }
