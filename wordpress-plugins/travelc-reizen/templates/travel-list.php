@@ -45,6 +45,10 @@ ksort($all_categories);
             </select>
         </div>
         <button type="button" id="travelc-search-btn" class="travelc-filter-btn">Zoeken</button>
+        <button type="button" id="travelc-fav-btn" class="travelc-fav-btn" title="Bewaarde reizen">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            <span id="travelc-fav-count"></span>
+        </button>
     </div>
 </div>
 
@@ -207,15 +211,34 @@ ksort($all_categories);
     var typeFilter = document.getElementById('travelc-type-filter');
     var sortSelect = document.getElementById('travelc-sort');
     var searchBtn = document.getElementById('travelc-search-btn');
+    var favBtn = document.getElementById('travelc-fav-btn');
+    var favCountEl = document.getElementById('travelc-fav-count');
     var countEl = document.getElementById('travelc-count');
     var list = document.getElementById('travelc-list');
     if (!list) return;
+
+    var showFavOnly = false;
+    var STORAGE_KEY = 'travelc_favorites';
+
+    function getFavorites() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+        catch(e) { return []; }
+    }
+    function saveFavorites(favs) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(favs));
+    }
+    function updateFavCount() {
+        var c = getFavorites().length;
+        if (favCountEl) favCountEl.textContent = c > 0 ? c : '';
+        if (favBtn) favBtn.classList.toggle('has-favs', c > 0);
+    }
 
     function filterAndSort() {
         var query = (searchInput ? searchInput.value : '').toLowerCase();
         var dest = destFilter ? destFilter.value : '';
         var type = typeFilter ? typeFilter.value : '';
         var sort = sortSelect ? sortSelect.value : 'newest';
+        var favs = showFavOnly ? getFavorites() : [];
         var cards = Array.prototype.slice.call(list.querySelectorAll('.travelc-tcard'));
         var visible = 0;
 
@@ -224,10 +247,12 @@ ksort($all_categories);
             var countries = card.getAttribute('data-countries') || '';
             var destinations = card.getAttribute('data-destinations') || '';
             var categories = card.getAttribute('data-categories') || '';
+            var cardId = card.getAttribute('data-id') || '';
             var matchSearch = !query || title.indexOf(query) !== -1 || countries.indexOf(query) !== -1 || destinations.indexOf(query) !== -1;
             var matchDest = !dest || countries.indexOf(dest) !== -1;
             var matchType = !type || categories.indexOf(type) !== -1;
-            if (matchSearch && matchDest && matchType) {
+            var matchFav = !showFavOnly || favs.indexOf(cardId) !== -1;
+            if (matchSearch && matchDest && matchType && matchFav) {
                 card.style.display = '';
                 visible++;
             } else {
@@ -324,28 +349,18 @@ ksort($all_categories);
     });
 
     // ============================================
-    // Favorites (heart) — localStorage
+    // Favorites (heart) — toggle + filter
     // ============================================
-    var STORAGE_KEY = 'travelc_favorites';
-
-    function getFavorites() {
-        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-        catch(e) { return []; }
-    }
-
-    function saveFavorites(favs) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(favs));
-    }
-
     function toggleFavorite(id) {
         var favs = getFavorites();
         var idx = favs.indexOf(id);
         if (idx === -1) { favs.push(id); } else { favs.splice(idx, 1); }
         saveFavorites(favs);
+        updateFavCount();
         return idx === -1;
     }
 
-    // Init: mark saved favorites
+    // Init: mark saved favorites + update count
     function initFavorites() {
         var favs = getFavorites();
         var cards = list.querySelectorAll('.travelc-tcard');
@@ -356,8 +371,18 @@ ksort($all_categories);
                 heart.classList.add('is-liked');
             }
         });
+        updateFavCount();
     }
     initFavorites();
+
+    // Fav filter button toggle
+    if (favBtn) {
+        favBtn.addEventListener('click', function() {
+            showFavOnly = !showFavOnly;
+            favBtn.classList.toggle('is-active', showFavOnly);
+            filterAndSort();
+        });
+    }
 
     // Heart click handler
     list.addEventListener('click', function(e) {
@@ -375,6 +400,8 @@ ksort($all_categories);
         } else {
             heart.classList.remove('is-liked');
         }
+        // If showing favs only and we just un-liked, re-filter
+        if (showFavOnly) filterAndSort();
     });
 })();
 </script>

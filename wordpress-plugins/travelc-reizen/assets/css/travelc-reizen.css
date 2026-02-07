@@ -607,6 +607,51 @@
     background: var(--travelc-primary-dark);
 }
 
+/* Favorites filter button */
+.travelc-fav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 9px 14px;
+    background: #fff;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.travelc-fav-btn svg {
+    color: #d1d5db;
+    stroke: #d1d5db;
+    transition: all 0.2s;
+}
+.travelc-fav-btn:hover {
+    border-color: #ef4444;
+}
+.travelc-fav-btn:hover svg {
+    color: #ef4444;
+    stroke: #ef4444;
+}
+.travelc-fav-btn.has-favs svg {
+    color: #ef4444;
+    stroke: #ef4444;
+}
+.travelc-fav-btn.is-active {
+    background: #fef2f2;
+    border-color: #ef4444;
+}
+.travelc-fav-btn.is-active svg {
+    fill: #ef4444;
+    color: #ef4444;
+    stroke: #ef4444;
+}
+.travelc-fav-btn #travelc-fav-count {
+    font-size: 12px;
+    font-weight: 700;
+    color: #ef4444;
+}
+
 /* Results Header */
 .travelc-results-header {
     display: flex;
