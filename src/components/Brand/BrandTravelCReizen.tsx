@@ -399,6 +399,37 @@ export function BrandTravelCReizen() {
                 </div>
               </div>
 
+              {/* Categories (Type reis) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Type reis</label>
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {formData.categories.map((cat, idx) => (
+                    <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-sm flex items-center gap-1">
+                      {cat}
+                      <button onClick={() => setFormData({ ...formData, categories: formData.categories.filter((_, i) => i !== idx) })} className="text-blue-500 hover:text-red-500">×</button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {['Autorondreis', 'Fly & Drive', 'Strandvakantie', 'Stedentrip', 'Cruise', 'Safari', 'Treinreis', 'Combinatiereis', 'Groepsreis'].map(cat => (
+                    <button key={cat} onClick={() => { if (!formData.categories.includes(cat)) setFormData({ ...formData, categories: [...formData.categories, cat] }); }}
+                      className={`px-2 py-1 rounded-full text-xs border transition-colors ${formData.categories.includes(cat) ? 'bg-blue-100 border-blue-300 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-blue-50 hover:border-blue-200'}`}>
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+                <input type="text" placeholder="+ Ander type (Enter)" className="px-3 py-2 border rounded-lg text-sm w-64"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const input = e.target as HTMLInputElement;
+                      if (input.value && !formData.categories.includes(input.value)) {
+                        setFormData({ ...formData, categories: [...formData.categories, input.value] });
+                        input.value = '';
+                      }
+                    }
+                  }} />
+              </div>
+
               {/* Themes */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Thema's</label>
