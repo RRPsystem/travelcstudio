@@ -266,13 +266,11 @@ add_action('wp_enqueue_scripts', function() {
     wp_enqueue_style('travelc-reizen', TRAVELC_REIZEN_URL . 'assets/css/travelc-reizen.css', [], TRAVELC_REIZEN_VERSION);
     wp_enqueue_script('travelc-reizen', TRAVELC_REIZEN_URL . 'assets/js/travelc-reizen.js', ['leaflet'], TRAVELC_REIZEN_VERSION, true);
 
-    // Inject brand colors as CSS variables + page background
+    // Inject brand colors as CSS variables
     $brand = travelc_get_brand_settings();
     $primary = esc_attr($brand['primary_color'] ?? '#2a9d8f');
     $secondary = esc_attr($brand['secondary_color'] ?? '#d34e4a');
-    $inline_css = ":root { --travelc-primary: {$primary}; --travelc-primary-dark: {$primary}; --travelc-secondary: {$secondary}; }";
-    $inline_css .= " body { background-color: #F5F7FA !important; }";
-    wp_add_inline_style('travelc-reizen', $inline_css);
+    wp_add_inline_style('travelc-reizen', ":root { --travelc-primary: {$primary}; --travelc-primary-dark: {$primary}; --travelc-secondary: {$secondary}; }");
 });
 
 // ============================================

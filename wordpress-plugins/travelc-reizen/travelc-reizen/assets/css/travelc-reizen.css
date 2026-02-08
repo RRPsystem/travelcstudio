@@ -545,80 +545,74 @@
     font-size: 14px;
 }
 
-/* Page background — grijs voor de hele pagina */
-body:has(.travelc-page-wrapper),
-.travelc-page-background {
-    background: #F5F7FA !important;
-}
-
-/* Page wrapper — wit content gebied */
+/* Page wrapper — full background (RBS: .rbs-traveler-listing) */
 .travelc-page-wrapper {
-    background: transparent;
-    padding: 30px 0;
-    margin: 0;
+    background: #f0f4f8;
+    padding: 2rem 1.5rem 4rem;
+    min-height: 50vh;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
 /* ============================================
    Traveler Style - Filter Bar
    ============================================ */
 .travelc-filter-bar {
-    background: #fff;
-    border-radius: var(--travelc-radius);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    padding: 24px 28px;
-    margin-bottom: 24px;
-    border: 1px solid #e5e7eb;
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
 }
 .travelc-filter-bar__inner {
     display: flex;
+    gap: 1rem;
     align-items: flex-end;
-    gap: 16px;
     flex-wrap: wrap;
 }
 .travelc-filter-group {
     flex: 1;
-    min-width: 160px;
+    min-width: 150px;
 }
 .travelc-filter-label {
     display: block;
-    font-size: 11px;
-    font-weight: 700;
+    font-weight: 600;
+    color: #4a5568;
+    margin-bottom: 0.4rem;
+    font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: var(--travelc-text);
-    margin-bottom: 6px;
 }
 .travelc-filter-input,
 .travelc-filter-select {
     width: 100%;
-    padding: 10px 14px;
-    border: 1px solid var(--travelc-border);
-    border-radius: 8px;
-    font-size: 14px;
-    color: var(--travelc-text);
-    background: #fff;
-    transition: border-color 0.2s;
+    padding: 0.7rem 1rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    outline: none;
+    transition: all 0.2s ease;
+    background: #f8fafc;
 }
 .travelc-filter-input:focus,
 .travelc-filter-select:focus {
-    outline: none;
     border-color: var(--travelc-primary);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    background: white;
 }
 .travelc-filter-btn {
-    padding: 10px 28px;
+    padding: 0.7rem 2rem;
     background: var(--travelc-primary);
-    color: #fff;
+    color: white;
     border: none;
-    border-radius: 8px;
-    font-size: 14px;
+    border-radius: 10px;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.2s ease;
     white-space: nowrap;
 }
 .travelc-filter-btn:hover {
     background: var(--travelc-primary-dark);
+    transform: translateY(-1px);
 }
 
 /* Favorites filter button */
@@ -666,68 +660,70 @@ body:has(.travelc-page-wrapper),
     color: #ef4444;
 }
 
-/* Results Header */
+/* Results Header (RBS: .rbs-toolbar) */
 .travelc-results-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
-    padding: 0 4px;
+    margin-bottom: 1.5rem;
+    padding: 0 0.5rem;
 }
 .travelc-results-count {
-    font-size: 14px;
-    color: var(--travelc-primary);
+    font-size: 1rem;
+    color: #4a5568;
 }
 .travelc-results-count strong {
+    color: var(--travelc-primary);
     font-weight: 700;
 }
 .travelc-sort-select {
-    padding: 6px 12px;
-    border: 1px solid var(--travelc-border);
-    border-radius: 6px;
-    font-size: 13px;
-    background: #fff;
-    color: var(--travelc-text);
+    padding: 0.5rem 1rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    outline: none;
+    cursor: pointer;
+    background: white;
 }
 
 /* ============================================
    Traveler Style - Horizontal Cards
    ============================================ */
+/* Travel Cards (RBS: .rbs-travel-list / .rbs-travel-card) */
 .travelc-layout-traveler {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 1.5rem;
 }
 .travelc-tcard {
-    display: flex;
-    background: #fff;
-    border-radius: var(--travelc-radius);
+    background: white;
+    border-radius: 16px;
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    border: 1px solid #e5e7eb;
-    transition: box-shadow 0.2s, border-color 0.2s;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    transition: all 0.3s ease;
+    display: grid;
+    grid-template-columns: 320px 1fr 220px;
+    min-height: 220px;
 }
 .travelc-tcard:hover {
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-    border-color: #d1d5db;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    transform: translateY(-2px);
 }
 
-/* Image */
+/* Image (RBS: .rbs-card-image-wrapper) */
 .travelc-tcard__image-link {
     display: block;
-    width: 320px;
-    min-height: 220px;
-    flex-shrink: 0;
     position: relative;
     overflow: hidden;
+    background: #e2e8f0;
 }
 .travelc-tcard__image-link img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.3s;
+    transition: transform 0.3s ease;
 }
-.travelc-tcard:hover .travelc-tcard__image-link img {
+.travelc-tcard__image-link:hover img {
     transform: scale(1.05);
 }
 .travelc-tcard__no-image {
@@ -741,42 +737,49 @@ body:has(.travelc-page-wrapper),
     font-size: 13px;
 }
 
-/* Heart icon */
+/* Heart icon (RBS: .rbs-card-favorite) */
 .travelc-tcard__heart {
     position: absolute;
     top: 12px;
     right: 12px;
-    width: 36px;
-    height: 36px;
-    background: rgba(255,255,255,0.9);
+    width: 40px;
+    height: 40px;
+    background: white;
+    border: none;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: background 0.2s, transform 0.2s;
-    z-index: 2;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 10;
+    transition: all 0.2s ease;
 }
 .travelc-tcard__heart svg {
-    color: #ef4444;
-    stroke: #ef4444;
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: #e53e3e;
+    stroke-width: 2;
 }
 .travelc-tcard__heart:hover {
-    background: #fff;
     transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.travelc-tcard__heart.is-liked {
+    background: #e53e3e;
 }
 .travelc-tcard__heart.is-liked svg {
-    fill: #ef4444;
+    fill: white;
+    stroke: white;
 }
 
-/* Info */
+/* Content (RBS: .rbs-card-content) */
 .travelc-tcard__info {
-    flex: 1;
-    padding: 20px 24px;
+    padding: 1.5rem 2rem;
     display: flex;
     flex-direction: column;
+    justify-content: center;
     min-width: 0;
 }
 .travelc-tcard__title-link {
@@ -784,159 +787,178 @@ body:has(.travelc-page-wrapper),
     color: inherit;
 }
 .travelc-tcard__title {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 700;
-    margin: 0 0 10px;
+    color: #1a365d;
+    margin: 0 0 0.5rem;
     line-height: 1.3;
-    color: var(--travelc-text);
 }
 .travelc-tcard__title-link:hover .travelc-tcard__title {
     color: var(--travelc-primary);
+    text-decoration: underline;
 }
-/* Destination row: destinations left, routekaart button right */
+/* Destination row (RBS: .rbs-card-destinations) */
 .travelc-tcard__dest-row {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
+    align-items: center;
     gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 0.75rem;
 }
 .travelc-tcard__destinations {
     display: flex;
-    align-items: flex-start;
-    gap: 6px;
-    font-size: 13px;
+    align-items: center;
+    gap: 8px;
     color: var(--travelc-primary);
-    flex-wrap: wrap;
+    font-size: 0.85rem;
+    font-weight: 500;
     flex: 1;
     min-width: 0;
+    flex-wrap: wrap;
 }
 .travelc-tcard__destinations svg {
-    color: var(--travelc-primary);
+    width: 16px;
+    height: 16px;
     flex-shrink: 0;
-    margin-top: 2px;
 }
+/* Route map link (RBS: .rbs-map-link) */
 .travelc-tcard__routelink {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #e8f4f8;
+    border-radius: 20px;
+    font-size: 0.85rem;
     color: var(--travelc-primary);
-    font-weight: 600;
-    font-size: 12px;
     text-decoration: none;
-    background: rgba(42, 157, 143, 0.08);
-    padding: 4px 12px;
-    border-radius: 14px;
-    border: 1px solid rgba(42, 157, 143, 0.25);
+    transition: all 0.2s ease;
+    margin-left: auto;
+    border: none;
     cursor: pointer;
     white-space: nowrap;
     flex-shrink: 0;
 }
 .travelc-tcard__routelink:hover {
-    background: rgba(42, 157, 143, 0.18);
+    background: var(--travelc-primary);
+    color: white;
     text-decoration: none;
 }
+.travelc-tcard__routelink svg {
+    width: 14px;
+    height: 14px;
+}
+/* Excerpt (RBS: .rbs-card-excerpt) */
 .travelc-tcard__excerpt {
-    font-size: 16px;
-    color: var(--travelc-text-light);
-    line-height: 1.5;
-    margin: 0 0 10px;
+    color: #4a5568;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 1rem;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
 
-/* Compact meta bar (nachten) — like RBS */
+/* Meta tags (RBS: .rbs-meta-tag) */
 .travelc-tcard__meta-bar {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    font-size: 12px;
-    color: #666;
-    background: #f0f1f3;
-    border-radius: 14px;
-    padding: 4px 12px;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #edf2f7;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    color: #4a5568;
     margin-top: auto;
     align-self: flex-start;
 }
 .travelc-tcard__meta-bar svg {
-    width: 12px;
-    height: 12px;
+    width: 14px;
+    height: 14px;
     flex-shrink: 0;
-    color: #999;
 }
 
-/* Price Block */
+/* Price Section (RBS: .rbs-card-price-section) */
 .travelc-tcard__price-block {
-    width: 200px;
-    flex-shrink: 0;
     background: var(--travelc-primary);
-    color: #fff;
+    color: white;
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
-    align-items: center;
     justify-content: center;
-    padding: 24px 16px;
+    align-items: center;
     text-align: center;
 }
 .travelc-tcard__price-type {
-    font-size: 12px;
-    opacity: 0.85;
-    margin-bottom: 4px;
+    font-size: 0.85rem;
+    opacity: 0.9;
+    margin-bottom: 0.5rem;
 }
 .travelc-tcard__price-amount {
-    font-size: 32px;
-    font-weight: 800;
-    line-height: 1.2;
+    font-size: 2.2rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 0.25rem;
 }
 .travelc-tcard__price-sub {
-    font-size: 11px;
-    opacity: 0.7;
-    margin-bottom: 12px;
+    font-size: 0.8rem;
+    opacity: 0.85;
+    margin-bottom: 1.25rem;
 }
 .travelc-tcard__cta-btn {
     display: inline-block;
-    padding: 8px 24px;
-    background: #fff;
+    padding: 0.7rem 1.5rem;
+    background: white;
     color: var(--travelc-primary);
-    border: 2px solid #fff;
-    border-radius: 20px;
-    font-size: 13px;
+    border-radius: 25px;
     font-weight: 600;
+    font-size: 0.9rem;
     text-decoration: none;
-    transition: background 0.2s, transform 0.2s;
+    transition: all 0.2s ease;
+    border: 2px solid white;
 }
 .travelc-tcard__cta-btn:hover {
     background: transparent;
-    color: #fff;
-    transform: scale(1.05);
+    color: white;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
+/* Responsive (RBS breakpoints) */
+@media (max-width: 1024px) {
     .travelc-tcard {
-        flex-direction: column;
+        grid-template-columns: 280px 1fr 180px;
     }
-    .travelc-tcard__image-link {
-        width: 100%;
-        height: 220px;
+}
+@media (max-width: 900px) {
+    .travelc-tcard {
+        grid-template-columns: 1fr;
+        grid-template-rows: 200px auto auto;
     }
     .travelc-tcard__price-block {
-        width: 100%;
         flex-direction: row;
-        gap: 12px;
-        padding: 16px;
+        justify-content: space-between;
+        padding: 1rem 1.5rem;
+    }
+    .travelc-tcard__price-amount {
+        font-size: 1.8rem;
     }
     .travelc-tcard__price-sub {
         margin-bottom: 0;
     }
+}
+@media (max-width: 640px) {
     .travelc-filter-bar__inner {
         flex-direction: column;
     }
     .travelc-filter-group {
         width: 100%;
+    }
+    .travelc-tcard__price-block {
+        flex-direction: column;
+        text-align: center;
+    }
+    .travelc-tcard__price-sub {
+        margin-bottom: 1rem;
     }
 }
 
@@ -952,12 +974,13 @@ body:has(.travelc-page-wrapper),
 /* ============================================
    Routekaart Sliding Panel — full-height map
    ============================================ */
+/* Sliding Panel (RBS: .rbs-route-panel) */
 .travelc-routepanel {
     position: fixed;
     top: 0;
-    right: -50vw;
-    width: 45vw;
-    min-width: 380px;
+    right: -500px;
+    width: 500px;
+    max-width: 90vw;
     height: 100vh;
     background: #fff;
     box-shadow: -4px 0 24px rgba(0,0,0,0.2);
@@ -971,27 +994,29 @@ body:has(.travelc-page-wrapper),
     right: 0;
 }
 /* Close button floats on top of the map */
+/* Close button (RBS: .rbs-panel-close) */
 .travelc-routepanel__close {
     position: absolute;
-    top: 10px;
-    right: 14px;
-    z-index: 1001;
-    background: #fff;
+    top: 16px;
+    right: 16px;
+    width: 40px;
+    height: 40px;
     border: none;
-    width: 32px;
-    height: 32px;
+    background: white;
     border-radius: 50%;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-    font-size: 20px;
-    line-height: 1;
     cursor: pointer;
-    color: #333;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 24px;
+    color: #333;
+    z-index: 1000;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    transition: all 0.2s ease;
 }
 .travelc-routepanel__close:hover {
     background: #f0f0f0;
+    transform: scale(1.1);
 }
 /* Header hidden — title not needed, map fills everything */
 .travelc-routepanel__header {
