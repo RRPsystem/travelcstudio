@@ -545,13 +545,25 @@
     font-size: 14px;
 }
 
-/* Page wrapper — full background (RBS: .rbs-traveler-listing) */
+/* Page wrapper — full-width background (RBS: .rbs-traveler-listing) */
 .travelc-page-wrapper {
     background: #f0f4f8;
     padding: 2rem 1.5rem 4rem;
     min-height: 50vh;
+    /* Break out of any WordPress content container to go full-width */
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+    box-sizing: border-box;
+}
+/* Inner container to limit content width */
+.travelc-page-wrapper > * {
     max-width: 1200px;
-    margin: 0 auto;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 /* ============================================
