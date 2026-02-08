@@ -320,8 +320,21 @@ add_shortcode('travelc_reis', function($atts) {
         'slug' => '',
     ], $atts);
 
-    // Get slug from URL parameter if not set
-    $slug = !empty($atts['slug']) ? $atts['slug'] : (isset($_GET['reis']) ? sanitize_text_field($_GET['reis']) : '');
+    // Get slug: 1) shortcode attr, 2) WP query var (rewrite), 3) $_GET, 4) URL path fallback
+    $slug = !empty($atts['slug']) ? $atts['slug'] : '';
+    if (empty($slug)) {
+        $slug = get_query_var('reis', '');
+    }
+    if (empty($slug) && isset($_GET['reis'])) {
+        $slug = sanitize_text_field($_GET['reis']);
+    }
+    // Fallback: extract slug from URL path (works in subdirectory installs)
+    if (empty($slug)) {
+        $path = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+        if (preg_match('/reizen\/([^\/]+)\/?$/', $path, $m)) {
+            $slug = sanitize_title($m[1]);
+        }
+    }
 
     if (empty($slug)) {
         return '<p class="travelc-error">Geen reis geselecteerd.</p>';

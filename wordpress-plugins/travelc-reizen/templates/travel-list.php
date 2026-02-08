@@ -19,6 +19,7 @@ ksort($all_destinations);
 ksort($all_categories);
 ?>
 
+<div class="travelc-page-wrapper">
 <!-- Search & Filter Bar -->
 <div class="travelc-filter-bar" id="travelc-filters">
     <div class="travelc-filter-bar__inner">
@@ -193,6 +194,7 @@ ksort($all_categories);
     <?php endforeach; ?>
 </div>
 
+</div><!-- /travelc-page-wrapper -->
 <?php if (empty($travels)): ?>
     <p class="travelc-empty">Geen reizen gevonden.</p>
 <?php endif; ?>
