@@ -225,15 +225,27 @@ export function TravelManagement() {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Load all travels - lightweight columns only for list view
+      // Load all travels - use select(*) but with count to check, then paginate if needed
+      // First try a count to see how many we have
+      const { count, error: countError } = await supabase
+        .from('travelc_travels')
+        .select('id', { count: 'exact', head: true });
+
+      console.log('[TravelManagement] total travel count:', count, 'error:', countError);
+
+      // Now load the data - exclude only the heaviest columns
       const { data: travelsData, error: travelsError } = await supabase
         .from('travelc_travels')
-        .select('id, travel_compositor_id, title, slug, number_of_nights, number_of_days, price_per_person, hero_image, source_microsite, enabled_for_brands, enabled_for_franchise, is_mandatory, categories, countries, continents, images, created_at, updated_at')
+        .select('id, travel_compositor_id, title, slug, number_of_nights, number_of_days, price_per_person, hero_image, source_microsite, enabled_for_brands, enabled_for_franchise, is_mandatory, created_at, updated_at')
         .order('created_at', { ascending: false })
-        .limit(5000);
+        .limit(2000);
 
-      if (travelsError) throw travelsError;
-      setTravels(travelsData || []);
+      console.log('[TravelManagement] loadData result:', { count: travelsData?.length, error: travelsError, firstItem: travelsData?.[0] });
+      if (travelsError) {
+        console.error('[TravelManagement] travelsError:', JSON.stringify(travelsError));
+        throw travelsError;
+      }
+      setTravels((travelsData || []) as any);
 
       // Load brands
       const { data: brandsData } = await supabase
