@@ -2,14 +2,14 @@
 /**
  * Plugin Name: TravelC Reizen
  * Description: Toont reizen vanuit TravelCStudio op je WordPress website via shortcodes.
- * Version: 3.9.2
+ * Version: 3.9.3
  * Author: RBS / TravelCStudio
  * Text Domain: travelc-reizen
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('TRAVELC_REIZEN_VERSION', '3.9.2');
+define('TRAVELC_REIZEN_VERSION', '3.9.3');
 define('TRAVELC_REIZEN_PATH', plugin_dir_path(__FILE__));
 define('TRAVELC_REIZEN_URL', plugin_dir_url(__FILE__));
 
@@ -145,6 +145,74 @@ function travelc_reizen_overview_page() {
             </div>
         </div>
 
+        <!-- Featured Reizen -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px;">
+            <div style="background:#fff;border:1px solid #ccd0d4;border-radius:8px;padding:24px;">
+                <h2 style="margin-top:0;">Featured Reizen (kaarten)</h2>
+                <p>Toont reizen als mooie kaarten — ideaal voor homepage of bestemmingspagina's. Gebruik het <strong>TC ID</strong> (Travel Compositor nummer) om specifieke reizen te tonen.</p>
+                <div style="background:#f0f0f1;border-radius:6px;padding:12px;margin:12px 0;display:flex;align-items:center;gap:8px;">
+                    <code style="flex:1;font-size:14px;">[travelc_featured_reizen]</code>
+                    <button type="button" class="button button-small" onclick="travelcCopyShortcode(this)">Kopieer</button>
+                </div>
+                <h4 style="margin-bottom:8px;">Parameters:</h4>
+                <table class="widefat striped" style="font-size:13px;">
+                    <thead><tr><th>Parameter</th><th>Standaard</th><th>Beschrijving</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>ids</code></td><td>-</td><td>TC ID nummers, komma-gescheiden</td></tr>
+                        <tr><td><code>country</code></td><td>-</td><td>Filter op land (bijv. "Thailand")</td></tr>
+                        <tr><td><code>category</code></td><td>-</td><td>Filter op reistype (bijv. "Rondreis")</td></tr>
+                        <tr><td><code>continent</code></td><td>-</td><td>Filter op continent</td></tr>
+                        <tr><td><code>limit</code></td><td>3</td><td>Max aantal reizen</td></tr>
+                        <tr><td><code>columns</code></td><td>3</td><td>Aantal kolommen (2, 3 of 4)</td></tr>
+                        <tr><td><code>title</code></td><td>-</td><td>Optionele sectietitel</td></tr>
+                        <tr><td><code>featured</code></td><td>true</td><td>Alleen uitgelichte (genegeerd bij ids)</td></tr>
+                    </tbody>
+                </table>
+                <h4 style="margin:16px 0 8px;">Voorbeelden:</h4>
+                <div style="background:#f0f0f1;border-radius:6px;padding:12px;margin:6px 0;display:flex;align-items:center;gap:8px;">
+                    <code style="flex:1;">[travelc_featured_reizen ids="35338738,35338745,35338750"]</code>
+                    <button type="button" class="button button-small" onclick="travelcCopyShortcode(this)">Kopieer</button>
+                </div>
+                <div style="background:#f0f0f1;border-radius:6px;padding:12px;margin:6px 0;display:flex;align-items:center;gap:8px;">
+                    <code style="flex:1;">[travelc_featured_reizen country="Thailand" title="Reizen naar Thailand"]</code>
+                    <button type="button" class="button button-small" onclick="travelcCopyShortcode(this)">Kopieer</button>
+                </div>
+                <div style="background:#f0f0f1;border-radius:6px;padding:12px;margin:6px 0;display:flex;align-items:center;gap:8px;">
+                    <code style="flex:1;">[travelc_featured_reizen country="Spanje" category="Rondreis" limit="4" columns="4"]</code>
+                    <button type="button" class="button button-small" onclick="travelcCopyShortcode(this)">Kopieer</button>
+                </div>
+            </div>
+
+            <!-- Zoek Widget -->
+            <div style="background:#fff;border:1px solid #ccd0d4;border-radius:8px;padding:24px;">
+                <h2 style="margin-top:0;">Zoek Widget (homepage)</h2>
+                <p>Zoekformulier met dropdowns voor bestemming, reistype en reisduur. Stuurt de bezoeker naar de reis overzichtspagina met filters.</p>
+                <div style="background:#f0f0f1;border-radius:6px;padding:12px;margin:12px 0;display:flex;align-items:center;gap:8px;">
+                    <code style="flex:1;font-size:14px;">[travelc_zoek_widget action_url="/inspiratiereis/"]</code>
+                    <button type="button" class="button button-small" onclick="travelcCopyShortcode(this)">Kopieer</button>
+                </div>
+                <h4 style="margin-bottom:8px;">Parameters:</h4>
+                <table class="widefat striped" style="font-size:13px;">
+                    <thead><tr><th>Parameter</th><th>Standaard</th><th>Beschrijving</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>action_url</code></td><td>/inspiratiereis/</td><td>URL van de reis overzichtspagina</td></tr>
+                        <tr><td><code>show_country</code></td><td>yes</td><td>Toon bestemming dropdown</td></tr>
+                        <tr><td><code>show_category</code></td><td>yes</td><td>Toon reistype dropdown</td></tr>
+                        <tr><td><code>show_duration</code></td><td>yes</td><td>Toon reisduur dropdown</td></tr>
+                        <tr><td><code>show_theme_link</code></td><td>no</td><td>Toon thema link</td></tr>
+                        <tr><td><code>theme_text</code></td><td>-</td><td>Tekst voor thema link</td></tr>
+                    </tbody>
+                </table>
+                <h4 style="margin:16px 0 8px;">Hoe werkt het:</h4>
+                <ol style="font-size:13px;line-height:1.8;">
+                    <li>Plaats de widget op je homepage (bijv. in een hero sectie)</li>
+                    <li>Stel <code>action_url</code> in naar je reis overzichtspagina</li>
+                    <li>De widget haalt automatisch alle landen en categorieën op</li>
+                    <li>Bij klikken op "Zoek Reizen" gaat de bezoeker naar de overzichtspagina met filters</li>
+                </ol>
+            </div>
+        </div>
+
         <!-- Quick Setup -->
         <div style="background:#fff;border:1px solid #ccd0d4;border-radius:8px;padding:24px;margin-top:20px;">
             <h2 style="margin-top:0;">Snelle Setup</h2>
@@ -152,6 +220,8 @@ function travelc_reizen_overview_page() {
                 <li>Ga naar <a href="<?php echo admin_url('admin.php?page=travelc-reizen-settings'); ?>">Instellingen</a> en vul je <strong>Brand ID</strong> in</li>
                 <li>Maak een pagina <strong>"Reizen"</strong> aan met shortcode <code>[travelc_reizen]</code></li>
                 <li>Maak een pagina <strong>"Reis Detail"</strong> aan (slug: <code>reizen</code>) met shortcode <code>[travelc_reis]</code></li>
+                <li>Optioneel: Plaats <code>[travelc_zoek_widget]</code> op je homepage</li>
+                <li>Optioneel: Plaats <code>[travelc_featured_reizen]</code> op bestemmingspagina's</li>
                 <li>Klaar! Reizen worden automatisch opgehaald uit TravelCStudio</li>
             </ol>
         </div>
