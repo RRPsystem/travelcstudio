@@ -275,11 +275,52 @@ ksort($all_categories);
         if (countEl) countEl.textContent = visible;
     }
 
-    if (searchBtn) searchBtn.addEventListener('click', filterAndSort);
-    if (searchInput) searchInput.addEventListener('keyup', function(e) { if (e.key === 'Enter') filterAndSort(); });
-    if (destFilter) destFilter.addEventListener('change', filterAndSort);
-    if (typeFilter) typeFilter.addEventListener('change', filterAndSort);
+    // Read hash params on page load (from search widget)
+    function parseHash() {
+        var hash = window.location.hash.replace('#', '');
+        if (!hash) return {};
+        var params = {};
+        hash.split('&').forEach(function(part) {
+            var kv = part.split('=');
+            if (kv.length === 2) params[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1]);
+        });
+        return params;
+    }
+
+    function updateHash() {
+        var parts = [];
+        if (destFilter && destFilter.value) parts.push('bestemming=' + encodeURIComponent(destFilter.value));
+        if (typeFilter && typeFilter.value) parts.push('type=' + encodeURIComponent(typeFilter.value));
+        if (searchInput && searchInput.value) parts.push('zoek=' + encodeURIComponent(searchInput.value));
+        if (parts.length > 0) {
+            history.replaceState(null, '', '#' + parts.join('&'));
+        } else {
+            history.replaceState(null, '', window.location.pathname);
+        }
+    }
+
+    // Apply hash params to filters on load
+    var hashParams = parseHash();
+    if (hashParams.bestemming && destFilter) {
+        destFilter.value = hashParams.bestemming;
+    }
+    if (hashParams.type && typeFilter) {
+        typeFilter.value = hashParams.type;
+    }
+    if (hashParams.zoek && searchInput) {
+        searchInput.value = hashParams.zoek;
+    }
+
+    if (searchBtn) searchBtn.addEventListener('click', function() { filterAndSort(); updateHash(); });
+    if (searchInput) searchInput.addEventListener('keyup', function(e) { if (e.key === 'Enter') { filterAndSort(); updateHash(); } });
+    if (destFilter) destFilter.addEventListener('change', function() { filterAndSort(); updateHash(); });
+    if (typeFilter) typeFilter.addEventListener('change', function() { filterAndSort(); updateHash(); });
     if (sortSelect) sortSelect.addEventListener('change', filterAndSort);
+
+    // Auto-filter on load if hash params present
+    if (Object.keys(hashParams).length > 0) {
+        filterAndSort();
+    }
 
     // ============================================
     // Routekaart Sliding Panel

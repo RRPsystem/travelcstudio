@@ -2,14 +2,14 @@
 /**
  * Plugin Name: TravelC Reizen
  * Description: Toont reizen vanuit TravelCStudio op je WordPress website via shortcodes.
- * Version: 3.7.2
+ * Version: 3.8.0
  * Author: RBS / TravelCStudio
  * Text Domain: travelc-reizen
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('TRAVELC_REIZEN_VERSION', '3.7.2');
+define('TRAVELC_REIZEN_VERSION', '3.8.0');
 define('TRAVELC_REIZEN_PATH', plugin_dir_path(__FILE__));
 define('TRAVELC_REIZEN_URL', plugin_dir_url(__FILE__));
 
@@ -293,12 +293,6 @@ add_shortcode('travelc_reizen', function($atts) {
         'layout'   => 'grid', // grid, list
         'columns'  => 3,
     ], $atts);
-
-    // URL query params override shortcode attributes (for search widget)
-    if (isset($_GET['bestemming']) && !empty($_GET['bestemming'])) $atts['country'] = sanitize_text_field($_GET['bestemming']);
-    if (isset($_GET['type']) && !empty($_GET['type']))      $atts['category']  = sanitize_text_field($_GET['type']);
-    if (isset($_GET['dagen']) && !empty($_GET['dagen']))    $atts['duration']  = sanitize_text_field($_GET['dagen']);
-    if (isset($_GET['continent']) && !empty($_GET['continent'])) $atts['continent'] = sanitize_text_field($_GET['continent']);
 
     $params = [
         'action' => 'list',
@@ -719,24 +713,19 @@ add_shortcode('travelc_zoek_widget', function($atts) {
     $primary = esc_attr($brand['primary_color'] ?? '#2a9d8f');
     $secondary = esc_attr($brand['secondary_color'] ?? '#d34e4a');
 
-    // Pre-select from URL params
-    $sel_land = isset($_GET['bestemming']) ? sanitize_text_field($_GET['bestemming']) : '';
-    $sel_type = isset($_GET['type']) ? sanitize_text_field($_GET['type']) : '';
-    $sel_dagen = isset($_GET['dagen']) ? sanitize_text_field($_GET['dagen']) : '';
-
     ob_start();
     ?>
     <div class="tc-hero-search">
         <div class="tc-hero-widget">
-            <form class="tc-hero-form" action="<?php echo esc_url($action_url); ?>" method="get">
+            <div class="tc-hero-form" id="tc-hero-form">
 
                 <?php if ($atts['show_country'] === 'yes' && !empty($countries)): ?>
                 <div class="tc-hero-field">
                     <label class="tc-hero-label">Bestemming</label>
-                    <select name="bestemming" class="tc-hero-select">
+                    <select id="tc-widget-bestemming" class="tc-hero-select">
                         <option value="">Alle bestemmingen</option>
                         <?php foreach ($countries as $c): ?>
-                            <option value="<?php echo esc_attr($c); ?>" <?php selected($sel_land, $c); ?>><?php echo esc_html($c); ?></option>
+                            <option value="<?php echo esc_attr(strtolower($c)); ?>"><?php echo esc_html($c); ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -745,10 +734,10 @@ add_shortcode('travelc_zoek_widget', function($atts) {
                 <?php if ($atts['show_category'] === 'yes' && !empty($categories)): ?>
                 <div class="tc-hero-field">
                     <label class="tc-hero-label">Reistype</label>
-                    <select name="type" class="tc-hero-select">
+                    <select id="tc-widget-type" class="tc-hero-select">
                         <option value="">Alle reistypes</option>
                         <?php foreach ($categories as $cat): ?>
-                            <option value="<?php echo esc_attr($cat); ?>" <?php selected($sel_type, $cat); ?>><?php echo esc_html($cat); ?></option>
+                            <option value="<?php echo esc_attr(strtolower($cat)); ?>"><?php echo esc_html($cat); ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -757,20 +746,20 @@ add_shortcode('travelc_zoek_widget', function($atts) {
                 <?php if ($atts['show_duration'] === 'yes' && $has_durations): ?>
                 <div class="tc-hero-field">
                     <label class="tc-hero-label">Reisduur</label>
-                    <select name="dagen" class="tc-hero-select">
+                    <select id="tc-widget-dagen" class="tc-hero-select">
                         <option value="">Alle reisduren</option>
-                        <option value="1-7" <?php selected($sel_dagen, '1-7'); ?>>1-7 dagen</option>
-                        <option value="8-14" <?php selected($sel_dagen, '8-14'); ?>>8-14 dagen</option>
-                        <option value="15-21" <?php selected($sel_dagen, '15-21'); ?>>15-21 dagen</option>
-                        <option value="22+" <?php selected($sel_dagen, '22+'); ?>>22+ dagen</option>
+                        <option value="1-7">1-7 dagen</option>
+                        <option value="8-14">8-14 dagen</option>
+                        <option value="15-21">15-21 dagen</option>
+                        <option value="22+">22+ dagen</option>
                     </select>
                 </div>
                 <?php endif; ?>
 
-                <button type="submit" class="tc-hero-button">
+                <button type="button" class="tc-hero-button" id="tc-widget-submit">
                     <span>Zoek Reizen</span>
                 </button>
-            </form>
+            </div>
         </div>
 
         <?php if ($atts['show_theme_link'] === 'yes' && !empty($atts['theme_text'])): ?>
@@ -779,6 +768,25 @@ add_shortcode('travelc_zoek_widget', function($atts) {
         </div>
         <?php endif; ?>
     </div>
+
+    <script>
+    (function() {
+        var btn = document.getElementById('tc-widget-submit');
+        if (!btn) return;
+        btn.addEventListener('click', function() {
+            var bestemming = document.getElementById('tc-widget-bestemming');
+            var type = document.getElementById('tc-widget-type');
+            var dagen = document.getElementById('tc-widget-dagen');
+            var parts = [];
+            if (bestemming && bestemming.value) parts.push('bestemming=' + encodeURIComponent(bestemming.value));
+            if (type && type.value) parts.push('type=' + encodeURIComponent(type.value));
+            if (dagen && dagen.value) parts.push('dagen=' + encodeURIComponent(dagen.value));
+            var url = <?php echo json_encode(esc_url($action_url)); ?>;
+            if (parts.length > 0) url += '#' + parts.join('&');
+            window.location.href = url;
+        });
+    })();
+    </script>
 
     <style>
     .tc-hero-search {
