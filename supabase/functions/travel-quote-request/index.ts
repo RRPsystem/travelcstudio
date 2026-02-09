@@ -74,6 +74,11 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // Read brand_id from URL query parameter (easiest for WPForms webhook setup)
+    const url = new URL(req.url);
+    const urlBrandId = url.searchParams.get("brand_id") || "";
+    const urlRequestType = url.searchParams.get("request_type") || "";
+
     const body = await req.json();
 
     // Detect if this is a WPForms webhook or our custom format
@@ -88,10 +93,13 @@ Deno.serve(async (req: Request) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      // URL params override if set
+      if (urlBrandId) normalized.brand_id = urlBrandId;
+      if (urlRequestType) normalized.request_type = urlRequestType;
     } else {
       // Our custom format (from travel detail page)
       normalized = {
-        brand_id: body.brand_id,
+        brand_id: body.brand_id || urlBrandId,
         travel_id: body.travel_id,
         travel_title: body.travel_title,
         travel_url: body.travel_url,
@@ -100,7 +108,7 @@ Deno.serve(async (req: Request) => {
         customer_phone: body.customer_phone,
         departure_date: body.departure_date,
         number_of_persons: body.number_of_persons,
-        request_type: body.request_type || "quote",
+        request_type: body.request_type || urlRequestType || "quote",
         message: body.message,
         source_url: body.source_url,
         source: "travel-detail",
