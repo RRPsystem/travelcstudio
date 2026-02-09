@@ -2,14 +2,14 @@
 /**
  * Plugin Name: TravelC Reizen
  * Description: Toont reizen vanuit TravelCStudio op je WordPress website via shortcodes.
- * Version: 3.4.1
+ * Version: 3.6.0
  * Author: RBS / TravelCStudio
  * Text Domain: travelc-reizen
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('TRAVELC_REIZEN_VERSION', '3.5.0');
+define('TRAVELC_REIZEN_VERSION', '3.6.0');
 define('TRAVELC_REIZEN_PATH', plugin_dir_path(__FILE__));
 define('TRAVELC_REIZEN_URL', plugin_dir_url(__FILE__));
 
@@ -254,7 +254,7 @@ function travelc_get_brand_settings() {
 add_action('wp_enqueue_scripts', function() {
     // Only load when shortcode is used
     global $post;
-    if (!is_a($post, 'WP_Post') || (!has_shortcode($post->post_content, 'travelc_reizen') && !has_shortcode($post->post_content, 'travelc_reis'))) {
+    if (!is_a($post, 'WP_Post') || (!has_shortcode($post->post_content, 'travelc_reizen') && !has_shortcode($post->post_content, 'travelc_reis') && !has_shortcode($post->post_content, 'travelc_zoek_widget'))) {
         return;
     }
 
@@ -287,10 +287,18 @@ add_shortcode('travelc_reizen', function($atts) {
         'limit'    => 12,
         'category' => '',
         'continent'=> '',
+        'country'  => '',
+        'duration' => '',
         'featured' => 'false',
         'layout'   => 'grid', // grid, list
         'columns'  => 3,
     ], $atts);
+
+    // URL query params override shortcode attributes (for search widget)
+    if (isset($_GET['land']) && !empty($_GET['land']))      $atts['country']   = sanitize_text_field($_GET['land']);
+    if (isset($_GET['type']) && !empty($_GET['type']))      $atts['category']  = sanitize_text_field($_GET['type']);
+    if (isset($_GET['dagen']) && !empty($_GET['dagen']))    $atts['duration']  = sanitize_text_field($_GET['dagen']);
+    if (isset($_GET['continent']) && !empty($_GET['continent'])) $atts['continent'] = sanitize_text_field($_GET['continent']);
 
     $params = [
         'action' => 'list',
@@ -298,6 +306,8 @@ add_shortcode('travelc_reizen', function($atts) {
     ];
     if (!empty($atts['category']))  $params['category']  = $atts['category'];
     if (!empty($atts['continent'])) $params['continent'] = $atts['continent'];
+    if (!empty($atts['country']))   $params['country']   = $atts['country'];
+    if (!empty($atts['duration']))  $params['duration']  = $atts['duration'];
     if ($atts['featured'] === 'true') $params['featured'] = 'true';
 
     $result = travelc_api_request($params);
@@ -363,6 +373,240 @@ add_shortcode('travelc_reis', function($atts) {
 
     ob_start();
     include TRAVELC_REIZEN_PATH . 'templates/travel-detail.php';
+    return ob_get_clean();
+});
+
+// ============================================
+// Shortcode: [travelc_zoek_widget] - Hero search widget
+// Usage: [travelc_zoek_widget action_url="/inspiratiereis/" show_duration="yes" show_category="yes" show_country="yes"]
+// ============================================
+add_shortcode('travelc_zoek_widget', function($atts) {
+    $atts = shortcode_atts([
+        'action_url'    => '/inspiratiereis/',
+        'show_country'  => 'yes',
+        'show_category' => 'yes',
+        'show_duration' => 'yes',
+        'theme_text'    => 'Of zoek op een thema reis!',
+        'show_theme_link' => 'no',
+    ], $atts);
+
+    // Fetch available search options from API
+    $options = travelc_api_request(['action' => 'search-options']);
+    $countries = [];
+    $categories = [];
+    $has_durations = false;
+
+    if (!is_wp_error($options) && !empty($options['success'])) {
+        $countries = $options['countries'] ?? [];
+        $categories = $options['categories'] ?? [];
+        $has_durations = !empty($options['durations']);
+    }
+
+    // Get brand colors
+    $brand = travelc_get_brand_settings();
+    $primary = esc_attr($brand['primary_color'] ?? '#2a9d8f');
+    $secondary = esc_attr($brand['secondary_color'] ?? '#d34e4a');
+
+    // Pre-select from URL params
+    $sel_land = isset($_GET['land']) ? sanitize_text_field($_GET['land']) : '';
+    $sel_type = isset($_GET['type']) ? sanitize_text_field($_GET['type']) : '';
+    $sel_dagen = isset($_GET['dagen']) ? sanitize_text_field($_GET['dagen']) : '';
+
+    ob_start();
+    ?>
+    <div class="tc-hero-search">
+        <div class="tc-hero-widget">
+            <form class="tc-hero-form" action="<?php echo esc_url($atts['action_url']); ?>" method="get">
+
+                <?php if ($atts['show_country'] === 'yes' && !empty($countries)): ?>
+                <div class="tc-hero-field">
+                    <label class="tc-hero-label">Bestemming</label>
+                    <select name="land" class="tc-hero-select">
+                        <option value="">Alle bestemmingen</option>
+                        <?php foreach ($countries as $c): ?>
+                            <option value="<?php echo esc_attr($c); ?>" <?php selected($sel_land, $c); ?>><?php echo esc_html($c); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
+
+                <?php if ($atts['show_category'] === 'yes' && !empty($categories)): ?>
+                <div class="tc-hero-field">
+                    <label class="tc-hero-label">Reistype</label>
+                    <select name="type" class="tc-hero-select">
+                        <option value="">Alle reistypes</option>
+                        <?php foreach ($categories as $cat): ?>
+                            <option value="<?php echo esc_attr($cat); ?>" <?php selected($sel_type, $cat); ?>><?php echo esc_html($cat); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
+
+                <?php if ($atts['show_duration'] === 'yes' && $has_durations): ?>
+                <div class="tc-hero-field">
+                    <label class="tc-hero-label">Reisduur</label>
+                    <select name="dagen" class="tc-hero-select">
+                        <option value="">Alle reisduren</option>
+                        <option value="1-7" <?php selected($sel_dagen, '1-7'); ?>>1-7 dagen</option>
+                        <option value="8-14" <?php selected($sel_dagen, '8-14'); ?>>8-14 dagen</option>
+                        <option value="15-21" <?php selected($sel_dagen, '15-21'); ?>>15-21 dagen</option>
+                        <option value="22+" <?php selected($sel_dagen, '22+'); ?>>22+ dagen</option>
+                    </select>
+                </div>
+                <?php endif; ?>
+
+                <button type="submit" class="tc-hero-button">
+                    <span>Zoek Reizen</span>
+                </button>
+            </form>
+        </div>
+
+        <?php if ($atts['show_theme_link'] === 'yes' && !empty($atts['theme_text'])): ?>
+        <div class="tc-theme-link">
+            <span class="tc-theme-text"><?php echo esc_html($atts['theme_text']); ?></span>
+        </div>
+        <?php endif; ?>
+    </div>
+
+    <style>
+    .tc-hero-search {
+        width: 100%;
+        max-width: 920px;
+        margin: 0 auto;
+        padding: 0 20px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        box-sizing: border-box;
+    }
+    .tc-hero-search *, .tc-hero-search *::before, .tc-hero-search *::after { box-sizing: border-box; }
+
+    .tc-hero-widget {
+        background: rgba(255, 255, 255, 0.98);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .tc-hero-form {
+        display: flex;
+        align-items: flex-end;
+        gap: 16px;
+    }
+
+    .tc-hero-field {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .tc-hero-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: #64748b;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .tc-hero-select {
+        width: 100%;
+        height: 50px;
+        padding: 0 40px 0 16px;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 500;
+        color: #1e293b;
+        background-color: #fff;
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 16px center;
+        transition: all 0.2s ease;
+    }
+
+    .tc-hero-select:hover { border-color: #cbd5e1; }
+    .tc-hero-select:focus {
+        outline: none;
+        border-color: <?php echo $primary; ?>;
+        box-shadow: 0 0 0 4px <?php echo $primary; ?>22;
+    }
+
+    .tc-hero-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        height: 50px;
+        padding: 0 32px;
+        background: <?php echo $secondary; ?>;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .tc-hero-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px <?php echo $secondary; ?>66;
+        filter: brightness(1.1);
+    }
+
+    .tc-hero-button:active { transform: translateY(0); }
+
+    .tc-theme-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 24px;
+        padding: 16px;
+    }
+
+    .tc-theme-text {
+        font-family: 'Caveat', 'Segoe Script', cursive;
+        font-size: 26px;
+        color: #fff;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        font-style: italic;
+    }
+
+    .tc-theme-link::before {
+        content: '↙';
+        font-size: 28px;
+        color: #fff;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        animation: tc-arrow-bounce 1.5s ease-in-out infinite;
+    }
+
+    @keyframes tc-arrow-bounce {
+        0%, 100% { transform: translate(0, 0); }
+        50% { transform: translate(-5px, 5px); }
+    }
+
+    @media (max-width: 768px) {
+        .tc-hero-form { flex-wrap: wrap; }
+        .tc-hero-field { flex: 1 1 calc(50% - 8px); min-width: calc(50% - 8px); }
+        .tc-hero-button { flex: 1 1 100%; margin-top: 8px; }
+    }
+
+    @media (max-width: 480px) {
+        .tc-hero-search { padding: 0 12px; }
+        .tc-hero-widget { padding: 16px; border-radius: 12px; }
+        .tc-hero-form { flex-direction: column; gap: 12px; }
+        .tc-hero-field { flex: 1 1 100%; min-width: 100%; }
+        .tc-hero-button { width: 100%; height: 54px; font-size: 17px; }
+        .tc-theme-text { font-size: 22px; }
+    }
+    </style>
+    <?php
     return ob_get_clean();
 });
 

@@ -31,10 +31,12 @@ Deno.serve(async (req: Request) => {
     const slug = url.searchParams.get("slug");
     const category = url.searchParams.get("category");
     const continent = url.searchParams.get("continent");
+    const country = url.searchParams.get("country");
+    const duration = url.searchParams.get("duration");
     const limit = parseInt(url.searchParams.get("limit") || "50");
     const featured = url.searchParams.get("featured") === "true";
 
-    console.log("[travelc-api] Request:", { action, brandId, slug, category, limit });
+    console.log("[travelc-api] Request:", { action, brandId, slug, category, country, duration, limit });
 
     // ============================================
     // ACTION: list - Get all active travels for a brand
@@ -89,6 +91,9 @@ Deno.serve(async (req: Request) => {
       if (continent) {
         query = query.contains("continents", [continent]);
       }
+      if (country) {
+        query = query.contains("countries", [country]);
+      }
 
       const { data: travels, error } = await query;
       if (error) throw error;
@@ -113,9 +118,21 @@ Deno.serve(async (req: Request) => {
         };
       });
 
+      // Filter by duration (e.g. "1-7", "8-14", "15-21", "22+")
+      let filteredResult = result;
+      if (duration) {
+        const [minStr, maxStr] = duration.split("-");
+        const min = parseInt(minStr) || 0;
+        const max = maxStr === "+" || !maxStr ? 999 : parseInt(maxStr);
+        filteredResult = result.filter(t => {
+          const days = t.number_of_days || 0;
+          return days >= min && days <= max;
+        });
+      }
+
       // Sort: featured first, then by date
       if (featured) {
-        result.sort((a, b) => {
+        filteredResult.sort((a, b) => {
           if (a.is_featured && !b.is_featured) return -1;
           if (!a.is_featured && b.is_featured) return 1;
           return 0;
@@ -123,7 +140,7 @@ Deno.serve(async (req: Request) => {
       }
 
       return new Response(
-        JSON.stringify({ success: true, travels: result, count: result.length }),
+        JSON.stringify({ success: true, travels: filteredResult, count: filteredResult.length }),
         { status: 200, headers: corsHeaders }
       );
     }
@@ -175,6 +192,65 @@ Deno.serve(async (req: Request) => {
             ...publicTravel,
             brand_settings: brandSettings,
           },
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    // ============================================
+    // ACTION: search-options - Get available filter options for this brand
+    // ============================================
+    if (action === "search-options") {
+      if (!brandId) {
+        return new Response(
+          JSON.stringify({ error: "brand_id is required" }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+
+      // Get all active assignments
+      const { data: assignments } = await supabase
+        .from("travelc_travel_brand_assignments")
+        .select("travel_id")
+        .eq("brand_id", brandId)
+        .eq("is_active", true);
+
+      const travelIds = (assignments || []).map(a => a.travel_id);
+
+      if (travelIds.length === 0) {
+        return new Response(
+          JSON.stringify({ success: true, countries: [], categories: [], continents: [], durations: [] }),
+          { status: 200, headers: corsHeaders }
+        );
+      }
+
+      const { data: travels } = await supabase
+        .from("travelc_travels")
+        .select("countries, categories, continents, number_of_days")
+        .in("id", travelIds);
+
+      const countriesSet = new Set<string>();
+      const categoriesSet = new Set<string>();
+      const continentsSet = new Set<string>();
+      const daysArray: number[] = [];
+
+      (travels || []).forEach(t => {
+        (t.countries || []).forEach((c: string) => countriesSet.add(c));
+        (t.categories || []).forEach((c: string) => categoriesSet.add(c));
+        (t.continents || []).forEach((c: string) => continentsSet.add(c));
+        if (t.number_of_days) daysArray.push(t.number_of_days);
+      });
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          countries: [...countriesSet].sort(),
+          categories: [...categoriesSet].sort(),
+          continents: [...continentsSet].sort(),
+          durations: daysArray.length > 0 ? {
+            min: Math.min(...daysArray),
+            max: Math.max(...daysArray)
+          } : null
         }),
         { status: 200, headers: corsHeaders }
       );
