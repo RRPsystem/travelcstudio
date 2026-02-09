@@ -2,14 +2,14 @@
 /**
  * Plugin Name: TravelC Reizen
  * Description: Toont reizen vanuit TravelCStudio op je WordPress website via shortcodes.
- * Version: 3.7.1
+ * Version: 3.7.2
  * Author: RBS / TravelCStudio
  * Text Domain: travelc-reizen
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('TRAVELC_REIZEN_VERSION', '3.7.1');
+define('TRAVELC_REIZEN_VERSION', '3.7.2');
 define('TRAVELC_REIZEN_PATH', plugin_dir_path(__FILE__));
 define('TRAVELC_REIZEN_URL', plugin_dir_url(__FILE__));
 
@@ -295,7 +295,7 @@ add_shortcode('travelc_reizen', function($atts) {
     ], $atts);
 
     // URL query params override shortcode attributes (for search widget)
-    if (isset($_GET['land']) && !empty($_GET['land']))      $atts['country']   = sanitize_text_field($_GET['land']);
+    if (isset($_GET['bestemming']) && !empty($_GET['bestemming'])) $atts['country'] = sanitize_text_field($_GET['bestemming']);
     if (isset($_GET['type']) && !empty($_GET['type']))      $atts['category']  = sanitize_text_field($_GET['type']);
     if (isset($_GET['dagen']) && !empty($_GET['dagen']))    $atts['duration']  = sanitize_text_field($_GET['dagen']);
     if (isset($_GET['continent']) && !empty($_GET['continent'])) $atts['continent'] = sanitize_text_field($_GET['continent']);
@@ -720,7 +720,7 @@ add_shortcode('travelc_zoek_widget', function($atts) {
     $secondary = esc_attr($brand['secondary_color'] ?? '#d34e4a');
 
     // Pre-select from URL params
-    $sel_land = isset($_GET['land']) ? sanitize_text_field($_GET['land']) : '';
+    $sel_land = isset($_GET['bestemming']) ? sanitize_text_field($_GET['bestemming']) : '';
     $sel_type = isset($_GET['type']) ? sanitize_text_field($_GET['type']) : '';
     $sel_dagen = isset($_GET['dagen']) ? sanitize_text_field($_GET['dagen']) : '';
 
@@ -733,7 +733,7 @@ add_shortcode('travelc_zoek_widget', function($atts) {
                 <?php if ($atts['show_country'] === 'yes' && !empty($countries)): ?>
                 <div class="tc-hero-field">
                     <label class="tc-hero-label">Bestemming</label>
-                    <select name="land" class="tc-hero-select">
+                    <select name="bestemming" class="tc-hero-select">
                         <option value="">Alle bestemmingen</option>
                         <?php foreach ($countries as $c): ?>
                             <option value="<?php echo esc_attr($c); ?>" <?php selected($sel_land, $c); ?>><?php echo esc_html($c); ?></option>
