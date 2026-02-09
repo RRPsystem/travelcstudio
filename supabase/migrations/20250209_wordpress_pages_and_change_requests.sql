@@ -25,11 +25,7 @@ ALTER TABLE wordpress_pages_cache ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Brands can view own pages cache"
   ON wordpress_pages_cache FOR SELECT
-  USING (brand_id IN (
-    SELECT id FROM brands WHERE user_id = auth.uid()
-    UNION
-    SELECT brand_id FROM brand_members WHERE user_id = auth.uid()
-  ));
+  USING (brand_id = (SELECT brand_id FROM users WHERE id = auth.uid()));
 
 CREATE POLICY "Service role can manage pages cache"
   ON wordpress_pages_cache FOR ALL
@@ -58,19 +54,11 @@ ALTER TABLE wordpress_change_requests ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Brands can view own change requests"
   ON wordpress_change_requests FOR SELECT
-  USING (brand_id IN (
-    SELECT id FROM brands WHERE user_id = auth.uid()
-    UNION
-    SELECT brand_id FROM brand_members WHERE user_id = auth.uid()
-  ));
+  USING (brand_id = (SELECT brand_id FROM users WHERE id = auth.uid()));
 
 CREATE POLICY "Brands can create change requests"
   ON wordpress_change_requests FOR INSERT
-  WITH CHECK (brand_id IN (
-    SELECT id FROM brands WHERE user_id = auth.uid()
-    UNION
-    SELECT brand_id FROM brand_members WHERE user_id = auth.uid()
-  ));
+  WITH CHECK (brand_id = (SELECT brand_id FROM users WHERE id = auth.uid()));
 
 CREATE POLICY "Service role can manage change requests"
   ON wordpress_change_requests FOR ALL

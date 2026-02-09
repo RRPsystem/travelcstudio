@@ -40,42 +40,33 @@ Deno.serve(async (req: Request) => {
     // Service client for DB operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Find the brand for this user
-    const { data: brand, error: brandError } = await supabase
-      .from("brands")
-      .select("id, wordpress_url, wordpress_username, wordpress_app_password")
-      .or(`user_id.eq.${user.id}`)
+    // Find the brand for this user via users.brand_id
+    const { data: userData } = await supabase
+      .from("users")
+      .select("brand_id")
+      .eq("id", user.id)
       .maybeSingle();
 
-    if (brandError || !brand) {
-      // Also check brand_members
-      const { data: membership } = await supabase
-        .from("brand_members")
-        .select("brand_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
+    const brandId = userData?.brand_id;
 
-      if (!membership) {
-        return new Response(
-          JSON.stringify({ error: "Geen brand gevonden voor deze gebruiker" }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+    if (!brandId) {
+      return new Response(
+        JSON.stringify({ error: "Geen brand gevonden voor deze gebruiker" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-      const { data: memberBrand } = await supabase
-        .from("brands")
-        .select("id, wordpress_url, wordpress_username, wordpress_app_password")
-        .eq("id", membership.brand_id)
-        .maybeSingle();
+    const { data: brand } = await supabase
+      .from("brands")
+      .select("id, wordpress_url, wordpress_username, wordpress_app_password")
+      .eq("id", brandId)
+      .maybeSingle();
 
-      if (!memberBrand) {
-        return new Response(
-          JSON.stringify({ error: "Brand niet gevonden" }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      return await syncPages(supabase, memberBrand);
+    if (!brand) {
+      return new Response(
+        JSON.stringify({ error: "Brand niet gevonden" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     return await syncPages(supabase, brand);
