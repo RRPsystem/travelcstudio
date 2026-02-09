@@ -2,14 +2,14 @@
 /**
  * Plugin Name: TravelC Reizen
  * Description: Toont reizen vanuit TravelCStudio op je WordPress website via shortcodes.
- * Version: 3.6.0
+ * Version: 3.7.0
  * Author: RBS / TravelCStudio
  * Text Domain: travelc-reizen
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('TRAVELC_REIZEN_VERSION', '3.6.0');
+define('TRAVELC_REIZEN_VERSION', '3.7.0');
 define('TRAVELC_REIZEN_PATH', plugin_dir_path(__FILE__));
 define('TRAVELC_REIZEN_URL', plugin_dir_url(__FILE__));
 
@@ -254,7 +254,7 @@ function travelc_get_brand_settings() {
 add_action('wp_enqueue_scripts', function() {
     // Only load when shortcode is used
     global $post;
-    if (!is_a($post, 'WP_Post') || (!has_shortcode($post->post_content, 'travelc_reizen') && !has_shortcode($post->post_content, 'travelc_reis') && !has_shortcode($post->post_content, 'travelc_zoek_widget'))) {
+    if (!is_a($post, 'WP_Post') || (!has_shortcode($post->post_content, 'travelc_reizen') && !has_shortcode($post->post_content, 'travelc_reis') && !has_shortcode($post->post_content, 'travelc_zoek_widget') && !has_shortcode($post->post_content, 'travelc_featured_reizen'))) {
         return;
     }
 
@@ -373,6 +373,312 @@ add_shortcode('travelc_reis', function($atts) {
 
     ob_start();
     include TRAVELC_REIZEN_PATH . 'templates/travel-detail.php';
+    return ob_get_clean();
+});
+
+// ============================================
+// Shortcode: [travelc_featured_reizen] - Featured travels in card style
+// Usage: [travelc_featured_reizen limit="3" columns="3" country="Thailand" category="Rondreis"]
+// ============================================
+add_shortcode('travelc_featured_reizen', function($atts) {
+    $atts = shortcode_atts([
+        'limit'    => 3,
+        'columns'  => 3,
+        'country'  => '',
+        'category' => '',
+        'continent'=> '',
+        'featured' => 'true',
+        'title'    => '',
+        'detail_base' => '/reizen/',
+    ], $atts);
+
+    $params = [
+        'action'   => 'list',
+        'limit'    => intval($atts['limit']),
+        'featured' => $atts['featured'],
+    ];
+    if (!empty($atts['country']))   $params['country']   = $atts['country'];
+    if (!empty($atts['category']))  $params['category']  = $atts['category'];
+    if (!empty($atts['continent'])) $params['continent'] = $atts['continent'];
+
+    $result = travelc_api_request($params);
+
+    if (is_wp_error($result) || empty($result['travels'])) {
+        return '';
+    }
+
+    $travels = array_slice($result['travels'], 0, intval($atts['limit']));
+    $columns = intval($atts['columns']);
+
+    // Get brand colors
+    $brand = travelc_get_brand_settings();
+    $primary = esc_attr($brand['primary_color'] ?? '#2a9d8f');
+    $secondary = esc_attr($brand['secondary_color'] ?? '#d34e4a');
+
+    ob_start();
+    ?>
+
+    <?php if (!empty($atts['title'])): ?>
+    <h2 class="tcf-section-title"><?php echo esc_html($atts['title']); ?></h2>
+    <?php endif; ?>
+
+    <div class="tcf-grid tcf-cols-<?php echo $columns; ?>">
+        <?php foreach ($travels as $travel):
+            $detail_url = home_url(rtrim($atts['detail_base'], '/') . '/' . $travel['slug'] . '/');
+            $image = !empty($travel['first_image']) ? $travel['first_image'] : ($travel['hero_image'] ?? '');
+            $price = !empty($travel['display_price']) ? $travel['display_price'] : ($travel['price_per_person'] ?? 0);
+            $title = !empty($travel['display_title']) ? $travel['display_title'] : $travel['title'];
+            $nights = $travel['number_of_nights'] ?? 0;
+            $days = $travel['number_of_days'] ?? 0;
+            $countries = $travel['country_list'] ?? [];
+            $intro = $travel['intro_text'] ?? '';
+            if (strlen($intro) > 120) $intro = mb_substr($intro, 0, 117) . '...';
+
+            // Get category
+            $categories = $travel['categories'] ?? [];
+            $travel_type = '';
+            if (!empty($categories)) {
+                $first_cat = $categories[0];
+                $travel_type = is_array($first_cat) ? ($first_cat['name'] ?? '') : $first_cat;
+            }
+        ?>
+        <a href="<?php echo esc_url($detail_url); ?>" class="tcf-card">
+            <div class="tcf-card-image">
+                <?php if (!empty($image)): ?>
+                    <img src="<?php echo esc_url($image); ?>" alt="<?php echo esc_attr($title); ?>" loading="lazy" />
+                <?php else: ?>
+                    <div class="tcf-no-image">✈</div>
+                <?php endif; ?>
+
+                <?php if ($days > 0): ?>
+                <div class="tcf-days-badge">
+                    <span class="tcf-days-num"><?php echo $days; ?></span>
+                    <span class="tcf-days-label">dagen</span>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($travel_type)): ?>
+                <div class="tcf-type-badge"><?php echo esc_html($travel_type); ?></div>
+                <?php endif; ?>
+            </div>
+
+            <div class="tcf-card-content">
+                <?php if (!empty($countries)): ?>
+                <div class="tcf-countries">
+                    <span class="tcf-countries-icon">📍</span>
+                    <span><?php echo esc_html(implode(', ', $countries)); ?></span>
+                </div>
+                <?php endif; ?>
+
+                <h3 class="tcf-card-title"><?php echo esc_html($title); ?></h3>
+
+                <?php if (!empty($intro)): ?>
+                <p class="tcf-card-excerpt"><?php echo esc_html($intro); ?></p>
+                <?php endif; ?>
+
+                <div class="tcf-card-footer">
+                    <?php if ($price > 0): ?>
+                    <span class="tcf-price">Vanaf €<?php echo number_format($price, 0, ',', '.'); ?> p.p.</span>
+                    <?php endif; ?>
+                    <span class="tcf-read-more">Bekijk reis →</span>
+                </div>
+            </div>
+        </a>
+        <?php endforeach; ?>
+    </div>
+
+    <style>
+    .tcf-section-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin-bottom: 24px;
+        text-align: center;
+    }
+
+    .tcf-grid {
+        display: grid;
+        gap: 24px;
+        margin: 0 auto;
+        max-width: 1200px;
+    }
+    .tcf-cols-2 { grid-template-columns: repeat(2, 1fr); }
+    .tcf-cols-3 { grid-template-columns: repeat(3, 1fr); }
+    .tcf-cols-4 { grid-template-columns: repeat(4, 1fr); }
+
+    .tcf-card {
+        background: #fff;
+        border-radius: 16px;
+        overflow: visible;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        position: relative;
+        text-decoration: none;
+        color: inherit;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .tcf-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+    }
+
+    .tcf-card-image {
+        position: relative;
+        aspect-ratio: 16 / 10;
+        overflow: hidden;
+        margin: 12px 12px 0 12px;
+        border-radius: 12px;
+    }
+
+    .tcf-card-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.4s ease;
+    }
+
+    .tcf-card:hover .tcf-card-image img {
+        transform: scale(1.05);
+    }
+
+    .tcf-no-image {
+        width: 100%;
+        height: 100%;
+        background: #f0f0f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+    }
+
+    /* Days Badge - Circle top-right, same style as news date badge */
+    .tcf-days-badge {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 54px;
+        height: 54px;
+        background: <?php echo $primary; ?>;
+        border-radius: 50%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        z-index: 2;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+    }
+
+    .tcf-days-num {
+        font-size: 1.125rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .tcf-days-label {
+        font-size: 0.6rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        line-height: 1;
+        margin-top: 1px;
+    }
+
+    /* Type Badge - Overlapping bottom-left, same style as news category badge */
+    .tcf-type-badge {
+        position: absolute;
+        bottom: -14px;
+        left: 16px;
+        background: <?php echo $secondary; ?>;
+        color: #fff;
+        padding: 7px 20px;
+        border-radius: 5px;
+        font-size: 0.875rem;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        z-index: 2;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        text-transform: capitalize;
+    }
+
+    .tcf-card-content {
+        padding: 24px 20px 20px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .tcf-countries {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.8125rem;
+        color: #6c757d;
+        margin-bottom: 8px;
+    }
+
+    .tcf-countries-icon {
+        font-size: 0.875rem;
+    }
+
+    .tcf-card-title {
+        font-size: 1.1875rem;
+        font-weight: 700;
+        margin: 0 0 10px 0;
+        line-height: 1.35;
+        color: #1a1a2e;
+    }
+
+    .tcf-card:hover .tcf-card-title {
+        color: <?php echo $primary; ?>;
+    }
+
+    .tcf-card-excerpt {
+        font-size: 0.9375rem;
+        color: #6c757d;
+        line-height: 1.6;
+        margin-bottom: 14px;
+        flex: 1;
+    }
+
+    .tcf-card-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 14px;
+        border-top: 1px solid #f0f0f0;
+    }
+
+    .tcf-price {
+        font-size: 1rem;
+        font-weight: 700;
+        color: <?php echo $primary; ?>;
+    }
+
+    .tcf-read-more {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: <?php echo $secondary; ?>;
+        transition: transform 0.2s ease;
+        display: inline-block;
+    }
+
+    .tcf-card:hover .tcf-read-more {
+        transform: translateX(4px);
+    }
+
+    @media (max-width: 900px) {
+        .tcf-cols-3, .tcf-cols-4 { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 600px) {
+        .tcf-cols-2, .tcf-cols-3, .tcf-cols-4 { grid-template-columns: 1fr; }
+        .tcf-section-title { font-size: 1.375rem; }
+    }
+    </style>
+    <?php
     return ob_get_clean();
 });
 
