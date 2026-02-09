@@ -18,7 +18,7 @@ interface QuoteRequest {
   customer_phone: string | null;
   departure_date: string | null;
   number_of_persons: number;
-  request_type: 'quote' | 'info';
+  request_type: 'quote' | 'info' | 'contact';
   message: string | null;
   status: 'new' | 'read' | 'contacted' | 'quoted' | 'booked' | 'cancelled';
   notes: string | null;
@@ -157,12 +157,12 @@ export function QuoteRequestsDashboard() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <FileText className="w-6 h-6" />
-            Offerte Aanvragen
+            Aanvragen
             {newCount > 0 && (
               <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">{newCount} nieuw</span>
             )}
           </h1>
-          <p className="text-gray-600 text-sm mt-1">Bekijk en beheer offerte aanvragen van je website bezoekers.</p>
+          <p className="text-gray-600 text-sm mt-1">Bekijk en beheer offerte-, info- en contactaanvragen van je website bezoekers.</p>
         </div>
         <button onClick={loadRequests} className="p-2 hover:bg-gray-100 rounded-lg" title="Vernieuwen">
           <RefreshCw className="w-5 h-5 text-gray-500" />
@@ -197,8 +197,8 @@ export function QuoteRequestsDashboard() {
       {requests.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl border">
           <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">Nog geen offerte aanvragen ontvangen</p>
-          <p className="text-sm text-gray-400 mt-1">Aanvragen van je WordPress reispagina's verschijnen hier</p>
+          <p className="text-gray-500">Nog geen aanvragen ontvangen</p>
+          <p className="text-sm text-gray-400 mt-1">Offerte-, info- en contactaanvragen van je WordPress website verschijnen hier</p>
         </div>
       ) : (
         <div className="flex gap-6">
@@ -233,9 +233,11 @@ export function QuoteRequestsDashboard() {
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-xs px-2 py-0.5 rounded ${
-                          req.request_type === 'quote' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
+                          req.request_type === 'quote' ? 'bg-orange-100 text-orange-700' 
+                          : req.request_type === 'contact' ? 'bg-green-100 text-green-700'
+                          : 'bg-blue-100 text-blue-700'
                         }`}>
-                          {req.request_type === 'quote' ? 'Offerte' : 'Info'}
+                          {req.request_type === 'quote' ? 'Offerte' : req.request_type === 'contact' ? 'Contact' : 'Info'}
                         </span>
                       </td>
                       <td className="px-4 py-3">{getStatusBadge(req.status)}</td>
@@ -334,9 +336,11 @@ export function QuoteRequestsDashboard() {
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-0.5">Type aanvraag</label>
                     <span className={`text-xs px-2 py-0.5 rounded ${
-                      selectedRequest.request_type === 'quote' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
+                      selectedRequest.request_type === 'quote' ? 'bg-orange-100 text-orange-700' 
+                      : selectedRequest.request_type === 'contact' ? 'bg-green-100 text-green-700'
+                      : 'bg-blue-100 text-blue-700'
                     }`}>
-                      {selectedRequest.request_type === 'quote' ? 'Offerte Aanvraag' : 'Info Aanvraag'}
+                      {selectedRequest.request_type === 'quote' ? 'Offerte Aanvraag' : selectedRequest.request_type === 'contact' ? 'Contact Aanvraag' : 'Info Aanvraag'}
                     </span>
                   </div>
                 </div>

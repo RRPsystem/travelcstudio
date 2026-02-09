@@ -7,6 +7,67 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Map common WPForms field labels to our field names
+function normalizeWPFormsData(body: any): any {
+  // WPForms webhook sends: { fields: { '0': { id, name, value }, '1': { ... } } }
+  // OR flat: { field_id: value, field_id_2: value }
+  const fields = body.fields;
+  if (!fields) return null;
+
+  const fieldMap: Record<string, string> = {};
+
+  // Build a map of lowercase label -> value
+  if (typeof fields === "object") {
+    for (const key of Object.keys(fields)) {
+      const field = fields[key];
+      if (field && typeof field === "object" && field.name && field.value !== undefined) {
+        fieldMap[field.name.toLowerCase().trim()] = String(field.value).trim();
+      } else if (typeof field === "string") {
+        fieldMap[key.toLowerCase().trim()] = field.trim();
+      }
+    }
+  }
+
+  // Try to extract brand_id from hidden field or body
+  const brandId = fieldMap["brand_id"] || fieldMap["brand id"] || fieldMap["brandid"] || body.brand_id || "";
+
+  // Map common Dutch/English field names
+  const name = fieldMap["naam"] || fieldMap["name"] || fieldMap["volledige naam"] || fieldMap["je naam"] || fieldMap["uw naam"] || "";
+  const email = fieldMap["e-mail"] || fieldMap["email"] || fieldMap["e-mailadres"] || fieldMap["emailadres"] || "";
+  const phone = fieldMap["telefoon"] || fieldMap["phone"] || fieldMap["telefoonnummer"] || fieldMap["tel"] || "";
+  const msg = fieldMap["bericht"] || fieldMap["message"] || fieldMap["opmerking"] || fieldMap["opmerkingen"] || fieldMap["vraag"] || "";
+  const travelTitle = fieldMap["reis"] || fieldMap["reistitel"] || fieldMap["travel"] || fieldMap["bestemming"] || "";
+  const departureDate = fieldMap["vertrekdatum"] || fieldMap["departure date"] || fieldMap["datum"] || "";
+  const persons = fieldMap["aantal personen"] || fieldMap["personen"] || fieldMap["persons"] || fieldMap["aantal"] || "";
+  const requestType = fieldMap["type"] || fieldMap["aanvraag type"] || fieldMap["request_type"] || "";
+
+  // Determine request type from form name or field
+  let type = "contact";
+  const formName = (body.form_title || body.form_name || "").toLowerCase();
+  if (requestType) {
+    if (requestType.toLowerCase().includes("offerte") || requestType.toLowerCase().includes("quote")) type = "quote";
+    else if (requestType.toLowerCase().includes("info")) type = "info";
+  } else if (formName.includes("offerte") || formName.includes("quote")) {
+    type = "quote";
+  } else if (formName.includes("info")) {
+    type = "info";
+  }
+
+  return {
+    brand_id: brandId,
+    customer_name: name,
+    customer_email: email,
+    customer_phone: phone,
+    message: msg,
+    travel_title: travelTitle,
+    departure_date: departureDate,
+    number_of_persons: persons,
+    request_type: type,
+    source_url: body.page_url || body.entry_url || "",
+    source: "wpforms",
+  };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -14,25 +75,58 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json();
+
+    // Detect if this is a WPForms webhook or our custom format
+    let normalized;
+    if (body.fields) {
+      // WPForms webhook format
+      console.log("[Quote Request] Detected WPForms webhook format");
+      normalized = normalizeWPFormsData(body);
+      if (!normalized) {
+        return new Response(
+          JSON.stringify({ error: "Kon WPForms data niet verwerken" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else {
+      // Our custom format (from travel detail page)
+      normalized = {
+        brand_id: body.brand_id,
+        travel_id: body.travel_id,
+        travel_title: body.travel_title,
+        travel_url: body.travel_url,
+        customer_name: body.customer_name,
+        customer_email: body.customer_email,
+        customer_phone: body.customer_phone,
+        departure_date: body.departure_date,
+        number_of_persons: body.number_of_persons,
+        request_type: body.request_type || "quote",
+        message: body.message,
+        source_url: body.source_url,
+        source: "travel-detail",
+      };
+    }
+
     const {
       brand_id,
-      travel_id,
-      travel_title,
-      travel_url,
       customer_name,
       customer_email,
       customer_phone,
+      travel_id,
+      travel_title,
+      travel_url,
       departure_date,
       number_of_persons,
       request_type,
       message,
       source_url,
-    } = body;
+      source,
+    } = normalized;
 
     // Validate required fields
     if (!brand_id) {
       return new Response(
-        JSON.stringify({ error: "brand_id is verplicht" }),
+        JSON.stringify({ error: "brand_id is verplicht. Voeg een hidden field 'brand_id' toe aan je WPForms formulier." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -51,6 +145,10 @@ Deno.serve(async (req: Request) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Validate request_type
+    const validTypes = ["quote", "info", "contact"];
+    const finalType = validTypes.includes(request_type) ? request_type : "contact";
 
     // Get source IP from headers
     const sourceIp = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "";
@@ -71,8 +169,8 @@ Deno.serve(async (req: Request) => {
         customer_email,
         customer_phone: customer_phone || null,
         departure_date: departure_date || null,
-        number_of_persons: number_of_persons ? parseInt(number_of_persons) : 2,
-        request_type: request_type || "quote",
+        number_of_persons: number_of_persons ? parseInt(number_of_persons) : null,
+        request_type: finalType,
         message: message || null,
         source_url: source_url || null,
         source_ip: sourceIp,
@@ -89,7 +187,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log(`[Quote Request] Saved: ${data.id} for brand ${brand_id}, travel: ${travel_title || travel_id}`);
+    console.log(`[Quote Request] Saved: ${data.id} for brand ${brand_id}, type: ${finalType}, source: ${source}, travel: ${travel_title || travel_id || "n/a"}`);
 
     return new Response(
       JSON.stringify({
