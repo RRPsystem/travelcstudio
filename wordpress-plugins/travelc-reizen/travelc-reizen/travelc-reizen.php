@@ -388,7 +388,7 @@ add_action('wpforms_process_complete', function($fields, $entry, $form_data, $en
         if (!$found) return;
     }
 
-    // Map WPForms fields to our format by searching field labels
+    // Map WPForms fields to our format using partial label matching
     $mapped = [
         'customer_name' => '',
         'customer_email' => '',
@@ -398,33 +398,47 @@ add_action('wpforms_process_complete', function($fields, $entry, $form_data, $en
         'number_of_persons' => '',
     ];
 
-    $name_labels = ['naam', 'name', 'volledige naam', 'je naam', 'uw naam', 'voornaam'];
-    $email_labels = ['e-mail', 'email', 'e-mailadres', 'emailadres'];
-    $phone_labels = ['telefoon', 'phone', 'telefoonnummer', 'tel', 'mobiel'];
-    $msg_labels = ['bericht', 'message', 'opmerking', 'opmerkingen', 'vraag', 'toelichting', 'wensen'];
-    $date_labels = ['vertrekdatum', 'datum', 'departure', 'date', 'reisdatum'];
-    $persons_labels = ['personen', 'aantal', 'persons', 'reizigers', 'aantal personen'];
+    $name_keywords = ['naam', 'name', 'voornaam', 'achternaam'];
+    $email_keywords = ['mail', 'email', 'e-mail'];
+    $phone_keywords = ['telefoon', 'phone', 'tel', 'mobiel', 'gsm'];
+    $date_keywords = ['vertrek', 'datum', 'departure', 'date', 'reisdatum'];
+    $persons_keywords = ['personen', 'aantal volwassenen', 'persons', 'reizigers'];
+
+    // Helper: check if label contains any keyword
+    $label_contains = function($label, $keywords) {
+        foreach ($keywords as $kw) {
+            if (strpos($label, $kw) !== false) return true;
+        }
+        return false;
+    };
+
+    // Collect all fields as structured summary
+    $all_fields_summary = [];
 
     foreach ($fields as $field) {
         $label = strtolower(trim($field['name'] ?? ''));
         $value = trim($field['value'] ?? '');
         if (empty($value)) continue;
 
-        // Name field (WPForms splits into first/last)
-        if ($field['type'] === 'name' || in_array($label, $name_labels)) {
+        // Collect everything for the message summary
+        $all_fields_summary[] = ($field['name'] ?? 'Veld') . ': ' . $value;
+
+        // Name: match by type or keyword in label
+        if ($field['type'] === 'name' || (!$mapped['customer_name'] && $label_contains($label, $name_keywords))) {
             $mapped['customer_name'] = $value;
-        } elseif ($field['type'] === 'email' || in_array($label, $email_labels)) {
+        } elseif ($field['type'] === 'email' || (!$mapped['customer_email'] && $label_contains($label, $email_keywords))) {
             $mapped['customer_email'] = $value;
-        } elseif ($field['type'] === 'phone' || in_array($label, $phone_labels)) {
+        } elseif ($field['type'] === 'phone' || (!$mapped['customer_phone'] && $label_contains($label, $phone_keywords))) {
             $mapped['customer_phone'] = $value;
-        } elseif ($field['type'] === 'textarea' || in_array($label, $msg_labels)) {
-            $mapped['message'] = $value;
-        } elseif ($field['type'] === 'date-time' || in_array($label, $date_labels)) {
+        } elseif ($field['type'] === 'date-time' && !$mapped['departure_date'] && $label_contains($label, $date_keywords)) {
             $mapped['departure_date'] = $value;
-        } elseif (in_array($label, $persons_labels)) {
+        } elseif (!$mapped['number_of_persons'] && $label_contains($label, $persons_keywords)) {
             $mapped['number_of_persons'] = $value;
         }
     }
+
+    // Use full form summary as message so no data is lost
+    $mapped['message'] = implode("\n", $all_fields_summary);
 
     // Determine request type from form title
     $request_type = 'contact';
@@ -448,23 +462,39 @@ add_action('wpforms_process_complete', function($fields, $entry, $form_data, $en
         'travel_title' => $form_data['settings']['form_title'] ?? '',
     ];
 
+    // Debug: log raw fields from WPForms
+    error_log('[TravelC] WPForms fields dump: ' . print_r($fields, true));
+    error_log('[TravelC] Mapped payload: ' . json_encode($payload, JSON_PRETTY_PRINT));
+
     // Skip if no name or email found
     if (empty($payload['customer_name']) || empty($payload['customer_email'])) {
         error_log('[TravelC] WPForms forward skipped: missing name or email. Form: ' . ($form_data['settings']['form_title'] ?? 'unknown'));
         return;
     }
 
-    // Send to Edge Function (non-blocking)
+    // Send to Edge Function
     $endpoint = 'https://huaaogdxxdcakxryecnw.supabase.co/functions/v1/travel-quote-request';
+    $json_body = json_encode($payload);
+    error_log('[TravelC] Sending to endpoint: ' . $endpoint);
+    error_log('[TravelC] JSON body: ' . $json_body);
+
     $response = wp_remote_post($endpoint, [
-        'timeout' => 10,
-        'headers' => ['Content-Type' => 'application/json'],
-        'body' => json_encode($payload),
-        'blocking' => false, // Don't wait for response
+        'timeout' => 15,
+        'headers' => [
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json',
+        ],
+        'body' => $json_body,
+        'blocking' => true,
+        'sslverify' => true,
     ]);
 
     if (is_wp_error($response)) {
         error_log('[TravelC] WPForms forward error: ' . $response->get_error_message());
+    } else {
+        $resp_code = wp_remote_retrieve_response_code($response);
+        $resp_body = wp_remote_retrieve_body($response);
+        error_log('[TravelC] Response code: ' . $resp_code . ' body: ' . $resp_body);
     }
 }, 10, 4);
 

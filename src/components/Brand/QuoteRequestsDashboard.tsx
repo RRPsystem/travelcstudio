@@ -349,9 +349,36 @@ export function QuoteRequestsDashboard() {
                 {selectedRequest.message && (
                   <div className="mb-4">
                     <label className="block text-xs font-medium text-gray-500 mb-1">Bericht van klant</label>
-                    <div className="bg-blue-50 rounded-lg p-3 text-sm text-gray-700 whitespace-pre-wrap">
-                      {selectedRequest.message}
-                    </div>
+                    {selectedRequest.message.includes(':') && selectedRequest.message.split('\n').length > 3 ? (
+                      <div className="bg-blue-50 rounded-lg overflow-hidden text-sm">
+                        <table className="w-full">
+                          <tbody>
+                            {selectedRequest.message.split('\n').filter(Boolean).map((line, i) => {
+                              const colonIdx = line.indexOf(':');
+                              if (colonIdx > 0) {
+                                const label = line.substring(0, colonIdx).trim();
+                                const value = line.substring(colonIdx + 1).trim();
+                                return (
+                                  <tr key={i} className={i % 2 === 0 ? 'bg-blue-50' : 'bg-white'}>
+                                    <td className="px-3 py-1.5 text-xs font-medium text-gray-500 w-2/5 align-top">{label}</td>
+                                    <td className="px-3 py-1.5 text-sm text-gray-800">{value || '—'}</td>
+                                  </tr>
+                                );
+                              }
+                              return (
+                                <tr key={i} className={i % 2 === 0 ? 'bg-blue-50' : 'bg-white'}>
+                                  <td colSpan={2} className="px-3 py-1.5 text-sm text-gray-700">{line}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="bg-blue-50 rounded-lg p-3 text-sm text-gray-700 whitespace-pre-wrap">
+                        {selectedRequest.message}
+                      </div>
+                    )}
                   </div>
                 )}
 
