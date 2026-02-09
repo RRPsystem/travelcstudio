@@ -2,14 +2,14 @@
 /**
  * Plugin Name: TravelC Reizen
  * Description: Toont reizen vanuit TravelCStudio op je WordPress website via shortcodes.
- * Version: 3.8.0
+ * Version: 3.9.0
  * Author: RBS / TravelCStudio
  * Text Domain: travelc-reizen
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('TRAVELC_REIZEN_VERSION', '3.8.0');
+define('TRAVELC_REIZEN_VERSION', '3.9.0');
 define('TRAVELC_REIZEN_PATH', plugin_dir_path(__FILE__));
 define('TRAVELC_REIZEN_URL', plugin_dir_url(__FILE__));
 
@@ -373,11 +373,13 @@ add_shortcode('travelc_reis', function($atts) {
 // ============================================
 // Shortcode: [travelc_featured_reizen] - Featured travels in card style
 // Usage: [travelc_featured_reizen limit="3" columns="3" country="Thailand" category="Rondreis"]
+// Usage: [travelc_featured_reizen ids="uuid1,uuid2,uuid3" title="Onze tips"]
 // ============================================
 add_shortcode('travelc_featured_reizen', function($atts) {
     $atts = shortcode_atts([
         'limit'    => 3,
         'columns'  => 3,
+        'ids'      => '',
         'country'  => '',
         'category' => '',
         'continent'=> '',
@@ -389,8 +391,14 @@ add_shortcode('travelc_featured_reizen', function($atts) {
     $params = [
         'action'   => 'list',
         'limit'    => intval($atts['limit']),
-        'featured' => $atts['featured'],
     ];
+    // If specific IDs given, use those (ignore featured filter)
+    if (!empty($atts['ids'])) {
+        $params['ids'] = $atts['ids'];
+        $params['limit'] = 50; // enough to cover all requested IDs
+    } else {
+        if ($atts['featured'] === 'true') $params['featured'] = 'true';
+    }
     if (!empty($atts['country']))   $params['country']   = $atts['country'];
     if (!empty($atts['category']))  $params['category']  = $atts['category'];
     if (!empty($atts['continent'])) $params['continent'] = $atts['continent'];

@@ -35,6 +35,7 @@ Deno.serve(async (req: Request) => {
     const duration = url.searchParams.get("duration");
     const limit = parseInt(url.searchParams.get("limit") || "50");
     const featured = url.searchParams.get("featured") === "true";
+    const ids = url.searchParams.get("ids"); // comma-separated travel IDs
 
     console.log("[travelc-api] Request:", { action, brandId, slug, category, country, duration, limit });
 
@@ -70,6 +71,19 @@ Deno.serve(async (req: Request) => {
       const assignmentMap = new Map((assignments || []).map(a => [a.travel_id, a]));
 
       // Step 2: Get the travel data for active assignments
+      // If specific IDs requested, filter to only those (must also be active)
+      let targetIds = activeTravelIds;
+      if (ids) {
+        const requestedIds = ids.split(",").map((id: string) => id.trim()).filter(Boolean);
+        targetIds = requestedIds.filter((id: string) => activeTravelIds.includes(id));
+        if (targetIds.length === 0) {
+          return new Response(
+            JSON.stringify({ success: true, travels: [], count: 0 }),
+            { status: 200, headers: corsHeaders }
+          );
+        }
+      }
+
       let query = supabase
         .from("travelc_travels")
         .select(`
@@ -80,7 +94,7 @@ Deno.serve(async (req: Request) => {
           enabled_for_brands, enabled_for_franchise, is_mandatory,
           created_at
         `)
-        .in("id", activeTravelIds)
+        .in("id", targetIds)
         .order("created_at", { ascending: false })
         .limit(limit);
 
