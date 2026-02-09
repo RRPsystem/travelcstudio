@@ -96,14 +96,14 @@
     transform: scale(1.05);
 }
 
-/* Date Badge - Green circle top-right on image */
+/* Date Badge - Circle top-right on image, uses brand primary color */
 .tcc-date-badge {
     position: absolute;
     top: 12px;
     right: 12px;
-    width: 50px;
-    height: 50px;
-    background: #4CAF50;
+    width: 54px;
+    height: 54px;
+    background: var(--tcc-primary, #066168);
     border-radius: 50%;
     display: flex;
     flex-direction: column;
@@ -111,7 +111,7 @@
     justify-content: center;
     color: #fff;
     z-index: 2;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
 }
 
 .tcc-date-day {
@@ -129,19 +129,21 @@
     margin-top: 1px;
 }
 
-/* Category Badge - Orange, overlapping image bottom-left */
+/* Category Badge - Overlapping image bottom-left, uses brand secondary color */
 .tcc-category-badge {
     position: absolute;
-    bottom: -12px;
+    bottom: -14px;
     left: 16px;
-    background: #F7941D;
+    background: var(--tcc-secondary, #F7941D);
     color: #fff;
-    padding: 5px 16px;
-    border-radius: 4px;
-    font-size: 0.8125rem;
-    font-weight: 600;
+    padding: 7px 20px;
+    border-radius: 5px;
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
     z-index: 2;
-    box-shadow: 0 2px 6px rgba(247, 148, 29, 0.4);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    text-transform: capitalize;
 }
 
 .tcc-news-content {
@@ -159,7 +161,7 @@
 }
 
 .tcc-author-icon {
-    color: #4CAF50;
+    color: var(--tcc-primary, #066168);
     font-size: 0.875rem;
 }
 

@@ -15,7 +15,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('TCC_VERSION', '1.0.72');
+define('TCC_VERSION', '1.0.73');
 define('TCC_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TCC_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -40,6 +40,7 @@ class TravelC_Content {
     private $supabase_url;
     private $supabase_key;
     private $brand_id;
+    private $brand_colors = null;
     private $current_destination = null;
     
     public static function get_instance() {
@@ -1794,6 +1795,46 @@ class TravelC_Content {
     }
     
     /**
+     * Get brand colors from Supabase (cached)
+     */
+    private function get_brand_colors() {
+        if ($this->brand_colors !== null) {
+            return $this->brand_colors;
+        }
+        
+        // Check transient cache first (cache for 1 hour)
+        $cached = get_transient('tcc_brand_colors_' . $this->brand_id);
+        if ($cached !== false) {
+            $this->brand_colors = $cached;
+            return $cached;
+        }
+        
+        $colors = array('primary' => '#066168', 'secondary' => '#F7941D');
+        
+        if (!empty($this->brand_id)) {
+            $brand_data = $this->fetch_from_supabase('brands', array(
+                'id' => 'eq.' . $this->brand_id,
+                'select' => 'primary_color,secondary_color',
+                'limit' => 1
+            ));
+            
+            if (is_array($brand_data) && !empty($brand_data)) {
+                $brand = $brand_data[0];
+                if (!empty($brand['primary_color'])) {
+                    $colors['primary'] = $brand['primary_color'];
+                }
+                if (!empty($brand['secondary_color'])) {
+                    $colors['secondary'] = $brand['secondary_color'];
+                }
+            }
+        }
+        
+        $this->brand_colors = $colors;
+        set_transient('tcc_brand_colors_' . $this->brand_id, $colors, HOUR_IN_SECONDS);
+        return $colors;
+    }
+    
+    /**
      * Enqueue frontend styles
      */
     public function enqueue_styles() {
@@ -1803,6 +1844,15 @@ class TravelC_Content {
             array(),
             TCC_VERSION
         );
+        
+        // Inject brand colors as CSS custom properties
+        $colors = $this->get_brand_colors();
+        $inline_css = sprintf(
+            ':root { --tcc-primary: %s; --tcc-secondary: %s; }',
+            esc_attr($colors['primary']),
+            esc_attr($colors['secondary'])
+        );
+        wp_add_inline_style('travelc-content', $inline_css);
     }
     
     // ========================================
