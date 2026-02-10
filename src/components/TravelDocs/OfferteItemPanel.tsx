@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { X, Star, Upload, Search, Loader2, MapPin, Building2 } from 'lucide-react';
 import { OfferteItem, OfferteItemType, OFFERTE_ITEM_TYPES } from '../../types/offerte';
 import { supabase } from '../../lib/supabase';
@@ -64,21 +64,59 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
     included_items: item?.included_items || [],
   });
 
+  // Step 1: Destination autocomplete
   const [searchQuery, setSearchQuery] = useState('');
+  const [destinations, setDestinations] = useState<Array<{ id: string; name: string; country?: string }>>([]);
+  const [loadingDestinations, setLoadingDestinations] = useState(false);
+  const [selectedDestination, setSelectedDestination] = useState<{ id: string; name: string } | null>(null);
+
+  // Step 2: Search results after selecting destination
   const [searchResults, setSearchResults] = useState<TcSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [searchTimer, setSearchTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
-  const searchTC = useCallback(async (query: string) => {
-    if (!query || query.length < 2 || !supabase) return;
+  // Load destinations on mount
+  const loadDestinations = useCallback(async () => {
+    if (!supabase || destinations.length > 0) return;
+    setLoadingDestinations(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('search-travel-compositor', {
+        body: { action: 'list-destinations', micrositeId: '' },
+      });
+      if (error) throw error;
+      if (data?.results) {
+        setDestinations(data.results);
+      }
+    } catch (err: any) {
+      console.error('[TC] Failed to load destinations:', err);
+    } finally {
+      setLoadingDestinations(false);
+    }
+  }, []);
 
-    // Use dates from form, fallback to 30 days from now
-    const checkIn = formData.date_start || new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
-    const checkOut = formData.date_end || new Date(new Date(checkIn).getTime() + 3 * 86400000).toISOString().split('T')[0];
-    
+  // Load destinations when panel opens
+  useEffect(() => { loadDestinations(); }, [loadDestinations]);
+
+  // Filter destinations based on search query
+  const filteredDestinations = searchQuery.length >= 2
+    ? destinations.filter(d =>
+        d.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        d.country?.toLowerCase().includes(searchQuery.toLowerCase())
+      ).slice(0, 8)
+    : [];
+
+  // Step 2: Search hotels/activities in selected destination
+  const searchInDestination = useCallback(async (dest: { id: string; name: string }) => {
+    if (!supabase) return;
+
+    setSelectedDestination(dest);
+    setSearchQuery(dest.name);
     setSearching(true);
     setSearchError(null);
+    setSearchResults([]);
+
+    const checkIn = formData.date_start || new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
+    const checkOut = formData.date_end || new Date(new Date(checkIn).getTime() + 3 * 86400000).toISOString().split('T')[0];
 
     try {
       let action = '';
@@ -86,16 +124,16 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
 
       if (itemType === 'hotel') {
         action = 'search-accommodations';
-        body = { ...body, action, destination: query, checkIn, checkOut, adults: 2 };
+        body = { ...body, action, destination: dest.id, checkIn, checkOut, adults: 2 };
       } else if (itemType === 'activity') {
         action = 'search-tickets';
-        body = { ...body, action, destination: query, checkIn, checkOut, adults: 2 };
+        body = { ...body, action, destination: dest.id, checkIn, checkOut, adults: 2 };
       } else if (itemType === 'transfer') {
         action = 'search-transfers';
         body = { ...body, action, pickupDateTime: `${checkIn}T10:00:00`, adults: 2 };
       } else if (itemType === 'flight') {
         action = 'search-transports';
-        body = { ...body, action, departure: query.split('-')[0]?.trim(), arrival: query.split('-')[1]?.trim() || query, departureDate: checkIn, adults: 2 };
+        body = { ...body, action, departure: dest.id, departureDate: checkIn, adults: 2 };
       }
 
       if (!action) return;
@@ -105,6 +143,9 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
       if (error) throw error;
       if (data?.results) {
         setSearchResults(data.results.slice(0, 15));
+        if (data.results.length === 0) {
+          setSearchError(`Geen resultaten gevonden in ${dest.name}`);
+        }
       } else if (data?.error) {
         setSearchError(data.error);
       }
@@ -118,13 +159,9 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
 
   const handleSearchInput = (value: string) => {
     setSearchQuery(value);
-    if (searchTimer) clearTimeout(searchTimer);
-    if (value.length >= 2) {
-      const timer = setTimeout(() => searchTC(value), 600);
-      setSearchTimer(timer);
-    } else {
-      setSearchResults([]);
-    }
+    setSelectedDestination(null);
+    setSearchResults([]);
+    setSearchError(null);
   };
 
   const selectSearchResult = (result: TcSearchResult) => {
@@ -132,7 +169,7 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
       title: result.name,
       description: result.description || '',
       image_url: result.images?.[0] || result.image || '',
-      location: [result.location, result.country].filter(Boolean).join(', '),
+      location: [result.location, result.country].filter(Boolean).join(', ') || selectedDestination?.name || '',
       price: result.price || undefined,
       supplier: result.provider || '',
     };
@@ -153,6 +190,7 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
     setFormData(prev => ({ ...prev, ...updates }));
     setSearchResults([]);
     setSearchQuery('');
+    setSelectedDestination(null);
   };
 
   const update = (field: string, value: any) => {
@@ -375,9 +413,32 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
             />
           </div>
 
-          {/* Hint when no dates */}
+          {/* Hint */}
           {!formData.date_start && !searchQuery && (
-            <p className="mt-1.5 text-[11px] text-gray-400">Vul eerst datums in voor prijzen, of zoek direct op bestemming</p>
+            <p className="mt-1.5 text-[11px] text-gray-400">Vul datums in voor prijzen, of zoek direct op bestemming</p>
+          )}
+          {loadingDestinations && (
+            <p className="mt-1.5 text-[11px] text-gray-400 flex items-center gap-1"><Loader2 size={10} className="animate-spin" /> Bestemmingen laden...</p>
+          )}
+
+          {/* Step 1: Destination autocomplete */}
+          {filteredDestinations.length > 0 && !selectedDestination && (
+            <div className="mt-2 bg-white rounded-xl border border-gray-200 max-h-48 overflow-y-auto divide-y divide-gray-100">
+              {filteredDestinations.map((dest) => (
+                <button
+                  key={dest.id}
+                  onClick={() => searchInDestination(dest)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-orange-50 transition-colors text-left"
+                >
+                  <MapPin size={14} className="text-orange-400 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-sm text-gray-900">{dest.name}</span>
+                    {dest.country && <span className="text-xs text-gray-400 ml-1.5">{dest.country}</span>}
+                  </div>
+                  <Search size={12} className="text-gray-300 shrink-0" />
+                </button>
+              ))}
+            </div>
           )}
 
           {/* Search error */}
@@ -385,9 +446,20 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
             <p className="mt-2 text-xs text-red-500">{searchError}</p>
           )}
 
-          {/* Search results */}
+          {/* Searching indicator */}
+          {searching && (
+            <div className="mt-2 bg-white rounded-xl border border-gray-200 p-4 text-center">
+              <Loader2 className="w-5 h-5 text-orange-500 animate-spin mx-auto mb-1" />
+              <p className="text-xs text-gray-500">Zoeken in {selectedDestination?.name || 'Travel Compositor'}...</p>
+            </div>
+          )}
+
+          {/* Step 2: Hotel/Activity results */}
           {searchResults.length > 0 && (
             <div className="mt-2 bg-white rounded-xl border border-gray-200 max-h-64 overflow-y-auto divide-y divide-gray-100">
+              <div className="px-3 py-1.5 bg-gray-50 text-[10px] font-medium text-gray-500 uppercase tracking-wider sticky top-0">
+                {searchResults.length} resultaten in {selectedDestination?.name}
+              </div>
               {searchResults.map((result) => (
                 <button
                   key={result.id}
@@ -435,14 +507,6 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
                   )}
                 </button>
               ))}
-            </div>
-          )}
-
-          {/* Searching indicator */}
-          {searching && searchResults.length === 0 && (
-            <div className="mt-2 bg-white rounded-xl border border-gray-200 p-4 text-center">
-              <Loader2 className="w-5 h-5 text-orange-500 animate-spin mx-auto mb-1" />
-              <p className="text-xs text-gray-500">Zoeken in Travel Compositor...</p>
             </div>
           )}
         </div>
