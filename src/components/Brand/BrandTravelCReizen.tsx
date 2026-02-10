@@ -144,7 +144,7 @@ export function BrandTravelCReizen() {
         .limit(2000);
 
       if (travelsError) throw travelsError;
-      setTravels(travelsData || []);
+      setTravels((travelsData || []) as any);
 
       // Load brand assignments via Edge Function
       const res = await fetch(`${apiBase}?action=assignments&brand_id=${brandId}`);
@@ -221,6 +221,23 @@ export function BrandTravelCReizen() {
     } catch (error) {
       console.error('Error toggling:', error);
     }
+  };
+
+  const handleViewDetail = async (travel: Travel) => {
+    // Fetch full travel data (list view only has lightweight columns)
+    const { data: fullTravel, error } = await supabase!
+      .from('travelc_travels')
+      .select('*')
+      .eq('id', travel.id)
+      .single();
+
+    if (error || !fullTravel) {
+      alert('Fout bij laden van reisgegevens');
+      return;
+    }
+
+    setSelectedTravel(fullTravel as Travel);
+    setViewMode('detail');
   };
 
   const handleToggleActive = async (travelId: string) => {
@@ -309,33 +326,45 @@ export function BrandTravelCReizen() {
   // ============================================
   // EDIT
   // ============================================
-  const handleEdit = (travel: Travel) => {
-    setEditingTravel(travel);
+  const handleEdit = async (travel: Travel) => {
+    // Fetch full travel data (list view only has lightweight columns)
+    const { data: fullTravel, error } = await supabase!
+      .from('travelc_travels')
+      .select('*')
+      .eq('id', travel.id)
+      .single();
+
+    if (error || !fullTravel) {
+      alert('Fout bij laden van reisgegevens');
+      return;
+    }
+
+    setEditingTravel(fullTravel as Travel);
     setFormData({
-      title: travel.title, slug: travel.slug,
-      description: stripHtml(travel.description || ''),
-      intro_text: stripHtml(travel.intro_text || ''),
-      number_of_nights: travel.number_of_nights || 0,
-      number_of_days: travel.number_of_days || 0,
-      price_per_person: travel.price_per_person || 0,
-      price_description: travel.price_description || '',
-      destinations: (travel.destinations || []).map((d: any) => ({ ...d, description: stripHtml(d.description || ''), highlights: d.highlights || [] })),
-      countries: travel.countries || [],
-      continents: travel.continents || [],
-      hotels: (travel.hotels || []).map((h: any) => ({ ...h, description: stripHtml(h.description || '') })),
-      images: travel.images || [],
-      hero_image: travel.hero_image || '',
-      hero_video_url: travel.hero_video_url || '',
-      hero_style: (travel.hero_style as HeroStyle) || 'slideshow',
-      video_start_time: travel.video_start_time || 0,
-      video_end_time: travel.video_end_time || 0,
-      route_map_url: '',
-      itinerary: travel.itinerary || [],
-      included: travel.included || [],
-      excluded: travel.excluded || [],
-      highlights: travel.highlights || [],
-      categories: travel.categories || [],
-      themes: travel.themes || [],
+      title: fullTravel.title, slug: fullTravel.slug,
+      description: stripHtml(fullTravel.description || ''),
+      intro_text: stripHtml(fullTravel.intro_text || ''),
+      number_of_nights: fullTravel.number_of_nights || 0,
+      number_of_days: fullTravel.number_of_days || 0,
+      price_per_person: fullTravel.price_per_person || 0,
+      price_description: fullTravel.price_description || '',
+      destinations: (fullTravel.destinations || []).map((d: any) => ({ ...d, description: stripHtml(d.description || ''), highlights: d.highlights || [] })),
+      countries: fullTravel.countries || [],
+      continents: fullTravel.continents || [],
+      hotels: (fullTravel.hotels || []).map((h: any) => ({ ...h, description: stripHtml(h.description || '') })),
+      images: fullTravel.images || [],
+      hero_image: fullTravel.hero_image || '',
+      hero_video_url: fullTravel.hero_video_url || '',
+      hero_style: (fullTravel.hero_style as HeroStyle) || 'slideshow',
+      video_start_time: fullTravel.video_start_time || 0,
+      video_end_time: fullTravel.video_end_time || 0,
+      route_map_url: fullTravel.route_map_url || '',
+      itinerary: fullTravel.itinerary || [],
+      included: fullTravel.included || [],
+      excluded: fullTravel.excluded || [],
+      highlights: fullTravel.highlights || [],
+      categories: fullTravel.categories || [],
+      themes: fullTravel.themes || [],
     });
     setEditTab('general');
     setViewMode('edit');
@@ -1173,17 +1202,17 @@ export function BrandTravelCReizen() {
                       <td className="px-4 py-3 whitespace-nowrap">
                         {image ? (
                           <img src={image} alt={travel.title} className="w-20 h-14 object-cover rounded-lg cursor-pointer"
-                            onClick={() => { setSelectedTravel(travel); setViewMode('detail'); }} />
+                            onClick={() => handleViewDetail(travel)} />
                         ) : (
                           <div className="w-20 h-14 bg-gray-200 rounded-lg flex items-center justify-center cursor-pointer"
-                            onClick={() => { setSelectedTravel(travel); setViewMode('detail'); }}>
+                            onClick={() => handleViewDetail(travel)}>
                             <Image className="w-5 h-5 text-gray-400" />
                           </div>
                         )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="text-sm font-medium text-gray-900 cursor-pointer hover:text-orange-600"
-                          onClick={() => { setSelectedTravel(travel); setViewMode('detail'); }}>
+                          onClick={() => handleViewDetail(travel)}>
                           {travel.title}
                         </div>
                         <div className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
@@ -1235,7 +1264,7 @@ export function BrandTravelCReizen() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end space-x-2">
-                          <button onClick={() => { setSelectedTravel(travel); setViewMode('detail'); }}
+                          <button onClick={() => handleViewDetail(travel)}
                             className="text-gray-500 hover:text-gray-700 p-1" title="Bekijken">
                             <Eye size={16} />
                           </button>
