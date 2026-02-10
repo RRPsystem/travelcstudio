@@ -72,17 +72,17 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
 
   const searchTC = useCallback(async (query: string) => {
     if (!query || query.length < 2 || !supabase) return;
+
+    // Use dates from form, fallback to 30 days from now
+    const checkIn = formData.date_start || new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
+    const checkOut = formData.date_end || new Date(new Date(checkIn).getTime() + 3 * 86400000).toISOString().split('T')[0];
     
     setSearching(true);
     setSearchError(null);
 
     try {
-      // Default dates: 30 days from now, 3 nights
-      const checkIn = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
-      const checkOut = new Date(Date.now() + 33 * 86400000).toISOString().split('T')[0];
-
       let action = '';
-      let body: any = { micrositeId: '' }; // empty = use first configured
+      let body: any = { micrositeId: '' };
 
       if (itemType === 'hotel') {
         action = 'search-accommodations';
@@ -114,7 +114,7 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
     } finally {
       setSearching(false);
     }
-  }, [itemType]);
+  }, [itemType, formData.date_start, formData.date_end]);
 
   const handleSearchInput = (value: string) => {
     setSearchQuery(value);
@@ -330,6 +330,30 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
 
         {/* Search bar - TC zoekmachine */}
         <div className="px-6 py-3 border-b border-gray-100 bg-gray-50">
+          {/* Date inputs for search context */}
+          <div className="flex items-center gap-2 mb-2">
+            <div className="flex-1">
+              <input
+                type="date"
+                value={formData.date_start || ''}
+                onChange={e => update('date_start', e.target.value)}
+                className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none bg-white"
+                placeholder="Check-in"
+              />
+            </div>
+            <span className="text-xs text-gray-400">→</span>
+            <div className="flex-1">
+              <input
+                type="date"
+                value={formData.date_end || ''}
+                onChange={e => update('date_end', e.target.value)}
+                className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none bg-white"
+                placeholder="Check-out"
+              />
+            </div>
+          </div>
+
+          {/* Search input */}
           <div className="relative">
             {searching ? (
               <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-orange-500 animate-spin" />
@@ -341,15 +365,20 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
               value={searchQuery}
               onChange={e => handleSearchInput(e.target.value)}
               placeholder={
-                itemType === 'hotel' ? 'Zoek hotels op bestemming (bv. "Bali", "Paris")...' :
+                itemType === 'hotel' ? 'Zoek hotels op bestemming (bv. "Barcelona")...' :
                 itemType === 'activity' ? 'Zoek activiteiten op bestemming...' :
-                itemType === 'flight' ? 'Zoek vluchten (bv. "AMS - JFK")...' :
+                itemType === 'flight' ? 'Zoek vluchten (bv. "AMS - BCN")...' :
                 itemType === 'transfer' ? 'Zoek transfers...' :
                 'Zoek in Travel Compositor...'
               }
               className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none bg-white"
             />
           </div>
+
+          {/* Hint when no dates */}
+          {!formData.date_start && !searchQuery && (
+            <p className="mt-1.5 text-[11px] text-gray-400">Vul eerst datums in voor prijzen, of zoek direct op bestemming</p>
+          )}
 
           {/* Search error */}
           {searchError && (
