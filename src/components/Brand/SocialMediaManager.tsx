@@ -19,6 +19,7 @@ interface SocialMediaPost {
   published_at: string | null;
   created_at: string;
   updated_at: string;
+  enabled_for_brands?: boolean;
 }
 
 interface SocialMediaAccount {
@@ -315,6 +316,22 @@ export function SocialMediaManager() {
     } catch (err: any) {
       console.error('Error deleting post:', err);
       setError('Fout bij verwijderen: ' + err.message);
+    }
+  };
+
+  const toggleBrandAvailability = async (postId: string, currentValue: boolean) => {
+    try {
+      const { error } = await db.supabase
+        .from('social_media_posts')
+        .update({ enabled_for_brands: !currentValue })
+        .eq('id', postId);
+
+      if (error) throw error;
+      setSuccess(!currentValue ? 'Post beschikbaar gemaakt voor Brands!' : 'Post niet meer beschikbaar voor Brands');
+      await loadPosts();
+    } catch (err: any) {
+      console.error('Error toggling brand availability:', err);
+      setError('Fout bij bijwerken: ' + err.message);
     }
   };
 
@@ -634,12 +651,28 @@ export function SocialMediaManager() {
                           </p>
                         )}
                       </div>
-                      <button
-                        onClick={() => handleDeletePost(post.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-4"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center space-x-2 ml-4">
+                        {isAdmin && (
+                          <button
+                            onClick={() => toggleBrandAvailability(post.id, !!post.enabled_for_brands)}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center space-x-1 ${
+                              post.enabled_for_brands
+                                ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                            title={post.enabled_for_brands ? 'Klik om te verbergen voor Brands' : 'Klik om beschikbaar te maken voor Brands'}
+                          >
+                            <Send className="w-3 h-3" />
+                            <span>{post.enabled_for_brands ? 'Gedeeld' : 'Deel met Brands'}</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeletePost(post.id)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

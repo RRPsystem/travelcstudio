@@ -16,7 +16,8 @@ import { GPTManagement } from '../Operator/GPTManagement';
 import { AIContentGenerator } from '../Brand/AIContentGenerator';
 import VideoLibrary from '../Brand/VideoLibrary';
 import { TravelBroSetup } from '../TravelBro/TravelBroSetup';
-import { Users, Building2, FileText, Settings, Plus, Search, Filter, CreditCard as Edit, Trash2, LayoutGrid as Layout, Menu, Globe, Newspaper, MapPin, Plane, Key, X, Lock, BookOpen, Mic, Bot, Wand2, Map, FlaskConical, Video, MessageCircle } from 'lucide-react'
+import { SocialMediaManager } from '../Brand/SocialMediaManager';
+import { Users, Building2, FileText, Settings, Plus, Search, Filter, CreditCard as Edit, Trash2, LayoutGrid as Layout, Menu, Globe, Newspaper, MapPin, Plane, Key, X, Lock, BookOpen, Mic, Bot, Wand2, Map, FlaskConical, Video, MessageCircle, Share2 } from 'lucide-react'
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 export function AdminDashboard() {
@@ -183,6 +184,7 @@ export function AdminDashboard() {
     { id: 'dashboard', label: 'Dashboard', icon: Settings },
     { id: 'brands', label: 'Brand Management', icon: Building2 },
     { id: 'agents', label: 'Agent Management', icon: Users },
+    { id: 'social-media', label: 'Social Media', icon: Share2 },
     { id: 'podcast', label: 'Podcast Beheer', icon: Mic },
   ];
 
@@ -604,6 +606,7 @@ export function AdminDashboard() {
                 {activeSection === 'template-manager' && 'Template Manager'}
                 {activeSection === 'gpt-management' && 'GPT Management'}
                 {activeSection === 'ai-content-generator' && 'AI Content Generator'}
+                {activeSection === 'social-media' && 'Social Media Manager'}
                 {activeSection === 'roadmap' && 'Roadmap'}
                 {activeSection === 'test-dashboard' && 'Test Dashboard'}
                 {activeSection === 'travel-journal' && 'TravelC Talk'}
@@ -618,6 +621,7 @@ export function AdminDashboard() {
                 {activeSection === 'template-manager' && 'Maak en beheer pagina templates voor brands'}
                 {activeSection === 'gpt-management' && 'Configureer custom GPTs en content generatie instellingen'}
                 {activeSection === 'ai-content-generator' && 'Genereer AI content voor bestemmingen, reizen en nieuws'}
+                {activeSection === 'social-media' && 'Maak en beheer social media posts met AI en stuur door naar Brands'}
                 {activeSection === 'roadmap' && 'Roadmap'}
                 {activeSection === 'test-dashboard' && 'Test Dashboard'}
                 {activeSection === 'travel-journal' && 'TravelC Talk'}
@@ -652,6 +656,7 @@ export function AdminDashboard() {
           {activeSection === 'ai-content-generator' && <AIContentGenerator />}
           {activeSection === 'ai-video-generator' && <VideoLibrary />}
           {activeSection === 'travel-bro' && <TravelBroSetup />}
+          {activeSection === 'social-media' && <SocialMediaManager />}
           {activeSection === 'settings' && (
             <div className="max-w-6xl mx-auto">
               <div className="bg-white rounded-lg shadow-md p-6">
