@@ -1040,10 +1040,21 @@ body { margin: 0 !important; padding: 0 !important; }
 
 </div><!-- .tc2-detail -->
 
+<!-- Data containers (hidden, read by JS via DOM) -->
+<?php
+$panel_json = json_encode($panel_data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+if ($panel_json === false) $panel_json = '{}';
+$map_json = json_encode($map_destinations, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+if ($map_json === false) $map_json = '[]';
+?>
+<div id="tc2DataPanel" style="display:none"><?php echo htmlspecialchars($panel_json, ENT_QUOTES, 'UTF-8'); ?></div>
+<div id="tc2DataMap" style="display:none"><?php echo htmlspecialchars($map_json, ENT_QUOTES, 'UTF-8'); ?></div>
+
 <!-- Global functions + panel data (separate script to guarantee availability) -->
 <script>
 (function() {
-    var panelData = JSON.parse(atob('<?php echo base64_encode(json_encode($panel_data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)); ?>'));
+    var panelData = {};
+    try { panelData = JSON.parse(document.getElementById('tc2DataPanel').textContent); } catch(e) { console.error('[TC2] panelData parse error:', e); }
     var panelMapInstance = null;
 
     function panelIcon(name) {
@@ -1185,7 +1196,8 @@ body { margin: 0 !important; padding: 0 !important; }
 <!-- Hero slideshow + Route map (separate from global functions) -->
 <script>
 (function() {
-    var mapDests = JSON.parse(atob('<?php echo base64_encode(json_encode($map_destinations, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)); ?>'));
+    var mapDests = [];
+    try { mapDests = JSON.parse(document.getElementById('tc2DataMap').textContent); } catch(e) { console.error('[TC2] mapDests parse error:', e); }
     var primaryColor = '<?php echo esc_js($primary_color); ?>';
 
     // HERO SLIDESHOW
