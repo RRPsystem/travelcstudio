@@ -369,8 +369,8 @@ body { margin: 0 !important; padding: 0 !important; }
 .tc2-stop-marker { width: 44px; height: 44px; border-radius: 50%; background: white; border: 3px solid var(--tc2-primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; color: var(--tc2-primary); flex-shrink: 0; z-index: 1; box-shadow: 0 2px 8px rgba(42,157,143,0.15); }
 .tc2-stop-card { flex: 1; background: white; border-radius: var(--tc2-radius); overflow: hidden; box-shadow: var(--tc2-shadow); border: 1px solid var(--tc2-border); transition: all 0.3s ease; }
 .tc2-stop-card:hover { box-shadow: var(--tc2-shadow-lg); transform: translateY(-2px); }
-.tc2-stop-card-top { display: grid; grid-template-columns: 180px 1fr; min-height: 160px; }
-.tc2-stop-image { width: 100%; height: 100%; min-height: 160px; object-fit: cover; cursor: pointer; }
+.tc2-stop-card-top { display: grid; grid-template-columns: 220px 1fr; min-height: 180px; }
+.tc2-stop-image { width: 100%; height: 100%; min-height: 180px; object-fit: cover; cursor: pointer; border-radius: 0; }
 .tc2-stop-info { padding: 16px; display: flex; flex-direction: column; justify-content: center; }
 .tc2-stop-location { font-size: 12px; color: var(--tc2-text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
 .tc2-stop-name { font-size: 18px; font-weight: 700; color: var(--tc2-text); margin-bottom: 6px; }
@@ -385,7 +385,7 @@ body { margin: 0 !important; padding: 0 !important; }
 
 /* Hotel sub-card */
 .tc2-stop-hotel { border-top: 1px solid var(--tc2-border); padding: 12px 16px; display: flex; align-items: center; gap: 12px; background: #fafbfc; }
-.tc2-stop-hotel-img { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; flex-shrink: 0; cursor: pointer; }
+.tc2-stop-hotel-img { width: 72px; height: 72px; border-radius: 10px; object-fit: cover; flex-shrink: 0; cursor: pointer; }
 .tc2-stop-hotel-info { flex: 1; min-width: 0; }
 .tc2-stop-hotel-name { font-size: 14px; font-weight: 600; color: var(--tc2-text); margin-bottom: 2px; }
 .tc2-stop-hotel-meta { font-size: 12px; color: var(--tc2-text-light); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
@@ -787,13 +787,14 @@ body { margin: 0 !important; padding: 0 !important; }
                                     <?php if ($dest_country): ?>
                                         <span class="tc2-stop-tag"><?php echo $icons['globe']; ?> <?php echo esc_html($dest_country); ?></span>
                                     <?php endif; ?>
-                                    <?php if ($dest && (!empty($dest_desc) || count($dest_images) > 1)): ?>
+                                    <?php if ($dest && (!empty($dest_desc) || count($dest_images) > 1)): 
+                                        $panel_id = 'tc2data_dest_' . $stop_num;
+                                    ?>
                                         <button type="button" class="tc2-btn-more" 
-                                            onclick="tc2ShowPanel(this)"
-                                            data-type="destination"
-                                            data-item="<?php echo htmlspecialchars(json_encode($dest), ENT_QUOTES, 'UTF-8'); ?>">
+                                            onclick="tc2ShowPanel('<?php echo $panel_id; ?>')">
                                             Lees verder <?php echo $icons['chevron-right']; ?>
                                         </button>
+                                        <script type="application/json" id="<?php echo $panel_id; ?>"><?php echo json_encode($dest, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -829,12 +830,12 @@ body { margin: 0 !important; padding: 0 !important; }
                                 </div>
                             </div>
                             <span class="tc2-stop-hotel-badge"><?php echo $accom_nights; ?> <?php echo $accom_nights == 1 ? 'nacht' : 'nachten'; ?></span>
+                            <?php $hotel_panel_id = 'tc2data_hotel_' . $stop_num; ?>
                             <button type="button" class="tc2-stop-hotel-btn"
-                                onclick="tc2ShowPanel(this)"
-                                data-type="hotel"
-                                data-item="<?php echo htmlspecialchars(json_encode($accom), ENT_QUOTES, 'UTF-8'); ?>">
+                                onclick="tc2ShowPanel('<?php echo $hotel_panel_id; ?>')">
                                 Lees verder
                             </button>
+                            <script type="application/json" id="<?php echo $hotel_panel_id; ?>"><?php echo json_encode($accom, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
                         </div>
                         <?php endif; ?>
 
@@ -980,8 +981,8 @@ body { margin: 0 !important; padding: 0 !important; }
                 <img src="<?php echo esc_url($touroperator['logo']); ?>" alt="<?php echo esc_attr($touroperator['name']); ?>" class="tc2-touroperator-logo">
             <?php endif; ?>
             <div>
-                <div class="tc2-touroperator-name"><?php echo esc_html($touroperator['name']); ?></div>
                 <div class="tc2-touroperator-label">Aangeboden door</div>
+                <div class="tc2-touroperator-name"><?php echo esc_html($touroperator['name']); ?></div>
             </div>
         </div>
         <?php endif; ?>
@@ -1108,9 +1109,11 @@ body { margin: 0 !important; padding: 0 !important; }
     // ============================================
     var panelMapInstance = null;
 
-    window.tc2ShowPanel = function(btn) {
-        var type = btn.getAttribute('data-type');
-        var data = JSON.parse(btn.getAttribute('data-item'));
+    window.tc2ShowPanel = function(dataId) {
+        var scriptEl = document.getElementById(dataId);
+        if (!scriptEl) { console.error('[TC2 Panel] No data element:', dataId); return; }
+        var data;
+        try { data = JSON.parse(scriptEl.textContent); } catch(e) { console.error('[TC2 Panel] JSON parse error:', e); return; }
         var title = data.name || 'Details';
         var html = '';
 
