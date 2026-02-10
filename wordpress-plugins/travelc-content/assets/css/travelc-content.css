@@ -526,47 +526,54 @@
    ========================================================================== */
 
 .tcc-mega-bestemmingen {
-    position: relative !important;
+    position: static !important;
 }
 
 .tcc-mega-dropdown {
     display: none;
     position: absolute;
     top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    min-width: 700px;
-    max-width: 960px;
+    left: 0;
+    right: 0;
+    width: 100vw;
+    max-width: 100vw;
+    margin-left: calc(-50vw + 50%);
     background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+    border-radius: 0 0 12px 12px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.06);
     border: 1px solid #e5e7eb;
+    border-top: 3px solid var(--tcc-primary, #066168);
     z-index: 99999;
     padding: 0;
     opacity: 0;
     transition: opacity 0.2s ease, transform 0.2s ease;
-    transform: translateX(-50%) translateY(8px);
+    transform: translateY(8px);
 }
 
 .tcc-mega-dropdown.tcc-mega-open {
     display: block;
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    transform: translateY(0);
 }
 
 .tcc-mega-inner {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 0;
-    padding: 24px 28px;
+    padding: 28px 40px;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
 .tcc-mega-column {
-    padding: 0 12px;
+    padding: 0 24px;
+    min-width: 180px;
+    flex: 0 0 auto;
 }
 
 .tcc-mega-column:not(:last-child) {
-    border-right: 1px solid #f3f4f6;
+    border-right: 1px solid #f0f0f0;
 }
 
 .tcc-mega-continent {
@@ -664,11 +671,12 @@
     .tcc-mega-dropdown {
         position: fixed;
         left: 0 !important;
-        right: 0;
+        right: 0 !important;
         top: auto !important;
         transform: none !important;
-        min-width: 100vw;
-        max-width: 100vw;
+        margin-left: 0 !important;
+        width: 100vw !important;
+        max-width: 100vw !important;
         border-radius: 0;
         max-height: 70vh;
         overflow-y: auto;
@@ -679,17 +687,20 @@
     }
     
     .tcc-mega-inner {
-        grid-template-columns: 1fr 1fr;
+        flex-direction: column;
         padding: 16px;
         gap: 16px;
     }
     
     .tcc-mega-column {
         padding: 0;
+        min-width: auto;
     }
     
     .tcc-mega-column:not(:last-child) {
         border-right: none;
+        border-bottom: 1px solid #f0f0f0;
+        padding-bottom: 12px;
     }
 }
 

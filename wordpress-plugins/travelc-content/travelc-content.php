@@ -15,7 +15,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('TCC_VERSION', '1.0.75');
+define('TCC_VERSION', '1.0.76');
 define('TCC_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TCC_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -1347,12 +1347,18 @@ class TravelC_Content {
         if ($group_by === 'continent') {
             $grouped = array();
             foreach ($destinations as $dest) {
-                $continent = $dest['continent'] ?? 'Overig';
+                $continent = !empty($dest['continent']) ? $dest['continent'] : 'Overig';
                 if (!isset($grouped[$continent])) {
                     $grouped[$continent] = array();
                 }
                 $grouped[$continent][] = $dest;
             }
+            // Sort: named continents first (alphabetical), 'Overig' last
+            uksort($grouped, function($a, $b) {
+                if ($a === 'Overig') return 1;
+                if ($b === 'Overig') return -1;
+                return strcmp($a, $b);
+            });
             return $grouped;
         }
         
@@ -1786,11 +1792,11 @@ class TravelC_Content {
                 var dropdown = item.querySelector('.tcc-mega-dropdown');
                 if (!dropdown) return;
                 
-                // Prevent default click on #bestemmingen link
-                var link = item.querySelector('a[href*="#bestemmingen"]');
-                if (link) {
+                // Prevent default click on trigger links
+                var links = item.querySelectorAll('a[href*="#bestemmingen"], a[href*="#landen"]');
+                links.forEach(function(link) {
                     link.addEventListener('click', function(e) { e.preventDefault(); });
-                }
+                });
                 
                 // Desktop: hover
                 var timeout;
