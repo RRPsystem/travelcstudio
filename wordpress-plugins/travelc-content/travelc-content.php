@@ -15,7 +15,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('TCC_VERSION', '1.0.74');
+define('TCC_VERSION', '1.0.75');
 define('TCC_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TCC_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -106,10 +106,17 @@ class TravelC_Content {
         // Register REST API webhook endpoint for automatic sync from TravelCStudio
         add_action('rest_api_init', array($this, 'register_webhook_endpoint'));
         
+        // Clear mega menu cache on version change
+        if (get_option('tcc_version_check') !== TCC_VERSION) {
+            delete_transient('tcc_mega_menu_' . $this->brand_id);
+            update_option('tcc_version_check', TCC_VERSION);
+        }
+        
         // Mega Menu: auto-inject destinations dropdown into WordPress nav menus
         if (get_option('tcc_mega_menu_enabled', '1') === '1') {
-            add_filter('wp_nav_menu_items', array($this, 'inject_mega_menu'), 10, 2);
+            add_filter('wp_nav_menu_items', array($this, 'inject_mega_menu'), 99, 2);
             add_action('wp_footer', array($this, 'mega_menu_script'));
+            add_action('wp_footer', array($this, 'mega_menu_debug'), 999);
         }
     }
     
@@ -1674,8 +1681,22 @@ class TravelC_Content {
             return $items;
         }
         
-        // Check if there's a menu item with class 'tcc-mega-bestemmingen' or href '#bestemmingen'
-        if (strpos($items, 'tcc-mega-bestemmingen') === false && strpos($items, '#bestemmingen') === false) {
+        // Check if there's a menu item with href '#bestemmingen' or '#landen'
+        $trigger_found = false;
+        $trigger_url = '';
+        foreach (array('#bestemmingen', '#landen') as $url) {
+            if (strpos($items, $url) !== false) {
+                $trigger_found = true;
+                $trigger_url = $url;
+                break;
+            }
+        }
+        // Also check for CSS class
+        if (!$trigger_found && strpos($items, 'tcc-mega-bestemmingen') !== false) {
+            $trigger_found = true;
+        }
+        
+        if (!$trigger_found) {
             return $items;
         }
         
@@ -1721,28 +1742,30 @@ class TravelC_Content {
             set_transient($cache_key, $mega_html, HOUR_IN_SECONDS);
         }
         
-        // Inject the mega dropdown into the menu item
-        // Find the menu item with class or href and add the dropdown after the <a> tag
-        $pattern = '/(<li[^>]*class="[^"]*tcc-mega-bestemmingen[^"]*"[^>]*>)(.*?)(<\/li>)/s';
-        if (preg_match($pattern, $items)) {
-            $items = preg_replace($pattern, '$1$2' . $mega_html . '$3', $items);
+        // Strategy: use DOMDocument-like approach with simple string manipulation
+        // Find the </a> tag that contains the trigger URL and inject the dropdown after it
+        if (!empty($trigger_url)) {
+            // Find the <a> tag with the trigger URL
+            $search_pattern = '/(<a[^>]*href=["\']' . preg_quote($trigger_url, '/') . '["\'][^>]*>.*?<\/a>)/si';
+            if (preg_match($search_pattern, $items)) {
+                // Add tcc-mega-bestemmingen class to the parent <li>
+                $li_pattern = '/(<li[^>]*class=["\'])([^"\']*["\'][^>]*>\s*<a[^>]*href=["\']' . preg_quote($trigger_url, '/') . '["\'])/si';
+                if (preg_match($li_pattern, $items)) {
+                    $items = preg_replace($li_pattern, '$1tcc-mega-bestemmingen $2', $items);
+                } else {
+                    // li without class attribute
+                    $li_pattern2 = '/(<li)(\s[^>]*>\s*<a[^>]*href=["\']' . preg_quote($trigger_url, '/') . '["\'])/si';
+                    $items = preg_replace($li_pattern2, '$1 class="tcc-mega-bestemmingen"$2', $items);
+                }
+                
+                // Insert mega dropdown HTML right after the closing </a> tag
+                $items = preg_replace($search_pattern, '$1' . $mega_html, $items);
+            }
         } else {
-            // Try matching by href="#bestemmingen"
-            $pattern2 = '/(<li[^>]*>)\s*(<a[^>]*href=["\']#bestemmingen["\'][^>]*>.*?<\/a>)/s';
-            if (preg_match($pattern2, $items, $matches)) {
-                $replacement = str_replace($matches[1], $matches[1] . '<!-- tcc-mega -->', $items);
-                // Add class to the li
-                $items = preg_replace(
-                    '/(<li[^>]*)(>\s*<a[^>]*href=["\']#bestemmingen["\'])/s',
-                    '$1 class="tcc-mega-bestemmingen menu-item-has-children"$2',
-                    $items
-                );
-                // Add dropdown after the </a>
-                $items = preg_replace(
-                    '/(<a[^>]*href=["\']#bestemmingen["\'][^>]*>.*?<\/a>)/s',
-                    '$1' . $mega_html,
-                    $items
-                );
+            // CSS class based: find the li with tcc-mega-bestemmingen and inject after its <a>
+            $pattern = '/(<li[^>]*class="[^"]*tcc-mega-bestemmingen[^"]*"[^>]*>\s*<a[^>]*>.*?<\/a>)/si';
+            if (preg_match($pattern, $items)) {
+                $items = preg_replace($pattern, '$1' . $mega_html, $items);
             }
         }
         
@@ -1799,6 +1822,32 @@ class TravelC_Content {
                 }
             });
         })();
+        </script>
+        <?php
+    }
+    
+    /**
+     * Debug output for mega menu (temporary)
+     */
+    public function mega_menu_debug() {
+        if (is_admin()) return;
+        $destinations = $this->get_destinations('continent');
+        $count = 0;
+        if (is_array($destinations)) {
+            foreach ($destinations as $items) {
+                if (is_array($items)) $count += count($items);
+            }
+        }
+        ?>
+        <script>
+        console.log('[TCC Mega Menu Debug]', {
+            brand_id: '<?php echo esc_js($this->brand_id); ?>',
+            destinations_count: <?php echo $count; ?>,
+            mega_elements: document.querySelectorAll('.tcc-mega-bestemmingen').length,
+            mega_dropdowns: document.querySelectorAll('.tcc-mega-dropdown').length,
+            menu_html_has_bestemmingen: document.querySelector('a[href*="#bestemmingen"]') !== null,
+            menu_html_has_landen: document.querySelector('a[href*="#landen"]') !== null
+        });
         </script>
         <?php
     }
@@ -1870,11 +1919,14 @@ class TravelC_Content {
      * Get destination URL
      */
     private function get_destination_url($slug) {
-        $dest_page = get_option('tcc_destination_page_id');
-        if ($dest_page) {
-            return add_query_arg('bestemming', $slug, get_permalink($dest_page));
+        // First check if a 'land' post exists with this slug (synced from TravelC Studio)
+        $land_post = get_page_by_path($slug, OBJECT, 'land');
+        if ($land_post) {
+            return get_permalink($land_post);
         }
-        return home_url('/bestemming/' . $slug . '/');
+        
+        // Fallback to /land/slug/ URL pattern (matches the 'land' CPT rewrite)
+        return home_url('/land/' . $slug . '/');
     }
     
     /**
