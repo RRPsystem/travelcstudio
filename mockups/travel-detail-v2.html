@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup: Reisdetailpagina v2 — West-Canada</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+/* ============================================
+   TRAVEL DETAIL PAGE v2 — MODERN REDESIGN
+   ============================================ */
+:root {
+    --tc-primary: #2a9d8f;
+    --tc-primary-dark: #1f7a6f;
+    --tc-secondary: #d34e4a;
+    --tc-text: #1f2937;
+    --tc-text-light: #6b7280;
+    --tc-text-muted: #9ca3af;
+    --tc-bg: #f8fafc;
+    --tc-white: #ffffff;
+    --tc-border: #e5e7eb;
+    --tc-radius: 16px;
+    --tc-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    --tc-shadow-lg: 0 12px 40px rgba(0,0,0,0.12);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    color: var(--tc-text);
+    background: var(--tc-bg);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================
+   HERO — IMMERSIVE PHOTO GALLERY
+   ============================================ */
+.tc2-hero {
+    position: relative;
+    width: 100%;
+    height: 520px;
+    overflow: hidden;
+    background: #111;
+}
+
+.tc2-hero-slides {
+    position: absolute;
+    inset: 0;
+}
+
+.tc2-hero-slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+}
+
+.tc2-hero-slide.active { opacity: 1; }
+
+.tc2-hero-slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.tc2-hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.2) 100%);
+}
+
+.tc2-hero-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 40px;
+    max-width: 1280px;
+    margin: 0 auto;
+}
+
+.tc2-hero-breadcrumb {
+    font-size: 13px;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 12px;
+}
+
+.tc2-hero-breadcrumb a {
+    color: rgba(255,255,255,0.7);
+    text-decoration: none;
+}
+
+.tc2-hero-breadcrumb a:hover { color: white; }
+
+.tc2-hero-title {
+    font-size: 42px;
+    font-weight: 800;
+    color: white;
+    line-height: 1.15;
+    margin-bottom: 8px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.tc2-hero-subtitle {
+    font-size: 18px;
+    color: rgba(255,255,255,0.85);
+    font-weight: 400;
+}
+
+.tc2-hero-dots {
+    position: absolute;
+    bottom: 20px;
+    right: 40px;
+    display: flex;
+    gap: 8px;
+}
+
+.tc2-hero-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.4);
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.tc2-hero-dot.active {
+    background: white;
+    transform: scale(1.3);
+}
+
+@media (max-width: 768px) {
+    .tc2-hero { height: 360px; }
+    .tc2-hero-title { font-size: 28px; }
+    .tc2-hero-content { padding: 24px 20px; }
+}
+
+/* ============================================
+   HIGHLIGHTS STRIP — KEY FACTS
+   ============================================ */
+.tc2-highlights {
+    background: white;
+    border-bottom: 1px solid var(--tc-border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.tc2-highlights-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+}
+
+.tc2-highlights-left {
+    display: flex;
+    gap: 32px;
+    align-items: center;
+}
+
+.tc2-highlight-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--tc-text);
+    font-weight: 500;
+}
+
+.tc2-highlight-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: #f0fdf4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.tc2-highlight-item.flight .tc2-highlight-icon { background: #eff6ff; }
+.tc2-highlight-item.hotel .tc2-highlight-icon { background: #fef3c7; }
+.tc2-highlight-item.car .tc2-highlight-icon { background: #fce7f3; }
+
+.tc2-highlights-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.tc2-price-tag {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.tc2-price-label {
+    font-size: 12px;
+    color: var(--tc-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tc2-price-amount {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--tc-primary);
+    line-height: 1;
+}
+
+.tc2-price-sub {
+    font-size: 12px;
+    color: var(--tc-text-light);
+}
+
+.tc2-cta-btn {
+    padding: 12px 28px;
+    background: var(--tc-primary);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.tc2-cta-btn:hover {
+    background: var(--tc-primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(42,157,143,0.3);
+}
+
+@media (max-width: 768px) {
+    .tc2-highlights-inner { 
+        padding: 0 16px; 
+        flex-wrap: wrap;
+        height: auto;
+        padding: 12px 16px;
+        gap: 12px;
+    }
+    .tc2-highlights-left { gap: 16px; flex-wrap: wrap; }
+    .tc2-highlight-item { font-size: 13px; }
+}
+
+/* ============================================
+   MAIN LAYOUT — TWO COLUMN
+   ============================================ */
+.tc2-layout {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 40px 40px;
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 40px;
+    align-items: start;
+}
+
+@media (max-width: 1024px) {
+    .tc2-layout { 
+        grid-template-columns: 1fr; 
+        padding: 24px 16px;
+    }
+}
+
+/* ============================================
+   LEFT COLUMN — CONTENT
+   ============================================ */
+
+/* Section headers */
+.tc2-section {
+    margin-bottom: 48px;
+}
+
+.tc2-section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.tc2-section-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--tc-primary), var(--tc-primary-dark));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.tc2-section-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--tc-text);
+}
+
+.tc2-section-subtitle {
+    font-size: 14px;
+    color: var(--tc-text-light);
+}
+
+/* INTRO TEXT */
+.tc2-intro-text {
+    font-size: 16px;
+    line-height: 1.8;
+    color: var(--tc-text);
+}
+
+.tc2-intro-text p {
+    margin-bottom: 16px;
+}
+
+/* ============================================
+   ROUTE MAP — INLINE (NOT HIDDEN)
+   ============================================ */
+.tc2-map-container {
+    width: 100%;
+    height: 360px;
+    border-radius: var(--tc-radius);
+    overflow: hidden;
+    box-shadow: var(--tc-shadow);
+    border: 1px solid var(--tc-border);
+}
+
+/* ============================================
+   STOPS — VISUAL JOURNEY
+   ============================================ */
+.tc2-stops {
+    position: relative;
+}
+
+/* Vertical line connecting stops */
+.tc2-stops::before {
+    content: '';
+    position: absolute;
+    left: 22px;
+    top: 44px;
+    bottom: 44px;
+    width: 3px;
+    background: linear-gradient(to bottom, var(--tc-primary), var(--tc-primary-dark));
+    border-radius: 2px;
+    opacity: 0.2;
+}
+
+.tc2-stop {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 32px;
+    position: relative;
+}
+
+.tc2-stop:last-child { margin-bottom: 0; }
+
+/* Stop number circle */
+.tc2-stop-marker {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: white;
+    border: 3px solid var(--tc-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--tc-primary);
+    flex-shrink: 0;
+    z-index: 1;
+    box-shadow: 0 2px 8px rgba(42,157,143,0.15);
+}
+
+.tc2-stop.active .tc2-stop-marker {
+    background: var(--tc-primary);
+    color: white;
+}
+
+/* Stop card */
+.tc2-stop-card {
+    flex: 1;
+    background: white;
+    border-radius: var(--tc-radius);
+    overflow: hidden;
+    box-shadow: var(--tc-shadow);
+    border: 1px solid var(--tc-border);
+    transition: all 0.3s ease;
+}
+
+.tc2-stop-card:hover {
+    box-shadow: var(--tc-shadow-lg);
+    transform: translateY(-2px);
+}
+
+.tc2-stop-card-top {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    min-height: 180px;
+}
+
+.tc2-stop-image {
+    width: 100%;
+    height: 100%;
+    min-height: 180px;
+    object-fit: cover;
+}
+
+.tc2-stop-info {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.tc2-stop-location {
+    font-size: 12px;
+    color: var(--tc-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.tc2-stop-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--tc-text);
+    margin-bottom: 8px;
+}
+
+.tc2-stop-desc {
+    font-size: 14px;
+    color: var(--tc-text-light);
+    line-height: 1.6;
+    margin-bottom: 12px;
+}
+
+.tc2-stop-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.tc2-stop-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: var(--tc-bg);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--tc-text-light);
+    font-weight: 500;
+}
+
+/* Hotel sub-card inside stop */
+.tc2-stop-hotel {
+    border-top: 1px solid var(--tc-border);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: #fafbfc;
+}
+
+.tc2-stop-hotel-img {
+    width: 72px;
+    height: 72px;
+    border-radius: 10px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.tc2-stop-hotel-info {
+    flex: 1;
+}
+
+.tc2-stop-hotel-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--tc-text);
+    margin-bottom: 2px;
+}
+
+.tc2-stop-hotel-meta {
+    font-size: 13px;
+    color: var(--tc-text-light);
+}
+
+.tc2-stop-hotel-badge {
+    padding: 4px 10px;
+    background: #fef3c7;
+    color: #92400e;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .tc2-stop-card-top { grid-template-columns: 1fr; }
+    .tc2-stop-image { height: 180px; }
+    .tc2-stops::before { left: 18px; }
+    .tc2-stop-marker { width: 36px; height: 36px; font-size: 14px; }
+    .tc2-stop { gap: 16px; }
+}
+
+/* ============================================
+   TRANSPORT CARDS (flights, car rental)
+   ============================================ */
+.tc2-transport {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 32px;
+    position: relative;
+}
+
+.tc2-transport-marker {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #eff6ff;
+    border: 3px solid #3b82f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+    z-index: 1;
+}
+
+.tc2-transport-card {
+    flex: 1;
+    background: white;
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: var(--tc-shadow);
+    border: 1px solid var(--tc-border);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.tc2-transport-route {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.tc2-transport-city {
+    text-align: center;
+}
+
+.tc2-transport-code {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--tc-text);
+}
+
+.tc2-transport-name {
+    font-size: 12px;
+    color: var(--tc-text-light);
+}
+
+.tc2-transport-arrow {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.tc2-transport-line {
+    width: 100%;
+    height: 2px;
+    background: var(--tc-border);
+    position: relative;
+}
+
+.tc2-transport-line::after {
+    content: '✈';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 16px;
+}
+
+.tc2-transport-duration {
+    font-size: 12px;
+    color: var(--tc-text-muted);
+}
+
+.tc2-transport-details {
+    text-align: right;
+}
+
+.tc2-transport-airline {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--tc-text);
+}
+
+.tc2-transport-time {
+    font-size: 12px;
+    color: var(--tc-text-light);
+}
+
+/* ============================================
+   RIGHT COLUMN — SIDEBAR
+   ============================================ */
+.tc2-sidebar {
+    position: sticky;
+    top: 84px;
+}
+
+@media (max-width: 1024px) {
+    .tc2-sidebar { position: relative; top: 0; order: -1; }
+}
+
+/* Booking card */
+.tc2-booking {
+    background: white;
+    border-radius: var(--tc-radius);
+    box-shadow: var(--tc-shadow-lg);
+    border: 1px solid var(--tc-border);
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+
+.tc2-booking-header {
+    background: linear-gradient(135deg, var(--tc-primary), var(--tc-primary-dark));
+    padding: 24px;
+    color: white;
+    text-align: center;
+}
+
+.tc2-booking-price {
+    font-size: 36px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.tc2-booking-price-sub {
+    font-size: 14px;
+    opacity: 0.8;
+    margin-top: 4px;
+}
+
+.tc2-booking-body {
+    padding: 24px;
+}
+
+.tc2-booking-features {
+    list-style: none;
+    margin-bottom: 20px;
+}
+
+.tc2-booking-features li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 14px;
+    color: var(--tc-text);
+}
+
+.tc2-booking-features li:last-child { border-bottom: none; }
+
+.tc2-booking-features .feat-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: #f0fdf4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.tc2-booking-btn {
+    width: 100%;
+    padding: 16px;
+    background: var(--tc-secondary);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 10px;
+}
+
+.tc2-booking-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.tc2-booking-btn-secondary {
+    width: 100%;
+    padding: 14px;
+    background: transparent;
+    color: var(--tc-text);
+    border: 2px solid var(--tc-border);
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tc2-booking-btn-secondary:hover {
+    border-color: var(--tc-primary);
+    color: var(--tc-primary);
+}
+
+/* Touroperator card */
+.tc2-touroperator {
+    background: white;
+    border-radius: var(--tc-radius);
+    padding: 20px;
+    box-shadow: var(--tc-shadow);
+    border: 1px solid var(--tc-border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.tc2-touroperator-logo {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    background: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.tc2-touroperator-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--tc-text);
+}
+
+.tc2-touroperator-label {
+    font-size: 12px;
+    color: var(--tc-text-muted);
+}
+
+/* USP card */
+.tc2-usp-card {
+    background: white;
+    border-radius: var(--tc-radius);
+    padding: 20px;
+    box-shadow: var(--tc-shadow);
+    border: 1px solid var(--tc-border);
+}
+
+.tc2-usp-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.tc2-usp-item:last-child { border-bottom: none; }
+
+.tc2-usp-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.tc2-usp-text {
+    font-size: 13px;
+    color: var(--tc-text);
+    line-height: 1.5;
+}
+
+.tc2-usp-text strong {
+    display: block;
+    margin-bottom: 2px;
+}
+
+/* ============================================
+   PHOTO LIGHTBOX
+   ============================================ */
+.tc2-lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.9);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+}
+
+.tc2-lightbox.active { display: flex; }
+
+.tc2-lightbox img {
+    max-width: 90vw;
+    max-height: 85vh;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.tc2-lightbox-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    font-size: 28px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================
+     HERO SECTION
+     ============================================ -->
+<div class="tc2-hero">
+    <div class="tc2-hero-slides">
+        <div class="tc2-hero-slide active">
+            <img src="https://images.unsplash.com/photo-1503614472-8c93d56e92ce?w=1600&h=900&fit=crop" alt="West-Canada">
+        </div>
+        <div class="tc2-hero-slide">
+            <img src="https://images.unsplash.com/photo-1508193638397-1c4234db14d8?w=1600&h=900&fit=crop" alt="Herfst Canada">
+        </div>
+        <div class="tc2-hero-slide">
+            <img src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1600&h=900&fit=crop" alt="Bergen">
+        </div>
+    </div>
+    <div class="tc2-hero-overlay"></div>
+    <div class="tc2-hero-content">
+        <div class="tc2-hero-breadcrumb">
+            <a href="#">Home</a> / <a href="#">Reizen</a> / <a href="#">Canada</a> / Langs de Highlights van West-Canada
+        </div>
+        <h1 class="tc2-hero-title">Langs de Highlights van West-Canada</h1>
+        <div class="tc2-hero-subtitle">Vancouver · Whistler · Kamloops · Jasper · Lake Louise · Banff</div>
+    </div>
+    <div class="tc2-hero-dots">
+        <button class="tc2-hero-dot active" onclick="goSlide(0)"></button>
+        <button class="tc2-hero-dot" onclick="goSlide(1)"></button>
+        <button class="tc2-hero-dot" onclick="goSlide(2)"></button>
+    </div>
+</div>
+
+<!-- ============================================
+     STICKY HIGHLIGHTS STRIP
+     ============================================ -->
+<div class="tc2-highlights">
+    <div class="tc2-highlights-inner">
+        <div class="tc2-highlights-left">
+            <div class="tc2-highlight-item">
+                <div class="tc2-highlight-icon">📅</div>
+                <div><strong>19 dagen</strong><br><span style="font-size:12px;color:#6b7280">18 nachten</span></div>
+            </div>
+            <div class="tc2-highlight-item flight">
+                <div class="tc2-highlight-icon">✈️</div>
+                <div><strong>Retourvlucht</strong><br><span style="font-size:12px;color:#6b7280">incl. transfers</span></div>
+            </div>
+            <div class="tc2-highlight-item hotel">
+                <div class="tc2-highlight-icon">🏨</div>
+                <div><strong>6 hotels</strong><br><span style="font-size:12px;color:#6b7280">3-4 sterren</span></div>
+            </div>
+            <div class="tc2-highlight-item car">
+                <div class="tc2-highlight-icon">🚗</div>
+                <div><strong>Huurauto</strong><br><span style="font-size:12px;color:#6b7280">17 dagen</span></div>
+            </div>
+        </div>
+        <div class="tc2-highlights-right">
+            <div class="tc2-price-tag">
+                <span class="tc2-price-label">Vanaf</span>
+                <span class="tc2-price-amount">&euro;3.966</span>
+                <span class="tc2-price-sub">p.p. indicatieprijs</span>
+            </div>
+            <button class="tc2-cta-btn" onclick="document.getElementById('tc2-booking-section').scrollIntoView({behavior:'smooth'})">Boek deze reis</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================
+     MAIN LAYOUT
+     ============================================ -->
+<div class="tc2-layout">
+    <!-- LEFT COLUMN -->
+    <div class="tc2-main">
+
+        <!-- INTRO -->
+        <section class="tc2-section">
+            <div class="tc2-section-header">
+                <div class="tc2-section-icon">🌍</div>
+                <div>
+                    <div class="tc2-section-title">Over deze reis</div>
+                    <div class="tc2-section-subtitle">Fly & Drive door West-Canada</div>
+                </div>
+            </div>
+            <div class="tc2-intro-text">
+                <p>Ontdek de adembenemende natuur van West-Canada tijdens deze 19-daagse fly & drive. Rijd langs de beroemde Icefields Parkway, bewonder de turquoise meren van Banff en Jasper, en geniet van de kosmopolitische sfeer van Vancouver.</p>
+                <p>Deze reis combineert de vrijheid van een huurauto met zorgvuldig geselecteerde hotels op de mooiste locaties. Perfect voor natuurliefhebbers en avonturiers.</p>
+            </div>
+        </section>
+
+        <!-- ROUTE MAP -->
+        <section class="tc2-section">
+            <div class="tc2-section-header">
+                <div class="tc2-section-icon">🗺️</div>
+                <div>
+                    <div class="tc2-section-title">Jouw route</div>
+                    <div class="tc2-section-subtitle">6 bestemmingen in 19 dagen</div>
+                </div>
+            </div>
+            <div class="tc2-map-container" id="tc2-route-map"></div>
+        </section>
+
+        <!-- JOURNEY STOPS -->
+        <section class="tc2-section">
+            <div class="tc2-section-header">
+                <div class="tc2-section-icon">📍</div>
+                <div>
+                    <div class="tc2-section-title">Jouw reisroute</div>
+                    <div class="tc2-section-subtitle">Stop voor stop door West-Canada</div>
+                </div>
+            </div>
+
+            <div class="tc2-stops">
+
+                <!-- FLIGHT OUT -->
+                <div class="tc2-transport">
+                    <div class="tc2-transport-marker">✈️</div>
+                    <div class="tc2-transport-card">
+                        <div class="tc2-transport-route">
+                            <div class="tc2-transport-city">
+                                <div class="tc2-transport-code">AMS</div>
+                                <div class="tc2-transport-name">Amsterdam</div>
+                            </div>
+                            <div class="tc2-transport-arrow">
+                                <div class="tc2-transport-line"></div>
+                                <div class="tc2-transport-duration">~10 uur</div>
+                            </div>
+                            <div class="tc2-transport-city">
+                                <div class="tc2-transport-code">YVR</div>
+                                <div class="tc2-transport-name">Vancouver</div>
+                            </div>
+                        </div>
+                        <div class="tc2-transport-details">
+                            <div class="tc2-transport-airline">KLM</div>
+                            <div class="tc2-transport-time">10:30 → 11:15</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STOP 1: Vancouver -->
+                <div class="tc2-stop active">
+                    <div class="tc2-stop-marker">1</div>
+                    <div class="tc2-stop-card">
+                        <div class="tc2-stop-card-top">
+                            <img src="https://images.unsplash.com/photo-1559511260-66a68e7e7e40?w=400&h=300&fit=crop" class="tc2-stop-image" alt="Vancouver">
+                            <div class="tc2-stop-info">
+                                <div class="tc2-stop-location">Canada · British Columbia</div>
+                                <div class="tc2-stop-name">Vancouver</div>
+                                <div class="tc2-stop-desc">Bruisende havenstad omringd door bergen en oceaan. Bezoek Stanley Park, Granville Island en geniet van de multiculturele eetcultuur.</div>
+                                <div class="tc2-stop-tags">
+                                    <span class="tc2-stop-tag">🌙 3 nachten</span>
+                                    <span class="tc2-stop-tag">🚗 Ophalen huurauto</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tc2-stop-hotel">
+                            <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=150&h=150&fit=crop" class="tc2-stop-hotel-img" alt="Hotel">
+                            <div class="tc2-stop-hotel-info">
+                                <div class="tc2-stop-hotel-name">Pinnacle Hotel Harbourfront</div>
+                                <div class="tc2-stop-hotel-meta">⭐⭐⭐⭐ · Ontbijt inbegrepen · Waterfront</div>
+                            </div>
+                            <span class="tc2-stop-hotel-badge">3 nachten</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STOP 2: Whistler -->
+                <div class="tc2-stop">
+                    <div class="tc2-stop-marker">2</div>
+                    <div class="tc2-stop-card">
+                        <div class="tc2-stop-card-top">
+                            <img src="https://images.unsplash.com/photo-1513407030348-c983a97b98d8?w=400&h=300&fit=crop" class="tc2-stop-image" alt="Whistler">
+                            <div class="tc2-stop-info">
+                                <div class="tc2-stop-location">Canada · British Columbia</div>
+                                <div class="tc2-stop-name">Whistler</div>
+                                <div class="tc2-stop-desc">Wereldberoemd ski- en bergdorp. In de zomer ideaal voor hiking, mountainbiken en de spectaculaire Peak 2 Peak gondel.</div>
+                                <div class="tc2-stop-tags">
+                                    <span class="tc2-stop-tag">🌙 2 nachten</span>
+                                    <span class="tc2-stop-tag">🏔️ Sea-to-Sky Highway</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tc2-stop-hotel">
+                            <img src="https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=150&h=150&fit=crop" class="tc2-stop-hotel-img" alt="Hotel">
+                            <div class="tc2-stop-hotel-info">
+                                <div class="tc2-stop-hotel-name">Summit Lodge Boutique Hotel</div>
+                                <div class="tc2-stop-hotel-meta">⭐⭐⭐⭐ · Centrum Whistler Village</div>
+                            </div>
+                            <span class="tc2-stop-hotel-badge">2 nachten</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STOP 3: Kamloops -->
+                <div class="tc2-stop">
+                    <div class="tc2-stop-marker">3</div>
+                    <div class="tc2-stop-card">
+                        <div class="tc2-stop-card-top">
+                            <img src="https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=400&h=300&fit=crop" class="tc2-stop-image" alt="Kamloops">
+                            <div class="tc2-stop-info">
+                                <div class="tc2-stop-location">Canada · British Columbia</div>
+                                <div class="tc2-stop-name">Kamloops</div>
+                                <div class="tc2-stop-desc">Zonnigste stad van Canada, gelegen aan de samenvloeiing van twee rivieren. Ideale tussenstop op weg naar de Rocky Mountains.</div>
+                                <div class="tc2-stop-tags">
+                                    <span class="tc2-stop-tag">🌙 1 nacht</span>
+                                    <span class="tc2-stop-tag">☀️ Woestijnlandschap</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tc2-stop-hotel">
+                            <img src="https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=150&h=150&fit=crop" class="tc2-stop-hotel-img" alt="Hotel">
+                            <div class="tc2-stop-hotel-info">
+                                <div class="tc2-stop-hotel-name">DoubleTree by Hilton Kamloops</div>
+                                <div class="tc2-stop-hotel-meta">⭐⭐⭐⭐ · Zwembad · Restaurant</div>
+                            </div>
+                            <span class="tc2-stop-hotel-badge">1 nacht</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STOP 4: Jasper -->
+                <div class="tc2-stop">
+                    <div class="tc2-stop-marker">4</div>
+                    <div class="tc2-stop-card">
+                        <div class="tc2-stop-card-top">
+                            <img src="https://images.unsplash.com/photo-1609825488888-3a766db05542?w=400&h=300&fit=crop" class="tc2-stop-image" alt="Jasper">
+                            <div class="tc2-stop-info">
+                                <div class="tc2-stop-location">Canada · Alberta</div>
+                                <div class="tc2-stop-name">Jasper National Park</div>
+                                <div class="tc2-stop-desc">Het grootste nationale park in de Canadese Rockies. Spot beren, elanden en wolven. Bezoek de Columbia Icefield en Maligne Lake.</div>
+                                <div class="tc2-stop-tags">
+                                    <span class="tc2-stop-tag">🌙 3 nachten</span>
+                                    <span class="tc2-stop-tag">🐻 Wildlife</span>
+                                    <span class="tc2-stop-tag">🏔️ Icefields Parkway</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tc2-stop-hotel">
+                            <img src="https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=150&h=150&fit=crop" class="tc2-stop-hotel-img" alt="Hotel">
+                            <div class="tc2-stop-hotel-info">
+                                <div class="tc2-stop-hotel-name">Fairmont Jasper Park Lodge</div>
+                                <div class="tc2-stop-hotel-meta">⭐⭐⭐⭐⭐ · Aan het meer · Spa</div>
+                            </div>
+                            <span class="tc2-stop-hotel-badge">3 nachten</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STOP 5: Lake Louise / Banff -->
+                <div class="tc2-stop">
+                    <div class="tc2-stop-marker">5</div>
+                    <div class="tc2-stop-card">
+                        <div class="tc2-stop-card-top">
+                            <img src="https://images.unsplash.com/photo-1503614472-8c93d56e92ce?w=400&h=300&fit=crop" class="tc2-stop-image" alt="Lake Louise">
+                            <div class="tc2-stop-info">
+                                <div class="tc2-stop-location">Canada · Alberta</div>
+                                <div class="tc2-stop-name">Lake Louise & Banff</div>
+                                <div class="tc2-stop-desc">Het iconische turquoise meer omringd door besneeuwde toppen. Wandel naar de theehuis, neem de gondel in Banff en geniet van de Bow Valley.</div>
+                                <div class="tc2-stop-tags">
+                                    <span class="tc2-stop-tag">🌙 4 nachten</span>
+                                    <span class="tc2-stop-tag">💎 Iconisch</span>
+                                    <span class="tc2-stop-tag">🥾 Hiking</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tc2-stop-hotel">
+                            <img src="https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=150&h=150&fit=crop" class="tc2-stop-hotel-img" alt="Hotel">
+                            <div class="tc2-stop-hotel-info">
+                                <div class="tc2-stop-hotel-name">Fairmont Chateau Lake Louise</div>
+                                <div class="tc2-stop-hotel-meta">⭐⭐⭐⭐⭐ · Aan Lake Louise · Iconisch</div>
+                            </div>
+                            <span class="tc2-stop-hotel-badge">4 nachten</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STOP 6: Vancouver (return) -->
+                <div class="tc2-stop">
+                    <div class="tc2-stop-marker">6</div>
+                    <div class="tc2-stop-card">
+                        <div class="tc2-stop-card-top">
+                            <img src="https://images.unsplash.com/photo-1609825488888-3a766db05542?w=400&h=300&fit=crop" class="tc2-stop-image" alt="Vancouver">
+                            <div class="tc2-stop-info">
+                                <div class="tc2-stop-location">Canada · British Columbia</div>
+                                <div class="tc2-stop-name">Terug naar Vancouver</div>
+                                <div class="tc2-stop-desc">Laatste dagen in Vancouver. Bezoek Capilano Suspension Bridge, shop op Robson Street of maak een dagtocht naar Victoria op Vancouver Island.</div>
+                                <div class="tc2-stop-tags">
+                                    <span class="tc2-stop-tag">🌙 2 nachten</span>
+                                    <span class="tc2-stop-tag">🚗 Inleveren huurauto</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tc2-stop-hotel">
+                            <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=150&h=150&fit=crop" class="tc2-stop-hotel-img" alt="Hotel">
+                            <div class="tc2-stop-hotel-info">
+                                <div class="tc2-stop-hotel-name">Pinnacle Hotel Harbourfront</div>
+                                <div class="tc2-stop-hotel-meta">⭐⭐⭐⭐ · Ontbijt inbegrepen</div>
+                            </div>
+                            <span class="tc2-stop-hotel-badge">2 nachten</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FLIGHT RETURN -->
+                <div class="tc2-transport">
+                    <div class="tc2-transport-marker">✈️</div>
+                    <div class="tc2-transport-card">
+                        <div class="tc2-transport-route">
+                            <div class="tc2-transport-city">
+                                <div class="tc2-transport-code">YVR</div>
+                                <div class="tc2-transport-name">Vancouver</div>
+                            </div>
+                            <div class="tc2-transport-arrow">
+                                <div class="tc2-transport-line"></div>
+                                <div class="tc2-transport-duration">~9 uur</div>
+                            </div>
+                            <div class="tc2-transport-city">
+                                <div class="tc2-transport-code">AMS</div>
+                                <div class="tc2-transport-name">Amsterdam</div>
+                            </div>
+                        </div>
+                        <div class="tc2-transport-details">
+                            <div class="tc2-transport-airline">KLM</div>
+                            <div class="tc2-transport-time">14:00 → 08:30+1</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </div>
+
+    <!-- RIGHT COLUMN — SIDEBAR -->
+    <div class="tc2-sidebar" id="tc2-booking-section">
+
+        <!-- Booking Card -->
+        <div class="tc2-booking">
+            <div class="tc2-booking-header">
+                <div class="tc2-booking-price">&euro;3.966</div>
+                <div class="tc2-booking-price-sub">per persoon · indicatieprijs</div>
+            </div>
+            <div class="tc2-booking-body">
+                <ul class="tc2-booking-features">
+                    <li><span class="feat-icon">✈️</span> Retourvlucht Amsterdam - Vancouver</li>
+                    <li><span class="feat-icon">🏨</span> 18 nachten in 3-5 sterren hotels</li>
+                    <li><span class="feat-icon">🚗</span> 17 dagen huurauto (SUV)</li>
+                    <li><span class="feat-icon">🍳</span> Ontbijt bij meeste hotels</li>
+                    <li><span class="feat-icon">📋</span> Uitgebreide reisbeschrijving</li>
+                    <li><span class="feat-icon">🛡️</span> ANVR & SGR garantie</li>
+                </ul>
+                <button class="tc2-booking-btn">Vraag vrijblijvend een offerte aan</button>
+                <button class="tc2-booking-btn-secondary">📞 Bel ons: 040-2260039</button>
+            </div>
+        </div>
+
+        <!-- Touroperator -->
+        <div class="tc2-touroperator">
+            <div class="tc2-touroperator-logo">🌎</div>
+            <div>
+                <div class="tc2-touroperator-name">Del Monde Reizen</div>
+                <div class="tc2-touroperator-label">Aangeboden door</div>
+            </div>
+        </div>
+
+        <!-- USPs -->
+        <div class="tc2-usp-card">
+            <div class="tc2-usp-item">
+                <div class="tc2-usp-icon">✅</div>
+                <div class="tc2-usp-text"><strong>Reis op maat</strong>Elke reis wordt aangepast aan jouw wensen en budget</div>
+            </div>
+            <div class="tc2-usp-item">
+                <div class="tc2-usp-icon">🔒</div>
+                <div class="tc2-usp-text"><strong>Veilig boeken</strong>ANVR & SGR garantie voor zorgeloos reizen</div>
+            </div>
+            <div class="tc2-usp-item">
+                <div class="tc2-usp-icon">💬</div>
+                <div class="tc2-usp-text"><strong>Persoonlijk advies</strong>Onze reisspecialisten kennen de bestemming</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================
+     SCRIPTS
+     ============================================ -->
+<script>
+// Hero slideshow
+var currentSlide = 0;
+var slides = document.querySelectorAll('.tc2-hero-slide');
+var dots = document.querySelectorAll('.tc2-hero-dot');
+
+function goSlide(n) {
+    slides[currentSlide].classList.remove('active');
+    dots[currentSlide].classList.remove('active');
+    currentSlide = n;
+    slides[currentSlide].classList.add('active');
+    dots[currentSlide].classList.add('active');
+}
+
+setInterval(function() {
+    goSlide((currentSlide + 1) % slides.length);
+}, 5000);
+
+// Route map with Leaflet
+var map = L.map('tc2-route-map', { scrollWheelZoom: false }).setView([52, -120], 5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap'
+}).addTo(map);
+
+var stops = [
+    { name: 'Vancouver', lat: 49.2827, lng: -123.1207 },
+    { name: 'Whistler', lat: 50.1163, lng: -122.9574 },
+    { name: 'Kamloops', lat: 50.6745, lng: -120.3273 },
+    { name: 'Jasper', lat: 52.8737, lng: -117.9543 },
+    { name: 'Lake Louise', lat: 51.4254, lng: -116.1773 },
+    { name: 'Banff', lat: 51.1784, lng: -115.5708 },
+];
+
+// Add markers
+stops.forEach(function(stop, i) {
+    var marker = L.circleMarker([stop.lat, stop.lng], {
+        radius: 8,
+        fillColor: '#2a9d8f',
+        color: '#fff',
+        weight: 3,
+        fillOpacity: 1
+    }).addTo(map);
+    marker.bindTooltip((i + 1) + '. ' + stop.name, { permanent: true, direction: 'top', offset: [0, -10], className: 'tc2-map-label' });
+});
+
+// Draw route line
+var latlngs = stops.map(function(s) { return [s.lat, s.lng]; });
+// Add return to Vancouver
+latlngs.push([49.2827, -123.1207]);
+L.polyline(latlngs, { color: '#2a9d8f', weight: 3, opacity: 0.6, dashArray: '8,8' }).addTo(map);
+
+// Fit bounds
+var bounds = L.latLngBounds(stops.map(function(s) { return [s.lat, s.lng]; }));
+map.fitBounds(bounds, { padding: [40, 40] });
+</script>
+
+<style>
+.tc2-map-label {
+    background: white !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 6px !important;
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: #1f2937 !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1) !important;
+}
+.tc2-map-label::before { display: none !important; }
+</style>
+
+</body>
+</html>
