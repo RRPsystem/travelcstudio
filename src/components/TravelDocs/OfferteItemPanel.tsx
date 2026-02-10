@@ -76,33 +76,33 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
   const [searchError, setSearchError] = useState<string | null>(null);
 
   // Load destinations on mount
-  const loadDestinations = useCallback(async () => {
-    if (!supabase || destinations.length > 0) return;
+  useEffect(() => {
+    if (!supabase) return;
     setLoadingDestinations(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('search-travel-compositor', {
-        body: { action: 'list-destinations', micrositeId: '' },
-      });
-      if (error) throw error;
+    console.log('[TC] Loading destinations...');
+    supabase.functions.invoke('search-travel-compositor', {
+      body: { action: 'list-destinations', micrositeId: '' },
+    }).then(({ data, error }) => {
+      if (error) { console.error('[TC] Destinations error:', error); return; }
       if (data?.results) {
+        console.log(`[TC] Loaded ${data.results.length} destinations`);
         setDestinations(data.results);
       }
-    } catch (err: any) {
+    }).catch(err => {
       console.error('[TC] Failed to load destinations:', err);
-    } finally {
+    }).finally(() => {
       setLoadingDestinations(false);
-    }
+    });
   }, []);
-
-  // Load destinations when panel opens
-  useEffect(() => { loadDestinations(); }, [loadDestinations]);
 
   // Filter destinations based on search query
   const filteredDestinations = searchQuery.length >= 2
-    ? destinations.filter(d =>
-        d.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        d.country?.toLowerCase().includes(searchQuery.toLowerCase())
-      ).slice(0, 8)
+    ? destinations.filter(d => {
+        const q = searchQuery.toLowerCase();
+        return d.name?.toLowerCase().includes(q) ||
+          d.country?.toLowerCase().includes(q) ||
+          d.id?.toLowerCase().includes(q);
+      }).slice(0, 10)
     : [];
 
   // Step 2: Search hotels/activities in selected destination
