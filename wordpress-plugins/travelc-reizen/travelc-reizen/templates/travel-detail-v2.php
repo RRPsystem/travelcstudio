@@ -381,8 +381,8 @@ body { margin: 0 !important; padding: 0 !important; }
 .tc2-stop-marker { width: 44px; height: 44px; border-radius: 50%; background: white; border: 3px solid var(--tc2-primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; color: var(--tc2-primary); flex-shrink: 0; z-index: 1; box-shadow: 0 2px 8px rgba(42,157,143,0.15); }
 .tc2-stop-card { flex: 1; background: white; border-radius: var(--tc2-radius); overflow: hidden; box-shadow: var(--tc2-shadow); border: 1px solid var(--tc2-border); transition: all 0.3s ease; }
 .tc2-stop-card:hover { box-shadow: var(--tc2-shadow-lg); transform: translateY(-2px); }
-.tc2-stop-card-top { display: grid; grid-template-columns: 220px 1fr; min-height: 180px; }
-.tc2-stop-image { width: 100%; height: 100%; min-height: 180px; object-fit: cover; cursor: pointer; border-radius: 0; }
+.tc2-stop-card-top { display: grid; grid-template-columns: 260px 1fr; min-height: 200px; }
+.tc2-stop-image { width: 100%; height: 100%; min-height: 200px; object-fit: cover; cursor: pointer; border-radius: 0; }
 .tc2-stop-info { padding: 16px; display: flex; flex-direction: column; justify-content: center; }
 .tc2-stop-location { font-size: 12px; color: var(--tc2-text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
 .tc2-stop-name { font-size: 18px; font-weight: 700; color: var(--tc2-text); margin-bottom: 6px; }
@@ -397,7 +397,7 @@ body { margin: 0 !important; padding: 0 !important; }
 
 /* Hotel sub-card */
 .tc2-stop-hotel { border-top: 1px solid var(--tc2-border); padding: 12px 16px; display: flex; align-items: center; gap: 12px; background: #fafbfc; }
-.tc2-stop-hotel-img { width: 72px; height: 72px; border-radius: 10px; object-fit: cover; flex-shrink: 0; cursor: pointer; }
+.tc2-stop-hotel-img { width: 72px; height: 72px; border-radius: 12px !important; object-fit: cover; flex-shrink: 0; cursor: pointer; overflow: hidden; }
 .tc2-stop-hotel-info { flex: 1; min-width: 0; }
 .tc2-stop-hotel-name { font-size: 14px; font-weight: 600; color: var(--tc2-text); margin-bottom: 2px; }
 .tc2-stop-hotel-meta { font-size: 12px; color: var(--tc2-text-light); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
@@ -459,6 +459,8 @@ body { margin: 0 !important; padding: 0 !important; }
 .tc2-booking-features .feat-icon svg { width: 16px; height: 16px; }
 
 .tc2-booking-form { margin-top: 16px; }
+.tc2-form-title { font-size: 20px; font-weight: 700; color: var(--tc2-text); margin: 0 0 6px 0; }
+.tc2-form-subtitle { font-size: 13px; color: var(--tc2-text-light); line-height: 1.5; margin: 0 0 16px 0; }
 .tc2-form-group { margin-bottom: 12px; }
 .tc2-form-label { display: block; font-size: 13px; font-weight: 500; color: var(--tc2-text); margin-bottom: 4px; }
 .tc2-form-input { width: 100%; padding: 10px 12px; border: 1px solid var(--tc2-border); border-radius: 8px; font-size: 14px; box-sizing: border-box; }
@@ -925,6 +927,8 @@ body { margin: 0 !important; padding: 0 !important; }
                 </div>
 
                 <div class="tc2-booking-form">
+                    <h3 class="tc2-form-title">Offerte aanvraag</h3>
+                    <p class="tc2-form-subtitle">Vul onderstaande gegevens in en wij nemen zo spoedig mogelijk contact met je op.</p>
                     <form id="tc2QuoteForm" onsubmit="return false;">
                         <div class="tc2-form-group">
                             <label class="tc2-form-label">Naam *</label>
@@ -1036,6 +1040,11 @@ body { margin: 0 !important; padding: 0 !important; }
 
 </div><!-- .tc2-detail -->
 
+<!-- Panel data (base64 encoded to avoid any JS parsing issues) -->
+<script>
+window.__tc2PanelData = JSON.parse(atob('<?php echo base64_encode(json_encode($panel_data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)); ?>'));
+</script>
+
 <!-- ============================================
      JAVASCRIPT
      ============================================ -->
@@ -1043,7 +1052,7 @@ body { margin: 0 !important; padding: 0 !important; }
 (function() {
     var mapDests = <?php echo json_encode($map_destinations, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES); ?>;
     var primaryColor = '<?php echo esc_js($primary_color); ?>';
-    var panelData = <?php echo json_encode($panel_data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES); ?>;
+    var panelData = window.__tc2PanelData || {};
 
     // ============================================
     // HERO SLIDESHOW
