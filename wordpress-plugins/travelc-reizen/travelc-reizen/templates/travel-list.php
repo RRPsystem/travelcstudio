@@ -236,6 +236,26 @@ ksort($all_categories);
         if (favBtn) favBtn.classList.toggle('has-favs', c > 0);
     }
 
+    // Active duration filter (set from hash param)
+    var activeDagen = '';
+
+    function matchDuration(nights, dagenRange) {
+        if (!dagenRange) return true;
+        var n = parseInt(nights) || 0;
+        if (dagenRange === '1-7') return n >= 1 && n <= 7;
+        if (dagenRange === '8-14') return n >= 8 && n <= 14;
+        if (dagenRange === '15-21') return n >= 15 && n <= 21;
+        if (dagenRange === '22+') return n >= 22;
+        // Try custom range like "5-10"
+        var parts = dagenRange.split('-');
+        if (parts.length === 2) {
+            var min = parseInt(parts[0]) || 0;
+            var max = parseInt(parts[1]) || 999;
+            return n >= min && n <= max;
+        }
+        return true;
+    }
+
     function filterAndSort() {
         var query = (searchInput ? searchInput.value : '').toLowerCase();
         var dest = destFilter ? destFilter.value : '';
@@ -251,11 +271,13 @@ ksort($all_categories);
             var destinations = card.getAttribute('data-destinations') || '';
             var categories = card.getAttribute('data-categories') || '';
             var cardId = card.getAttribute('data-id') || '';
+            var nights = card.getAttribute('data-nights') || '0';
             var matchSearch = !query || title.indexOf(query) !== -1 || countries.indexOf(query) !== -1 || destinations.indexOf(query) !== -1;
             var matchDest = !dest || countries.indexOf(dest) !== -1;
             var matchType = !type || categories.indexOf(type) !== -1;
             var matchFav = !showFavOnly || favs.indexOf(cardId) !== -1;
-            if (matchSearch && matchDest && matchType && matchFav) {
+            var matchDagen = matchDuration(nights, activeDagen);
+            if (matchSearch && matchDest && matchType && matchFav && matchDagen) {
                 card.style.display = '';
                 visible++;
             } else {
@@ -293,6 +315,7 @@ ksort($all_categories);
         if (destFilter && destFilter.value) parts.push('bestemming=' + encodeURIComponent(destFilter.value));
         if (typeFilter && typeFilter.value) parts.push('type=' + encodeURIComponent(typeFilter.value));
         if (searchInput && searchInput.value) parts.push('zoek=' + encodeURIComponent(searchInput.value));
+        if (activeDagen) parts.push('dagen=' + encodeURIComponent(activeDagen));
         if (parts.length > 0) {
             history.replaceState(null, '', '#' + parts.join('&'));
         } else {
@@ -310,6 +333,9 @@ ksort($all_categories);
     }
     if (hashParams.zoek && searchInput) {
         searchInput.value = hashParams.zoek;
+    }
+    if (hashParams.dagen) {
+        activeDagen = hashParams.dagen;
     }
 
     if (searchBtn) searchBtn.addEventListener('click', function() { filterAndSort(); updateHash(); });
