@@ -60,6 +60,40 @@ async function getTcToken(micrositeId: string): Promise<string> {
 // ============================================================
 // ACCOMMODATION SEARCH
 // ============================================================
+// Resolve a free-text destination query to a TC destination ID
+async function resolveDestinationId(token: string, micrositeId: string, query: string): Promise<string | null> {
+  try {
+    const response = await fetch(`${TC_API_BASE}/destination/${micrositeId}?lang=NL`, {
+      headers: { "auth-token": token },
+    });
+    if (!response.ok) return null;
+    const result = await response.json();
+    const destinations = result.destinations || result.destination || [];
+    
+    const q = query.toLowerCase();
+    // Try exact match first, then partial match
+    const exact = destinations.find((d: any) => d.name?.toLowerCase() === q);
+    if (exact) return exact.id || exact.code;
+    
+    const partial = destinations.find((d: any) => 
+      d.name?.toLowerCase().includes(q) || q.includes(d.name?.toLowerCase())
+    );
+    if (partial) return partial.id || partial.code;
+    
+    // Try country match
+    const countryMatch = destinations.find((d: any) => 
+      d.country?.toLowerCase().includes(q) || d.countryName?.toLowerCase().includes(q)
+    );
+    if (countryMatch) return countryMatch.id || countryMatch.code;
+    
+    console.log(`[TC Search] No destination match for "${query}" among ${destinations.length} destinations`);
+    return null;
+  } catch (e) {
+    console.warn(`[TC Search] Destination resolve failed:`, e);
+    return null;
+  }
+}
+
 async function searchAccommodations(micrositeId: string, params: any) {
   const token = await getTcToken(micrositeId);
   const { destination, checkIn, checkOut, adults, children, childAges } = params;
@@ -71,18 +105,73 @@ async function searchAccommodations(micrositeId: string, params: any) {
     for (const age of childAges) persons.push({ age });
   }
 
+  // Resolve destination name to TC destination ID
+  let destinationId: string | null = null;
+  if (destination) {
+    destinationId = await resolveDestinationId(token, micrositeId, destination);
+    console.log(`[TC Search] Resolved "${destination}" → destinationId: ${destinationId}`);
+  }
+
+  // Try preferred hotels first (static content, no dates needed)
+  // This works even without a valid destinationId
+  try {
+    let prefUrl = `${TC_API_BASE}/accommodations/preferred/${micrositeId}?first=0&limit=20&lang=NL`;
+    if (destinationId) prefUrl += `&destinationId=${destinationId}`;
+    
+    console.log(`[TC Search] Trying preferred hotels: ${prefUrl}`);
+    const prefResponse = await fetch(prefUrl, { headers: { "auth-token": token } });
+    
+    if (prefResponse.ok) {
+      const prefResult = await prefResponse.json();
+      const hotels = prefResult.hotels || prefResult.accommodations || [];
+      
+      if (hotels.length > 0) {
+        console.log(`[TC Search] Found ${hotels.length} preferred hotels`);
+        // Filter by search query if no destinationId match
+        const q = (destination || "").toLowerCase();
+        const filtered = destinationId ? hotels : hotels.filter((h: any) => 
+          h.name?.toLowerCase().includes(q) || 
+          h.destinationName?.toLowerCase().includes(q) ||
+          h.city?.toLowerCase().includes(q) ||
+          h.country?.toLowerCase().includes(q)
+        );
+        
+        return filtered.map((acc: any) => ({
+          type: "hotel",
+          id: acc.code || acc.accommodationId || acc.id,
+          name: acc.name || "Onbekend hotel",
+          stars: acc.category ? parseInt(acc.category) : 0,
+          location: acc.destinationName || acc.city || "",
+          country: acc.country || "",
+          description: "",
+          images: acc.imageUrls || acc.images || [],
+          price: 0,
+          currency: "EUR",
+          roomType: "",
+          mealPlan: "",
+          geolocation: acc.geolocation || null,
+          provider: "",
+        }));
+      }
+    }
+  } catch (e) {
+    console.warn(`[TC Search] Preferred hotels failed, trying quote:`, e);
+  }
+
+  // Fallback: try the quote endpoint (needs valid dates + destinationId)
+  if (!destinationId) {
+    console.log(`[TC Search] No destinationId and no preferred hotels, returning empty`);
+    return [];
+  }
+
   const quoteBody: any = {
-    checkIn: checkIn,
-    checkOut: checkOut,
+    checkIn,
+    checkOut,
     persons,
     language: "NL",
     bestCombinations: true,
+    destinationId,
   };
-
-  // Add destination filter
-  if (destination) {
-    quoteBody.destinationId = destination;
-  }
 
   console.log(`[TC Search] Accommodation quote:`, JSON.stringify(quoteBody));
 
@@ -95,7 +184,8 @@ async function searchAccommodations(micrositeId: string, params: any) {
   if (!response.ok) {
     const errText = await response.text();
     console.error(`[TC Search] Accommodation quote failed (${response.status}):`, errText);
-    throw new Error(`Hotel zoeken mislukt (${response.status})`);
+    // Don't throw - return empty instead
+    return [];
   }
 
   const result = await response.json();
