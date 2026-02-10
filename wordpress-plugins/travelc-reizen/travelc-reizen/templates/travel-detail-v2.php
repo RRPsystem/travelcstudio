@@ -173,6 +173,18 @@ for ($i = count($accommodations); $i < count($unique_destinations); $i++) {
     ];
 }
 
+// Panel data for JS (collected here, output safely in script block)
+$panel_data = [];
+foreach ($stops as $s) {
+    $sn = $s['number'];
+    if ($s['destination']) {
+        $panel_data['tc2data_dest_' . $sn] = $s['destination'];
+    }
+    if ($s['accommodation']) {
+        $panel_data['tc2data_hotel_' . $sn] = $s['accommodation'];
+    }
+}
+
 // Build transport info
 $outbound_flight = null;
 $return_flight = null;
@@ -794,7 +806,6 @@ body { margin: 0 !important; padding: 0 !important; }
                                             onclick="tc2ShowPanel('<?php echo $panel_id; ?>')">
                                             Lees verder <?php echo $icons['chevron-right']; ?>
                                         </button>
-                                        <script type="application/json" id="<?php echo $panel_id; ?>"><?php echo json_encode($dest, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -835,7 +846,6 @@ body { margin: 0 !important; padding: 0 !important; }
                                 onclick="tc2ShowPanel('<?php echo $hotel_panel_id; ?>')">
                                 Lees verder
                             </button>
-                            <script type="application/json" id="<?php echo $hotel_panel_id; ?>"><?php echo json_encode($accom, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
                         </div>
                         <?php endif; ?>
 
@@ -1031,8 +1041,9 @@ body { margin: 0 !important; padding: 0 !important; }
      ============================================ -->
 <script>
 (function() {
-    var mapDests = <?php echo json_encode($map_destinations); ?>;
+    var mapDests = <?php echo json_encode($map_destinations, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES); ?>;
     var primaryColor = '<?php echo esc_js($primary_color); ?>';
+    var panelData = <?php echo json_encode($panel_data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES); ?>;
 
     // ============================================
     // HERO SLIDESHOW
@@ -1110,10 +1121,8 @@ body { margin: 0 !important; padding: 0 !important; }
     var panelMapInstance = null;
 
     window.tc2ShowPanel = function(dataId) {
-        var scriptEl = document.getElementById(dataId);
-        if (!scriptEl) { console.error('[TC2 Panel] No data element:', dataId); return; }
-        var data;
-        try { data = JSON.parse(scriptEl.textContent); } catch(e) { console.error('[TC2 Panel] JSON parse error:', e); return; }
+        var data = panelData[dataId];
+        if (!data) { console.error('[TC2 Panel] No data for:', dataId); return; }
         var title = data.name || 'Details';
         var html = '';
 
