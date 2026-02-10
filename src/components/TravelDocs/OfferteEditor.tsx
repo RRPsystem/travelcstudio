@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import {
   ArrowLeft, Save, Send, Eye, MapPin, Plus, GripVertical, X,
   Plane, Car, Building2, Compass, CarFront, Ship, Train, Shield, StickyNote,
@@ -7,6 +7,7 @@ import {
 import { Offerte, OfferteItem, OfferteItemType, OfferteDestination, OFFERTE_ITEM_TYPES } from '../../types/offerte';
 import { OfferteItemTypeSelector } from './OfferteItemTypeSelector';
 import { OfferteItemPanel } from './OfferteItemPanel';
+import { SlidingMediaSelector } from '../shared/SlidingMediaSelector';
 
 const iconMap: Record<string, React.ComponentType<any>> = {
   Plane, Car, Building2, Compass, CarFront, Ship, Train, Shield, StickyNote,
@@ -39,8 +40,8 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
   const [editingItem, setEditingItem] = useState<{ item: OfferteItem | null; type: OfferteItemType; index: number } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
-
-  const heroInputRef = useRef<HTMLInputElement>(null);
+  const [showMediaSelector, setShowMediaSelector] = useState(false);
+  const [mediaSelectorMode, setMediaSelectorMode] = useState<'photo' | 'video'>('photo');
 
   const totalPrice = items.reduce((sum, item) => sum + (item.price || 0), 0);
   const pricePerPerson = numberOfTravelers > 0 ? totalPrice / numberOfTravelers : 0;
@@ -274,32 +275,19 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
 
           {/* Upload controls (top right) */}
           <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-            <input ref={heroInputRef} type="file" accept="image/*" className="hidden" onChange={e => {
-              const file = e.target.files?.[0];
-              if (file) {
-                const url = URL.createObjectURL(file);
-                setHeroImage(url);
-              }
-            }} />
-            <button onClick={() => heroInputRef.current?.click()} className="px-3 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-2">
+            <button onClick={() => { setMediaSelectorMode('photo'); setShowMediaSelector(true); }} className="px-3 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-2">
               <Image size={14} />
               Foto
             </button>
-            <button onClick={() => {
-              const url = prompt('Plak video URL (YouTube, Vimeo, of direct):');
-              if (url) setHeroVideo(url);
-            }} className="px-3 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-2">
+            <button onClick={() => { setMediaSelectorMode('video'); setShowMediaSelector(true); }} className="px-3 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-2">
               <Video size={14} />
               Video
             </button>
-            {heroImage && (
-              <input
-                type="text"
-                value={heroImage}
-                onChange={e => setHeroImage(e.target.value)}
-                placeholder="Afbeelding URL..."
-                className="px-3 py-2 bg-white/20 backdrop-blur-sm text-white placeholder:text-white/50 rounded-lg text-xs w-64 outline-none focus:bg-white/30"
-              />
+            {(heroImage || heroVideo) && (
+              <button onClick={() => { setHeroImage(''); setHeroVideo(''); }} className="px-3 py-2 bg-red-500/60 backdrop-blur-sm hover:bg-red-500/80 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-2">
+                <X size={14} />
+                Verwijder
+              </button>
             )}
           </div>
 
@@ -595,6 +583,23 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
           onClose={() => setEditingItem(null)}
         />
       )}
+
+      {/* Media Selector for hero image/video */}
+      <SlidingMediaSelector
+        isOpen={showMediaSelector}
+        onClose={() => setShowMediaSelector(false)}
+        onSelect={(url) => {
+          if (mediaSelectorMode === 'video' || url.includes('youtube.com/embed')) {
+            setHeroVideo(url);
+            setHeroImage('');
+          } else {
+            setHeroImage(url);
+            setHeroVideo('');
+          }
+          setShowMediaSelector(false);
+        }}
+        title={mediaSelectorMode === 'photo' ? 'Kies Hero Foto' : 'Kies Hero Video'}
+      />
     </div>
   );
 }
