@@ -1185,7 +1185,7 @@ body { margin: 0 !important; padding: 0 !important; }
 <!-- Hero slideshow + Route map (separate from global functions) -->
 <script>
 (function() {
-    var mapDests = <?php echo json_encode($map_destinations, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES); ?>;
+    var mapDests = JSON.parse(atob('<?php echo base64_encode(json_encode($map_destinations, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)); ?>'));
     var primaryColor = '<?php echo esc_js($primary_color); ?>';
 
     // HERO SLIDESHOW
