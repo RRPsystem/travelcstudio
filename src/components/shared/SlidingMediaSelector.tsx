@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Upload, Search } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
@@ -439,7 +440,7 @@ export function SlidingMediaSelector({
     }
   }, [activeTab]);
 
-  return (
+  return createPortal(
     <>
       <div className={`fixed top-0 right-0 h-full w-[500px] bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${
         isOpen ? 'translate-x-0' : 'translate-x-full'
@@ -795,6 +796,7 @@ export function SlidingMediaSelector({
           onClick={onClose}
         />
       )}
-    </>
+    </>,
+    document.body
   );
 }
