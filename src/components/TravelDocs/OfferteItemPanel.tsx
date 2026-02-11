@@ -71,6 +71,13 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
   const [searchError, setSearchError] = useState<string | null>(null);
   const searchTimerRef = useState<ReturnType<typeof setTimeout> | null>(null);
 
+  // Safely parse star rating from category string like "4", "4 estrellas", etc.
+  const parseStars = (val: any): number | undefined => {
+    if (!val) return undefined;
+    const n = parseInt(String(val));
+    return (!isNaN(n) && n >= 1 && n <= 5) ? n : undefined;
+  };
+
   // Debounced search in travelc_travels
   const doSearch = useCallback(async (query: string) => {
     if (!supabase || !query || query.length < 2) {
@@ -82,64 +89,88 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
     setSearchError(null);
 
     try {
-      const q = query.toLowerCase();
+      const q = query.toLowerCase().trim();
 
-      // Search travels by title or text-search in JSONB fields
-      const { data: travels, error } = await supabase
+      // Fetch all travels (we filter client-side on JSONB content)
+      const { data: allTravels, error } = await supabase
         .from('travelc_travels')
         .select('id, title, destinations, hotels, flights, transfers, activities, images, countries, hero_image')
-        .or(`title.ilike.%${query}%`)
-        .limit(100);
+        .limit(500);
 
       if (error) throw error;
+      if (!allTravels || allTravels.length === 0) {
+        setSearchError('Geen reizen gevonden in de database. Importeer eerst reizen.');
+        setSearching(false);
+        return;
+      }
 
-      // Also search travels where destinations/countries contain the query
-      const { data: destTravels } = await supabase
-        .from('travelc_travels')
-        .select('id, title, destinations, hotels, flights, transfers, activities, images, countries, hero_image')
-        .not('id', 'in', `(${(travels || []).map(t => t.id).join(',') || '00000000-0000-0000-0000-000000000000'})`)
-        .limit(100);
-
-      const allTravels = [...(travels || []), ...(destTravels || [])];
-
-      // Filter destTravels by checking JSONB content
-      const matchingTravels = allTravels.filter(t => {
-        const titleMatch = t.title?.toLowerCase().includes(q);
-        const countryMatch = (t.countries || []).some((c: string) => c.toLowerCase().includes(q));
+      // Score each travel by how well it matches the query
+      // Priority: destination name > country > title > hotel name
+      const scoredTravels = allTravels.map(t => {
+        let score = 0;
         const destMatch = (t.destinations || []).some((d: any) =>
-          d.name?.toLowerCase().includes(q) || d.country?.toLowerCase().includes(q)
+          d.name?.toLowerCase().includes(q)
         );
-        const hotelMatch = (t.hotels || []).some((h: any) =>
-          h.name?.toLowerCase().includes(q) || h.hotelData?.name?.toLowerCase().includes(q) ||
-          h.hotelData?.city?.toLowerCase().includes(q)
+        const countryMatch = (t.countries || []).some((c: string) => c.toLowerCase().includes(q));
+        const destCountryMatch = (t.destinations || []).some((d: any) =>
+          d.country?.toLowerCase().includes(q)
         );
-        return titleMatch || countryMatch || destMatch || hotelMatch;
-      });
+        const titleMatch = t.title?.toLowerCase().includes(q);
+        const hotelNameMatch = (t.hotels || []).some((h: any) =>
+          h.name?.toLowerCase().includes(q)
+        );
+
+        if (destMatch) score += 10;       // Destination name match (highest priority)
+        if (countryMatch) score += 8;     // Country match
+        if (destCountryMatch) score += 7; // Destination country field match
+        if (titleMatch) score += 5;       // Title match
+        if (hotelNameMatch) score += 3;   // Hotel name match
+
+        return { travel: t, score };
+      }).filter(s => s.score > 0)
+        .sort((a, b) => b.score - a.score);
 
       // Extract items based on itemType
       const results: TcSearchResult[] = [];
       const seen = new Set<string>();
 
-      for (const travel of matchingTravels) {
+      for (const { travel } of scoredTravels) {
+        // Build location context from travel destinations
+        const travelDests = travel.destinations || [];
+        const travelCountries = (travel.countries || []).join(', ');
+        const mainDest = travelDests[0];
+        const travelLocation = travelDests.map((d: any) => d.name).filter(Boolean).join(', ');
+
         if (itemType === 'hotel') {
           for (const hotel of (travel.hotels || [])) {
-            const name = hotel.name || hotel.hotelData?.name || '';
+            const name = hotel.name || '';
             if (!name || seen.has(name.toLowerCase())) continue;
             seen.add(name.toLowerCase());
-            const hd = hotel.hotelData || {};
-            const imgs = hotel.images || hd.images || hd.imageUrls || [];
-            const firstImg = imgs[0] || hotel.imageUrl || hd.imageUrl || '';
+
+            // Collect all images from the hotel
+            const imgs: string[] = [];
+            for (const img of (hotel.images || [])) {
+              const url = typeof img === 'string' ? img : img?.url;
+              if (url && !imgs.includes(url)) imgs.push(url);
+            }
+            if (hotel.imageUrl && !imgs.includes(hotel.imageUrl)) imgs.unshift(hotel.imageUrl);
+
+            // Location: use travel destinations since hotels don't have city/country
+            const hotelLocation = travelLocation || '';
+            const hotelCountry = travelCountries || '';
+
             results.push({
               type: 'hotel',
               id: hotel.id || hotel.hotelId || name,
               name,
-              stars: hotel.category ? parseInt(hotel.category) : (hd.category ? parseInt(hd.category) : undefined),
-              location: hd.city || hd.destinationName || '',
-              country: hd.country || '',
-              description: hd.description || '',
-              images: typeof firstImg === 'string' ? [firstImg] : [],
-              image: typeof firstImg === 'string' ? firstImg : '',
-              subtitle: `${travel.title}`,
+              stars: parseStars(hotel.category),
+              location: hotelLocation,
+              country: hotelCountry,
+              description: hotel.description || hotel.shortDescription || '',
+              images: imgs.length > 0 ? imgs : (mainDest?.images?.slice(0, 3) || []),
+              image: imgs[0] || mainDest?.images?.[0] || '',
+              subtitle: `${travelLocation}${travelCountries ? ' — ' + travelCountries : ''}`,
+              mealPlan: hotel.mealPlan || hotel.mealPlanDescription || '',
             });
           }
         } else if (itemType === 'flight') {
@@ -167,7 +198,7 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
               id: transfer.id || name,
               name,
               description: transfer.description || '',
-              location: transfer.origin || transfer.pickup || '',
+              location: transfer.origin || transfer.pickup || travelLocation || '',
               image: transfer.imageUrl || '',
             });
           }
@@ -181,7 +212,8 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
               id: activity.id || name,
               name,
               description: activity.description || '',
-              location: activity.location || activity.city || '',
+              location: activity.location || activity.city || travelLocation || '',
+              country: travelCountries || '',
               image: activity.imageUrl || '',
               duration: activity.duration,
               durationType: activity.durationType,
@@ -189,12 +221,12 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
           }
         }
 
-        if (results.length >= 15) break;
+        if (results.length >= 30) break;
       }
 
-      setSearchResults(results.slice(0, 15));
+      setSearchResults(results.slice(0, 30));
       if (results.length === 0) {
-        setSearchError(`Geen ${itemType}s gevonden voor "${query}"`);
+        setSearchError(`Geen ${itemType}s gevonden voor "${query}". Probeer een bestemming of land.`);
       }
     } catch (err: any) {
       console.error('[Search] Error:', err);
@@ -484,7 +516,7 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
 
           {/* Step 2: Hotel/Activity results */}
           {searchResults.length > 0 && (
-            <div className="mt-2 bg-white rounded-xl border border-gray-200 max-h-64 overflow-y-auto divide-y divide-gray-100">
+            <div className="mt-2 bg-white rounded-xl border border-gray-200 max-h-96 overflow-y-auto divide-y divide-gray-100">
               <div className="px-3 py-1.5 bg-gray-50 text-[10px] font-medium text-gray-500 uppercase tracking-wider sticky top-0">
                 {searchResults.length} resultaten gevonden
               </div>
@@ -495,18 +527,18 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
                   className="w-full flex items-start gap-3 p-3 hover:bg-orange-50 transition-colors text-left"
                 >
                   {/* Thumbnail */}
-                  <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                  <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0">
                     {(result.images?.[0] || result.image) ? (
                       <img src={result.images?.[0] || result.image} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <Building2 size={16} className="text-gray-300" />
+                        <Building2 size={18} className="text-gray-300" />
                       </div>
                     )}
                   </div>
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       <span className="font-medium text-sm text-gray-900 truncate">{result.name}</span>
                       {result.stars && result.stars > 0 && (
                         <span className="flex items-center shrink-0">
@@ -516,14 +548,20 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
                         </span>
                       )}
                     </div>
-                    {(result.location || result.country) && (
+                    {result.subtitle && (
+                      <p className="text-xs text-orange-600 font-medium mt-0.5 truncate">{result.subtitle}</p>
+                    )}
+                    {(result.location || result.country) && !(result.subtitle) && (
                       <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                         <Building2 size={10} />
                         {[result.location, result.country].filter(Boolean).join(', ')}
                       </p>
                     )}
+                    {result.mealPlan && (
+                      <p className="text-[11px] text-gray-500 mt-0.5">{result.mealPlan}</p>
+                    )}
                     {result.description && (
-                      <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{result.description}</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-2">{result.description}</p>
                     )}
                   </div>
                   {/* Price */}
