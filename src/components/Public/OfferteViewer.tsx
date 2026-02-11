@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
   MapPin, Plane, Car, Building2, Compass, CarFront, Ship, Train, Shield, StickyNote,
-  ChevronDown, Star, Calendar, Clock, ArrowLeft, ArrowRight, X
+  ChevronDown, Star, Calendar, Clock, ArrowLeft, ArrowRight, X,
+  CheckCircle, XCircle, MessageSquare, Phone, Mail, Globe, Send
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Offerte, OfferteItem, OfferteDestination, ExtraCost, OFFERTE_ITEM_TYPES } from '../../types/offerte';
@@ -62,6 +63,11 @@ export function OfferteViewer({ offerteId }: Props) {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [brand, setBrand] = useState<any>(null);
+  const [responseMode, setResponseMode] = useState<'none' | 'accept' | 'reject'>('none');
+  const [responseNote, setResponseNote] = useState('');
+  const [submittingResponse, setSubmittingResponse] = useState(false);
+  const [responseSubmitted, setResponseSubmitted] = useState(false);
 
   // Override global overflow:hidden so this page can scroll
   useEffect(() => {
@@ -106,6 +112,7 @@ export function OfferteViewer({ offerteId }: Props) {
         hero_video_url: data.hero_video_url,
         destinations: data.destinations || [],
         items: data.items || [],
+        extra_costs: data.extra_costs || [],
         total_price: parseFloat(data.total_price) || 0,
         price_per_person: parseFloat(data.price_per_person) || 0,
         number_of_travelers: data.number_of_travelers || 2,
@@ -115,7 +122,10 @@ export function OfferteViewer({ offerteId }: Props) {
         sent_at: data.sent_at,
         viewed_at: data.viewed_at,
         accepted_at: data.accepted_at,
+        rejected_at: data.rejected_at,
         valid_until: data.valid_until,
+        client_response: data.client_response,
+        client_response_note: data.client_response_note,
         internal_notes: data.internal_notes,
         terms_conditions: data.terms_conditions,
         created_at: data.created_at,
@@ -124,11 +134,26 @@ export function OfferteViewer({ offerteId }: Props) {
 
       setOfferte(o);
 
+      // Track if already responded
+      if (data.client_response) {
+        setResponseSubmitted(true);
+      }
+
+      // Load brand info
+      if (data.brand_id) {
+        const { data: brandData } = await supabase
+          .from('brands')
+          .select('name, logo_url, contact_email, contact_phone, website_url, street_address, city, postal_code, country')
+          .eq('id', data.brand_id)
+          .single();
+        if (brandData) setBrand(brandData);
+      }
+
       // Track view
       if (!data.viewed_at) {
         await supabase
           .from('travel_offertes')
-          .update({ viewed_at: new Date().toISOString() })
+          .update({ viewed_at: new Date().toISOString(), status: 'viewed' })
           .eq('id', offerteId);
       }
     } catch (err: any) {
@@ -145,6 +170,34 @@ export function OfferteViewer({ offerteId }: Props) {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+  };
+
+  const submitResponse = async (response: 'accepted' | 'rejected') => {
+    if (!supabase || !offerte) return;
+    setSubmittingResponse(true);
+    try {
+      const now = new Date().toISOString();
+      const update: any = {
+        client_response: response,
+        client_response_note: responseNote || null,
+        status: response === 'accepted' ? 'accepted' : 'rejected',
+      };
+      if (response === 'accepted') update.accepted_at = now;
+      if (response === 'rejected') update.rejected_at = now;
+
+      await supabase
+        .from('travel_offertes')
+        .update(update)
+        .eq('id', offerte.id);
+
+      setOfferte({ ...offerte, client_response: response, client_response_note: responseNote || undefined, status: update.status });
+      setResponseSubmitted(true);
+      setResponseMode('none');
+    } catch (err) {
+      console.error('Error submitting response:', err);
+    } finally {
+      setSubmittingResponse(false);
+    }
   };
 
   if (loading) {
@@ -558,10 +611,164 @@ export function OfferteViewer({ offerteId }: Props) {
         </div>
       )}
 
-      {/* FOOTER */}
-      <div className="bg-gray-100 border-t border-gray-200 py-6">
-        <div className="max-w-4xl mx-auto px-6 text-center text-sm text-gray-400">
-          Aangeboden via AI Travel Studio
+      {/* APPROVE / REJECT */}
+      <div className="max-w-4xl mx-auto px-6 pb-10">
+        {responseSubmitted || offerte.client_response ? (
+          <div className={`rounded-2xl border p-8 text-center ${
+            (offerte.client_response || responseMode) === 'accepted'
+              ? 'bg-green-50 border-green-200'
+              : 'bg-red-50 border-red-200'
+          }`}>
+            {offerte.client_response === 'accepted' ? (
+              <>
+                <CheckCircle size={48} className="text-green-500 mx-auto mb-3" />
+                <h3 className="text-xl font-bold text-green-800 mb-1">Offerte goedgekeurd</h3>
+                <p className="text-sm text-green-600">Bedankt! Uw reisadviseur neemt zo snel mogelijk contact met u op.</p>
+              </>
+            ) : (
+              <>
+                <XCircle size={48} className="text-red-500 mx-auto mb-3" />
+                <h3 className="text-xl font-bold text-red-800 mb-1">Offerte afgekeurd</h3>
+                <p className="text-sm text-red-600">Uw reisadviseur ontvangt uw feedback en neemt contact met u op.</p>
+              </>
+            )}
+            {offerte.client_response_note && (
+              <div className="mt-4 bg-white/60 rounded-lg p-3 text-sm text-gray-600 max-w-md mx-auto">
+                <span className="font-medium">Uw opmerking:</span> {offerte.client_response_note}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+            <h3 className="text-lg font-bold text-gray-900 mb-2 text-center">Wat vindt u van deze offerte?</h3>
+            <p className="text-sm text-gray-500 text-center mb-6">Laat uw reisadviseur weten of u akkoord gaat met dit reisvoorstel.</p>
+
+            {responseMode === 'none' ? (
+              <div className="flex items-center justify-center gap-4">
+                <button
+                  onClick={() => setResponseMode('accept')}
+                  className="flex items-center gap-2 px-8 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-colors"
+                >
+                  <CheckCircle size={20} />
+                  Goedkeuren
+                </button>
+                <button
+                  onClick={() => setResponseMode('reject')}
+                  className="flex items-center gap-2 px-8 py-3 bg-white hover:bg-red-50 text-red-600 border-2 border-red-200 hover:border-red-300 rounded-xl font-medium transition-colors"
+                >
+                  <XCircle size={20} />
+                  Afkeuren
+                </button>
+              </div>
+            ) : (
+              <div className="max-w-md mx-auto space-y-4">
+                <div className={`flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg ${
+                  responseMode === 'accept' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                }`}>
+                  {responseMode === 'accept' ? <CheckCircle size={16} /> : <XCircle size={16} />}
+                  {responseMode === 'accept' ? 'U keurt deze offerte goed' : 'U keurt deze offerte af'}
+                </div>
+                {responseMode === 'reject' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <MessageSquare size={14} className="inline mr-1" />
+                      Opmerking (optioneel)
+                    </label>
+                    <textarea
+                      value={responseNote}
+                      onChange={(e) => setResponseNote(e.target.value)}
+                      placeholder="Laat weten waarom u afkeurt of wat u anders wilt..."
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                    />
+                  </div>
+                )}
+                {responseMode === 'accept' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <MessageSquare size={14} className="inline mr-1" />
+                      Opmerking (optioneel)
+                    </label>
+                    <textarea
+                      value={responseNote}
+                      onChange={(e) => setResponseNote(e.target.value)}
+                      placeholder="Eventuele opmerkingen of wensen..."
+                      rows={2}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                    />
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => submitResponse(responseMode === 'accept' ? 'accepted' : 'rejected')}
+                    disabled={submittingResponse}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-colors disabled:opacity-50 ${
+                      responseMode === 'accept'
+                        ? 'bg-green-600 hover:bg-green-700 text-white'
+                        : 'bg-red-600 hover:bg-red-700 text-white'
+                    }`}
+                  >
+                    <Send size={16} />
+                    {submittingResponse ? 'Verzenden...' : 'Bevestigen'}
+                  </button>
+                  <button
+                    onClick={() => { setResponseMode('none'); setResponseNote(''); }}
+                    className="px-4 py-3 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors"
+                  >
+                    Annuleren
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* BRAND FOOTER */}
+      {brand && (
+        <div className="bg-white border-t border-gray-200 py-10">
+          <div className="max-w-4xl mx-auto px-6">
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+              {brand.logo_url && (
+                <img src={brand.logo_url} alt={brand.name} className="h-16 w-auto object-contain" />
+              )}
+              <div className="flex-1 text-center md:text-left">
+                <h4 className="text-lg font-semibold text-gray-900 mb-1">{brand.name}</h4>
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-5 gap-y-1 text-sm text-gray-500">
+                  {brand.contact_email && (
+                    <a href={`mailto:${brand.contact_email}`} className="flex items-center gap-1.5 hover:text-orange-600 transition-colors">
+                      <Mail size={14} />
+                      {brand.contact_email}
+                    </a>
+                  )}
+                  {brand.contact_phone && (
+                    <a href={`tel:${brand.contact_phone}`} className="flex items-center gap-1.5 hover:text-orange-600 transition-colors">
+                      <Phone size={14} />
+                      {brand.contact_phone}
+                    </a>
+                  )}
+                  {brand.website_url && (
+                    <a href={brand.website_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-orange-600 transition-colors">
+                      <Globe size={14} />
+                      {brand.website_url.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                    </a>
+                  )}
+                </div>
+                {(brand.street_address || brand.city) && (
+                  <p className="text-xs text-gray-400 mt-2">
+                    {[brand.street_address, [brand.postal_code, brand.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POWERED BY */}
+      <div className="bg-gray-50 border-t border-gray-100 py-4">
+        <div className="max-w-4xl mx-auto px-6 text-center text-xs text-gray-300">
+          Aangeboden via TravelC Studio
         </div>
       </div>
 

@@ -78,11 +78,15 @@ export interface Offerte {
   currency: string;
   price_display: 'total' | 'per_person' | 'both' | 'hidden';
   // Status
-  status: 'draft' | 'sent' | 'viewed' | 'accepted' | 'revised' | 'expired';
+  status: 'draft' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'revised' | 'expired';
   sent_at?: string;
   viewed_at?: string;
   accepted_at?: string;
+  rejected_at?: string;
   valid_until?: string;
+  // Client response
+  client_response?: 'accepted' | 'rejected';
+  client_response_note?: string;
   // Notes
   internal_notes?: string;
   terms_conditions?: string;
