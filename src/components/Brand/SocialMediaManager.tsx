@@ -569,7 +569,7 @@ export function SocialMediaManager() {
           >
             Accounts ({accounts.filter(a => a.is_active).length})
           </button>
-          {isAdmin ? (
+          {isAdmin && (
             <button
               onClick={() => setActiveTab('saved-posts')}
               className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
@@ -580,7 +580,8 @@ export function SocialMediaManager() {
             >
               Opgeslagen Posts ({posts.length})
             </button>
-          ) : (
+          )}
+          {!isAdmin && (
             <button
               onClick={() => setActiveTab('brand-voice')}
               className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
