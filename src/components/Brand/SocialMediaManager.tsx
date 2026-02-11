@@ -45,7 +45,7 @@ export function SocialMediaManager() {
   const [posts, setPosts] = useState<SocialMediaPost[]>([]);
   const [accounts, setAccounts] = useState<SocialMediaAccount[]>([]);
   const [availablePosts, setAvailablePosts] = useState<SocialMediaPost[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'create' | 'available' | 'planner' | 'suggestions' | 'accounts' | 'brand-voice'>('create');
   const [showMediaSelector, setShowMediaSelector] = useState(false);
   const [connectingPlatform, setConnectingPlatform] = useState('');
