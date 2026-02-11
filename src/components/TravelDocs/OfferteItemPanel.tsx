@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { X, Star, Upload, Search, Loader2, Building2, Database, PenLine, MapPin, Utensils, ChevronRight, ChevronLeft, Clock, ArrowLeft, Check, Bed, Eye } from 'lucide-react';
+import { X, Star, Upload, Search, Loader2, Building2, Database, PenLine, MapPin, Utensils, ChevronRight, ChevronLeft, Clock, ArrowLeft, Check } from 'lucide-react';
 import { OfferteItem, OfferteItemType, OFFERTE_ITEM_TYPES } from '../../types/offerte';
 import { supabase } from '../../lib/supabase';
 
@@ -218,10 +218,8 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
   const [detailResult, setDetailResult] = useState<TcSearchResult | null>(null);
   const [detailPhotoIdx, setDetailPhotoIdx] = useState(0);
   // Agent choices for the offerte
-  const [chosenRoomType, setChosenRoomType] = useState('');
+  const [chosenRoomType, setChosenRoomType] = useState(''); // free-text notes field
   const [chosenBoardType, setChosenBoardType] = useState('');
-  const [chosenViewType, setChosenViewType] = useState('');
-  const [chosenBedType, setChosenBedType] = useState('');
   const [chosenNights, setChosenNights] = useState<number | undefined>(undefined);
 
   // Safely parse star rating from category string like "4", "4 estrellas", etc.
@@ -435,8 +433,6 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
       setDetailPhotoIdx(0);
       setChosenRoomType('');
       setChosenBoardType(result.mealPlan || '');
-      setChosenViewType('');
-      setChosenBedType('');
       setChosenNights(result.nights || undefined);
     } else {
       // Non-hotel items: select directly
@@ -493,12 +489,9 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
       price: r.price || undefined,
       price_per_person: r.pricePerNight ? r.pricePerNight : undefined,
     };
-    // Add view/bed info to description if chosen
-    const extras: string[] = [];
-    if (chosenViewType) extras.push(chosenViewType);
-    if (chosenBedType) extras.push(chosenBedType);
-    if (extras.length > 0) {
-      updates.description = (updates.description ? updates.description + '\n' : '') + extras.join(' · ');
+    // Add agent notes to room_type field
+    if (chosenRoomType) {
+      updates.room_type = chosenRoomType;
     }
 
     setFormData(prev => ({ ...prev, ...updates }));
@@ -658,12 +651,32 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
     </>
   );
 
+  // Helper: extract all facility items from the nested facilities object
+  const extractFacilities = (facilities: Record<string, any> | undefined): string[] => {
+    if (!facilities) return [];
+    const items: string[] = [];
+    for (const [, value] of Object.entries(facilities)) {
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (typeof item === 'string' && item.trim()) {
+            items.push(item.trim());
+          } else if (typeof item === 'object' && item?.name) {
+            items.push(item.name);
+          }
+        }
+      } else if (typeof value === 'string' && value.trim()) {
+        items.push(value.trim());
+      }
+    }
+    return [...new Set(items)];
+  };
+
   // ==================== HOTEL DETAIL VIEW ====================
   const renderDetailView = () => {
     if (!detailResult) return null;
     const r = detailResult;
     const photos = r.images && r.images.length > 0 ? r.images : [];
-    const facilityKeys = r.facilities ? Object.keys(r.facilities).filter(k => r.facilities![k]) : [];
+    const allFacilities = extractFacilities(r.facilities);
 
     return (
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -759,32 +772,42 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
             {/* Quick info badges */}
             <div className="flex flex-wrap gap-2">
               {r.mealPlan && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded-lg text-xs">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-50 text-green-700 rounded-lg text-xs font-medium">
                   <Utensils size={11} /> {r.mealPlan}
                 </span>
               )}
               {r.nights && r.nights > 0 && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium">
                   <Clock size={11} /> {r.nights} nachten
                 </span>
               )}
               {r.checkInTime && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs">
                   Check-in: {r.checkInTime}
                 </span>
               )}
               {r.checkOutTime && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs">
                   Check-out: {r.checkOutTime}
                 </span>
               )}
-              {r.price && r.price > 0 && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-50 text-orange-700 rounded-lg text-xs font-medium">
-                  € {r.price.toLocaleString('nl-NL')}
-                  {r.pricePerNight ? ` (€ ${r.pricePerNight}/nacht)` : ''}
-                </span>
-              )}
             </div>
+
+            {/* Price block */}
+            {r.price && r.price > 0 && (
+              <div className="bg-orange-50 rounded-xl p-3 flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-orange-600 font-medium">Prijs in deze reis</p>
+                  <p className="text-lg font-bold text-orange-700">€ {r.price.toLocaleString('nl-NL')}</p>
+                </div>
+                {r.pricePerNight && r.pricePerNight > 0 && (
+                  <div className="text-right">
+                    <p className="text-xs text-orange-500">per nacht</p>
+                    <p className="text-sm font-semibold text-orange-600">€ {r.pricePerNight.toLocaleString('nl-NL')}</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Description */}
             {(r.description || r.shortDescription) && (
@@ -810,14 +833,14 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
               </div>
             )}
 
-            {/* Facilities */}
-            {facilityKeys.length > 0 && (
+            {/* Facilities - properly extracted */}
+            {allFacilities.length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Faciliteiten</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {facilityKeys.slice(0, 20).map((f) => (
-                    <span key={f} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
-                      {f.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim()}
+                  {allFacilities.map((f, i) => (
+                    <span key={i} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
+                      {f}
                     </span>
                   ))}
                 </div>
@@ -828,104 +851,50 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
               <p className="text-xs text-gray-400 italic">Uit reis: {r.travelTitle}</p>
             )}
 
-            {/* ==================== AGENT KEUZES ==================== */}
+            {/* ==================== OFFERTE AANPASSING ==================== */}
             <div className="border-t border-gray-200 pt-4 mt-4 space-y-3">
-              <p className="text-xs font-bold text-orange-600 uppercase tracking-wider">Keuzes voor offerte</p>
+              <p className="text-xs font-bold text-orange-600 uppercase tracking-wider">Aanpassen voor offerte</p>
 
-              {/* Room type */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* Nights */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Aantal nachten</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={chosenNights || ''}
+                    onChange={e => setChosenNights(parseInt(e.target.value) || undefined)}
+                    placeholder={r.nights ? String(r.nights) : ''}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none"
+                  />
+                </div>
+                {/* Board type override */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Arrangement</label>
+                  <select
+                    value={chosenBoardType}
+                    onChange={e => setChosenBoardType(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none"
+                  >
+                    <option value="">{r.mealPlan || 'Zoals in reis'}</option>
+                    <option value="RO">Room Only</option>
+                    <option value="BB">Bed & Breakfast</option>
+                    <option value="HB">Halfpension</option>
+                    <option value="FB">Volpension</option>
+                    <option value="AI">All Inclusive</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Free text notes */}
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1">
-                  <Bed size={12} /> Kamertype
-                </label>
-                <select
+                <label className="block text-xs font-medium text-gray-500 mb-1">Notities (kamertype, wensen, etc.)</label>
+                <input
+                  type="text"
                   value={chosenRoomType}
                   onChange={e => setChosenRoomType(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none"
-                >
-                  <option value="">Standaard kamer</option>
-                  <option value="Standard Room">Standard Room</option>
-                  <option value="Superior Room">Superior Room</option>
-                  <option value="Deluxe Room">Deluxe Room</option>
-                  <option value="Junior Suite">Junior Suite</option>
-                  <option value="Suite">Suite</option>
-                  <option value="Family Room">Family Room</option>
-                  <option value="Studio">Studio</option>
-                  <option value="Apartment">Apartment</option>
-                  <option value="Villa">Villa</option>
-                  <option value="Bungalow">Bungalow</option>
-                </select>
-              </div>
-
-              {/* Board type */}
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1">
-                  <Utensils size={12} /> Arrangement
-                </label>
-                <select
-                  value={chosenBoardType}
-                  onChange={e => setChosenBoardType(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none"
-                >
-                  <option value="">Selecteer...</option>
-                  <option value="RO">Room Only (logies)</option>
-                  <option value="BB">Bed & Breakfast</option>
-                  <option value="HB">Halfpension</option>
-                  <option value="FB">Volpension</option>
-                  <option value="AI">All Inclusive</option>
-                  <option value="UAI">Ultra All Inclusive</option>
-                </select>
-              </div>
-
-              {/* View type */}
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1">
-                  <Eye size={12} /> Uitzicht
-                </label>
-                <select
-                  value={chosenViewType}
-                  onChange={e => setChosenViewType(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none"
-                >
-                  <option value="">Geen voorkeur</option>
-                  <option value="Zeezicht">Zeezicht</option>
-                  <option value="Tuinzicht">Tuinzicht</option>
-                  <option value="Zwembadzicht">Zwembadzicht</option>
-                  <option value="Stadszicht">Stadszicht</option>
-                  <option value="Bergzicht">Bergzicht</option>
-                  <option value="Zijdelings zeezicht">Zijdelings zeezicht</option>
-                </select>
-              </div>
-
-              {/* Bed type */}
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1">
-                  <Bed size={12} /> Bedtype
-                </label>
-                <select
-                  value={chosenBedType}
-                  onChange={e => setChosenBedType(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none"
-                >
-                  <option value="">Geen voorkeur</option>
-                  <option value="Tweepersoonsbed (king)">Tweepersoonsbed (king)</option>
-                  <option value="Tweepersoonsbed (queen)">Tweepersoonsbed (queen)</option>
-                  <option value="Twee aparte bedden (twin)">Twee aparte bedden (twin)</option>
-                  <option value="Eenpersoonsbed">Eenpersoonsbed</option>
-                </select>
-              </div>
-
-              {/* Nights */}
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1">
-                  <Clock size={12} /> Aantal nachten
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={30}
-                  value={chosenNights || ''}
-                  onChange={e => setChosenNights(parseInt(e.target.value) || undefined)}
-                  placeholder={r.nights ? String(r.nights) : '3'}
+                  placeholder="Bv. Deluxe kamer, zeezicht, king bed..."
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none"
                 />
               </div>
@@ -940,7 +909,7 @@ export function OfferteItemPanel({ item, itemType, onSave, onClose }: Props) {
             className="w-full py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-medium transition-colors shadow-sm flex items-center justify-center gap-2"
           >
             <Check size={16} />
-            Selecteer dit hotel
+            Selecteer dit hotel voor offerte
           </button>
         </div>
       </div>
