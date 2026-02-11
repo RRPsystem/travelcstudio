@@ -46,7 +46,7 @@ export function SocialMediaManager() {
   const [accounts, setAccounts] = useState<SocialMediaAccount[]>([]);
   const [availablePosts, setAvailablePosts] = useState<SocialMediaPost[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'create' | 'available' | 'planner' | 'suggestions' | 'accounts' | 'brand-voice'>('create');
+  const [activeTab, setActiveTab] = useState<'create' | 'available' | 'planner' | 'suggestions' | 'accounts' | 'brand-voice' | 'saved-posts'>('create');
   const [showMediaSelector, setShowMediaSelector] = useState(false);
   const [connectingPlatform, setConnectingPlatform] = useState('');
   const [testingPlatform, setTestingPlatform] = useState('');
@@ -569,16 +569,29 @@ export function SocialMediaManager() {
           >
             Accounts ({accounts.filter(a => a.is_active).length})
           </button>
-          <button
-            onClick={() => setActiveTab('brand-voice')}
-            className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'brand-voice'
-                ? 'border-orange-500 text-orange-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Brand Voice
-          </button>
+          {isAdmin ? (
+            <button
+              onClick={() => setActiveTab('saved-posts')}
+              className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === 'saved-posts'
+                  ? 'border-orange-500 text-orange-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Opgeslagen Posts ({posts.length})
+            </button>
+          ) : (
+            <button
+              onClick={() => setActiveTab('brand-voice')}
+              className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === 'brand-voice'
+                  ? 'border-orange-500 text-orange-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Brand Voice
+            </button>
+          )}
         </div>
       </div>
 
@@ -1303,6 +1316,83 @@ export function SocialMediaManager() {
                 <li>Je kunt accounts op elk moment uitschakelen</li>
                 <li>API keys vind je in de developer sectie van elk platform</li>
               </ul>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'saved-posts' && isAdmin && (
+          <div className="max-w-6xl mx-auto">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold mb-4">Opgeslagen Posts voor Brands/Agents</h3>
+              <p className="text-gray-600 mb-6">
+                Beheer posts die beschikbaar zijn voor brands en agents
+              </p>
+
+              {posts.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Share2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Nog geen opgeslagen posts</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {posts.map((post) => (
+                    <div key={post.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <p className="text-gray-900 whitespace-pre-wrap line-clamp-3">{post.content}</p>
+                          <p className="text-xs text-gray-500 mt-2">
+                            {new Date(post.created_at).toLocaleDateString('nl-NL', { 
+                              day: 'numeric', 
+                              month: 'long', 
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleDeletePost(post.id)}
+                          className="ml-4 p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center space-x-4 pt-3 border-t border-gray-200">
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={post.enabled_for_brands || false}
+                            onChange={() => toggleBrandAvailability(post.id, post.enabled_for_brands || false)}
+                            className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                          />
+                          <span className="text-sm text-gray-700">Beschikbaar voor Brands</span>
+                        </label>
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={post.enabled_for_agents || false}
+                            onChange={() => {
+                              // Toggle enabled_for_agents
+                              db.supabase
+                                ?.from('social_media_posts')
+                                .update({ enabled_for_agents: !post.enabled_for_agents })
+                                .eq('id', post.id)
+                                .then(() => {
+                                  setSuccess('Post bijgewerkt!');
+                                  loadPosts();
+                                })
+                                .catch((err) => setError('Fout: ' + err.message));
+                            }}
+                            className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                          />
+                          <span className="text-sm text-gray-700">Beschikbaar voor Agents</span>
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
