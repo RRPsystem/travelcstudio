@@ -95,8 +95,11 @@ function mapTcDataToOfferte(tc: any): TcImportResult {
     const name = hotelData.name || h.name || 'Hotel';
     const nights = h.nights || hotelData.nights || 0;
     const stars = parseStars(hotelData.category || h.category);
-    const images = hotelData.images || h.images || [];
-    const firstImage = typeof images[0] === 'string' ? images[0] : images[0]?.url || '';
+    const rawImages = hotelData.images || h.images || [];
+    const imageUrls: string[] = rawImages
+      .map((img: any) => typeof img === 'string' ? img : img?.url || '')
+      .filter((url: string) => url);
+    const firstImage = imageUrls[0] || '';
 
     items.push({
       id: crypto.randomUUID(),
@@ -105,6 +108,7 @@ function mapTcDataToOfferte(tc: any): TcImportResult {
       hotel_name: name,
       description: stripHtml(hotelData.shortDescription || hotelData.description || h.description || ''),
       image_url: firstImage,
+      images: imageUrls.slice(0, 5),
       location: hotelData.address || h.address || '',
       nights,
       star_rating: stars,

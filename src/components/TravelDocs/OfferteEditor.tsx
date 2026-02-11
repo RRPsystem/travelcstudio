@@ -33,6 +33,7 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
   const [travelCompositorId, setTravelCompositorId] = useState(offerte?.travel_compositor_id || '');
   const [numberOfTravelers, setNumberOfTravelers] = useState(offerte?.number_of_travelers || 2);
   const [currency] = useState(offerte?.currency || 'EUR');
+  const [priceDisplay, setPriceDisplay] = useState<'total' | 'per_person' | 'both' | 'hidden'>(offerte?.price_display || 'both');
   const [validUntil, setValidUntil] = useState(offerte?.valid_until || '');
   const [internalNotes, setInternalNotes] = useState(offerte?.internal_notes || '');
   const [destinations, setDestinations] = useState<OfferteDestination[]>(offerte?.destinations || []);
@@ -144,6 +145,7 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
       price_per_person: pricePerPerson,
       number_of_travelers: numberOfTravelers,
       currency,
+      price_display: priceDisplay,
       status: offerte?.status || 'draft',
       valid_until: validUntil || undefined,
       internal_notes: internalNotes || undefined,
@@ -262,6 +264,15 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Aantal reizigers</label>
               <input type="number" value={numberOfTravelers} onChange={e => setNumberOfTravelers(parseInt(e.target.value) || 1)} min={1} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Prijsweergave</label>
+              <select value={priceDisplay} onChange={e => setPriceDisplay(e.target.value as any)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none">
+                <option value="both">Totaal + per persoon</option>
+                <option value="total">Alleen totaalprijs</option>
+                <option value="per_person">Alleen prijs p.p.</option>
+                <option value="hidden">Prijzen verbergen</option>
+              </select>
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-medium text-gray-500 mb-1">Importeer vanuit Travel Compositor</label>
@@ -420,16 +431,35 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
             {/* Right side - price summary card */}
             <div className="w-1/2 p-10 flex items-end justify-end">
               <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10 min-w-[280px]">
-                <div className="text-sm text-white/60 mb-1">Vanaf</div>
-                <div className="text-3xl font-bold text-white mb-1">
-                  € {pricePerPerson.toLocaleString('nl-NL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                </div>
-                <div className="text-sm text-white/60 mb-4">per persoon</div>
+                {priceDisplay !== 'hidden' && (
+                  <>
+                    {(priceDisplay === 'per_person' || priceDisplay === 'both') && (
+                      <>
+                        <div className="text-sm text-white/60 mb-1">Vanaf</div>
+                        <div className="text-3xl font-bold text-white mb-1">
+                          € {pricePerPerson.toLocaleString('nl-NL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        </div>
+                        <div className="text-sm text-white/60 mb-4">per persoon</div>
+                      </>
+                    )}
+                    {priceDisplay === 'total' && (
+                      <>
+                        <div className="text-sm text-white/60 mb-1">Totaalprijs</div>
+                        <div className="text-3xl font-bold text-white mb-1">
+                          € {totalPrice.toLocaleString('nl-NL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        </div>
+                        <div className="text-sm text-white/60 mb-4">{numberOfTravelers} reizigers</div>
+                      </>
+                    )}
+                  </>
+                )}
                 <div className="border-t border-white/10 pt-3 space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-white/60">Totaal ({numberOfTravelers} pers.)</span>
-                    <span className="text-white font-medium">€ {totalPrice.toLocaleString('nl-NL', { minimumFractionDigits: 2 })}</span>
-                  </div>
+                  {priceDisplay !== 'hidden' && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white/60">Totaal ({numberOfTravelers} pers.)</span>
+                      <span className="text-white font-medium">€ {totalPrice.toLocaleString('nl-NL', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm">
                     <span className="text-white/60">Items</span>
                     <span className="text-white/80">{items.length}</span>
@@ -520,11 +550,20 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
                           )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-4">
-                          {item.price !== undefined && item.price > 0 && (
-                            <span className="text-sm font-semibold text-gray-900 flex items-center gap-0.5">
-                              <Euro size={12} className="text-gray-400" />
-                              {item.price.toLocaleString('nl-NL', { minimumFractionDigits: 2 })}
-                            </span>
+                          {priceDisplay !== 'hidden' && !item.price_hidden && item.price !== undefined && item.price > 0 && (
+                            <div className="text-right">
+                              {(priceDisplay === 'total' || priceDisplay === 'both') && (
+                                <span className="text-sm font-semibold text-gray-900 flex items-center gap-0.5">
+                                  <Euro size={12} className="text-gray-400" />
+                                  {item.price.toLocaleString('nl-NL', { minimumFractionDigits: 2 })}
+                                </span>
+                              )}
+                              {(priceDisplay === 'per_person' || priceDisplay === 'both') && numberOfTravelers > 0 && (
+                                <span className="text-xs text-gray-500">
+                                  {priceDisplay === 'both' ? '' : '€ '}{(item.price / numberOfTravelers).toLocaleString('nl-NL', { minimumFractionDigits: 2 })} p.p.
+                                </span>
+                              )}
+                            </div>
                           )}
                           {item.star_rating && (
                             <div className="flex items-center gap-0.5">
@@ -556,12 +595,25 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
                     </div>
                   </div>
 
-                  {/* Image strip */}
-                  {item.image_url && (
+                  {/* Photo grid for hotels with multiple images */}
+                  {item.images && item.images.length > 1 ? (
                     <div className="px-4 pb-3 ml-14">
-                      <img src={item.image_url} alt="" className="w-full h-24 object-cover rounded-lg" />
+                      <div className="grid grid-cols-3 gap-1.5 h-36">
+                        <div className="col-span-2 row-span-2">
+                          <img src={item.images[0]} alt="" className="w-full h-full object-cover rounded-lg" />
+                        </div>
+                        {item.images.slice(1, 5).map((img, i) => (
+                          <div key={i} className="relative">
+                            <img src={img} alt="" className="w-full h-full object-cover rounded-lg" style={{ height: '100%' }} />
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  )}
+                  ) : item.image_url ? (
+                    <div className="px-4 pb-3 ml-14">
+                      <img src={item.image_url} alt="" className="w-full h-32 object-cover rounded-lg" />
+                    </div>
+                  ) : null}
                 </div>
 
                 {/* Add button between items */}
@@ -602,11 +654,11 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
           )}
 
           {/* Price summary */}
-          {items.length > 0 && (
+          {items.length > 0 && priceDisplay !== 'hidden' && (
             <div className="mt-8 bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Prijsoverzicht</h3>
               <div className="space-y-2">
-                {items.filter(i => i.price && i.price > 0).map(item => {
+                {items.filter(i => !i.price_hidden && i.price && i.price > 0).map(item => {
                   const config = getItemConfig(item.type);
                   return (
                     <div key={item.id} className="flex items-center justify-between py-2">
@@ -616,19 +668,30 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
                         </div>
                         <span className="text-sm text-gray-700">{item.title}</span>
                       </div>
-                      <span className="text-sm font-medium text-gray-900">€ {item.price!.toLocaleString('nl-NL', { minimumFractionDigits: 2 })}</span>
+                      <div className="text-right">
+                        {(priceDisplay === 'total' || priceDisplay === 'both') && (
+                          <span className="text-sm font-medium text-gray-900">€ {item.price!.toLocaleString('nl-NL', { minimumFractionDigits: 2 })}</span>
+                        )}
+                        {(priceDisplay === 'per_person' || priceDisplay === 'both') && numberOfTravelers > 0 && (
+                          <div className="text-xs text-gray-500">€ {(item.price! / numberOfTravelers).toLocaleString('nl-NL', { minimumFractionDigits: 2 })} p.p.</div>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
                 <div className="border-t border-gray-200 pt-3 mt-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-gray-900">Totaal</span>
-                    <span className="text-xl font-bold text-gray-900">€ {totalPrice.toLocaleString('nl-NL', { minimumFractionDigits: 2 })}</span>
-                  </div>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-sm text-gray-500">Per persoon ({numberOfTravelers} reizigers)</span>
-                    <span className="text-sm font-medium text-orange-600">€ {pricePerPerson.toLocaleString('nl-NL', { minimumFractionDigits: 2 })}</span>
-                  </div>
+                  {(priceDisplay === 'total' || priceDisplay === 'both') && (
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-gray-900">Totaal</span>
+                      <span className="text-xl font-bold text-gray-900">€ {totalPrice.toLocaleString('nl-NL', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
+                  {(priceDisplay === 'per_person' || priceDisplay === 'both') && (
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-sm text-gray-500">Per persoon ({numberOfTravelers} reizigers)</span>
+                      <span className="text-sm font-medium text-orange-600">€ {pricePerPerson.toLocaleString('nl-NL', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

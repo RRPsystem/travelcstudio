@@ -17,6 +17,8 @@ export interface OfferteItem {
   supplier?: string;
   booking_reference?: string;
   details?: Record<string, any>;
+  images?: string[]; // Multiple images for photo grid
+  price_hidden?: boolean; // Hide price for this item
   // Flight specific
   departure_airport?: string;
   arrival_airport?: string;
@@ -63,6 +65,7 @@ export interface Offerte {
   price_per_person?: number;
   number_of_travelers?: number;
   currency: string;
+  price_display: 'total' | 'per_person' | 'both' | 'hidden';
   // Status
   status: 'draft' | 'sent' | 'viewed' | 'accepted' | 'revised' | 'expired';
   sent_at?: string;
