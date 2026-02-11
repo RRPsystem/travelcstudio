@@ -45,6 +45,7 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [showMediaSelector, setShowMediaSelector] = useState(false);
   const [mediaSelectorMode, setMediaSelectorMode] = useState<'photo' | 'video'>('photo');
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [tcImporting, setTcImporting] = useState(false);
@@ -548,7 +549,17 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
                           <h4 className="font-semibold text-gray-900 mt-0.5 truncate">{item.title}</h4>
                           <p className="text-sm text-gray-500 truncate">{formatItemSubtitle(item)}</p>
                           {item.description && (
-                            <p className="text-xs text-gray-400 mt-1 line-clamp-2">{item.description}</p>
+                            <div className="mt-1">
+                              <p className={`text-xs text-gray-400 ${expandedItems.has(item.id) ? '' : 'line-clamp-2'}`}>{item.description}</p>
+                              {item.description.length > 120 && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setExpandedItems(prev => { const next = new Set(prev); next.has(item.id) ? next.delete(item.id) : next.add(item.id); return next; }); }}
+                                  className="text-xs text-blue-500 hover:text-blue-700 mt-0.5 font-medium"
+                                >
+                                  {expandedItems.has(item.id) ? 'Minder tonen' : 'Lees verder...'}
+                                </button>
+                              )}
+                            </div>
                           )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-4">
