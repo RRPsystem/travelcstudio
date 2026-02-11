@@ -82,7 +82,10 @@ export function SocialMediaManager() {
   }, [effectiveBrandId, isAdmin]);
 
   const loadPosts = async () => {
-    if (!effectiveBrandId) return;
+    if (!effectiveBrandId) {
+      console.log('[loadPosts] No effectiveBrandId, skipping load');
+      return;
+    }
 
     setLoading(true);
     try {
