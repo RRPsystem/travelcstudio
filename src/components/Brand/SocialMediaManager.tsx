@@ -387,6 +387,28 @@ export function SocialMediaManager() {
     }
   };
 
+  const handleUsePost = async (post: SocialMediaPost) => {
+    try {
+      // Copy the post content to the form
+      setFormData({
+        aiPrompt: '',
+        content: post.content,
+        platforms: post.platforms || [],
+        scheduled_for: '',
+        media_urls: post.media_urls || [],
+        enabled_for_brands: false,
+        enabled_for_agents: false,
+      });
+      
+      // Switch to create tab
+      setActiveTab('create');
+      setSuccess('Post geladen! Je kunt deze nu aanpassen en publiceren op je kanalen.');
+    } catch (err: any) {
+      console.error('Error using post:', err);
+      setError('Fout bij laden van post: ' + err.message);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       aiPrompt: '',
@@ -818,19 +840,11 @@ export function SocialMediaManager() {
                           )}
                         </div>
                         <button
-                          onClick={() => {
-                            setFormData(prev => ({
-                              ...prev,
-                              content: post.content,
-                              platforms: post.platforms || [],
-                              media_urls: post.media_urls || []
-                            }));
-                            setActiveTab('create');
-                            setSuccess('Post gekopieerd! Je kunt hem nu aanpassen en publiceren.');
-                          }}
-                          className="ml-4 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm"
+                          onClick={() => handleUsePost(post)}
+                          className="ml-4 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm flex items-center space-x-2"
                         >
-                          Activeren
+                          <Share2 className="w-4 h-4" />
+                          <span>Gebruik deze post</span>
                         </button>
                       </div>
                     </div>
