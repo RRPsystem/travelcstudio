@@ -26,15 +26,16 @@ export interface TcImportResult {
  * Fetch a travel from Travel Compositor API via the import-travel-compositor Edge Function
  * and map it to Offerte fields (items, destinations, meta).
  */
-export async function importTcTravel(travelId: string, micrositeId: string): Promise<TcImportResult> {
+export async function importTcTravel(travelId: string, micrositeId?: string): Promise<TcImportResult> {
   if (!supabase) throw new Error('Supabase niet geconfigureerd');
   if (!travelId.trim()) throw new Error('Voer een Travel Compositor ID in');
 
-  console.log('[TC Import] Fetching travel', travelId, 'from', micrositeId);
+  console.log('[TC Import] Fetching travel', travelId, micrositeId ? `from ${micrositeId}` : '(auto-detect)');
 
-  const response = await supabase.functions.invoke('import-travel-compositor', {
-    body: { travelId: travelId.trim(), micrositeId },
-  });
+  const body: Record<string, string> = { travelId: travelId.trim() };
+  if (micrositeId) body.micrositeId = micrositeId;
+
+  const response = await supabase.functions.invoke('import-travel-compositor', { body });
 
   const { data, error } = response;
   console.log('[TC Import] Response:', { data, error });

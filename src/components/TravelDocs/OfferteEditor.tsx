@@ -5,7 +5,7 @@ import {
   ChevronDown, ChevronUp, Image, Video, FileDown, Star, Users, Calendar, Euro,
   Download, Loader2, AlertCircle, CheckCircle2
 } from 'lucide-react';
-import { importTcTravel, TC_MICROSITES } from '../../lib/tcImportToOfferte';
+import { importTcTravel } from '../../lib/tcImportToOfferte';
 import { Offerte, OfferteItem, OfferteItemType, OfferteDestination, OFFERTE_ITEM_TYPES } from '../../types/offerte';
 import { OfferteItemTypeSelector } from './OfferteItemTypeSelector';
 import { OfferteItemPanel } from './OfferteItemPanel';
@@ -45,7 +45,6 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
   const [showMediaSelector, setShowMediaSelector] = useState(false);
   const [mediaSelectorMode, setMediaSelectorMode] = useState<'photo' | 'video'>('photo');
   const [tcImporting, setTcImporting] = useState(false);
-  const [tcMicrosite, setTcMicrosite] = useState('rondreis-planner');
   const [tcImportError, setTcImportError] = useState<string | null>(null);
   const [tcImportSuccess, setTcImportSuccess] = useState<string | null>(null);
 
@@ -57,7 +56,7 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
     setTcImportError(null);
     setTcImportSuccess(null);
     try {
-      const result = await importTcTravel(travelCompositorId, tcMicrosite);
+      const result = await importTcTravel(travelCompositorId);
       // Fill offerte fields with imported data
       if (result.title) setTitle(result.title);
       if (result.subtitle) setSubtitle(result.subtitle);
@@ -267,20 +266,11 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
             <div className="col-span-2">
               <label className="block text-xs font-medium text-gray-500 mb-1">Importeer vanuit Travel Compositor</label>
               <div className="flex items-center gap-2">
-                <select
-                  value={tcMicrosite}
-                  onChange={e => setTcMicrosite(e.target.value)}
-                  className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none"
-                >
-                  {TC_MICROSITES.map(ms => (
-                    <option key={ms.id} value={ms.id}>{ms.emoji} {ms.name}</option>
-                  ))}
-                </select>
                 <input
                   type="text"
                   value={travelCompositorId}
                   onChange={e => { setTravelCompositorId(e.target.value); setTcImportError(null); setTcImportSuccess(null); }}
-                  placeholder="Reis ID (bijv. 12345)"
+                  placeholder="Reis ID (bijv. 45963771)"
                   className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none"
                   onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleTcImport(); } }}
                 />

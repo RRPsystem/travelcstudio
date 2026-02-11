@@ -201,19 +201,57 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log(`[Import TC] Fetching travel ${travelId} from ${microsite}`);
+    // Build list of microsites to try: requested one first, then all others
+    const allMicrosites = getConfiguredMicrosites();
+    const fallbackMsId = Deno.env.get("TRAVEL_COMPOSITOR_MICROSITE_ID");
+    
+    // Collect unique microsite IDs to try
+    const micrositesToTry: string[] = [];
+    // 1. The explicitly requested microsite
+    if (microsite) micrositesToTry.push(microsite);
+    // 2. All numbered microsites
+    for (const ms of allMicrosites) {
+      if (!micrositesToTry.includes(ms.id)) micrositesToTry.push(ms.id);
+    }
+    // 3. Fallback microsite
+    if (fallbackMsId && !micrositesToTry.includes(fallbackMsId)) {
+      micrositesToTry.push(fallbackMsId);
+    }
 
-    // Fetch info and details in parallel (like RBS-plugin does)
-    const [travelInfo, travelDetails] = await Promise.all([
-      tcApiFetch(microsite, `/info/${travelId}?lang=nl`),
-      tcApiFetch(microsite, `/${travelId}?lang=nl`),
-    ]);
+    console.log(`[Import TC] Will try ${micrositesToTry.length} microsites for travel ${travelId}: ${micrositesToTry.join(', ')}`);
+
+    let travelInfo = null;
+    let travelDetails = null;
+    let foundMicrosite = '';
+
+    for (const msId of micrositesToTry) {
+      try {
+        console.log(`[Import TC] Trying microsite: ${msId}`);
+        const [info, details] = await Promise.all([
+          tcApiFetch(msId, `/info/${travelId}?lang=nl`),
+          tcApiFetch(msId, `/${travelId}?lang=nl`),
+        ]);
+
+        if (info || details) {
+          travelInfo = info;
+          travelDetails = details;
+          foundMicrosite = msId;
+          console.log(`[Import TC] ✓ Found travel ${travelId} at microsite: ${msId}`);
+          break;
+        }
+        console.log(`[Import TC] ✗ Not found at ${msId}`);
+      } catch (err: any) {
+        console.log(`[Import TC] ✗ Error at ${msId}: ${err.message}`);
+        // Continue to next microsite
+      }
+    }
 
     if (!travelInfo && !travelDetails) {
       return new Response(
         JSON.stringify({
           error: `Reis ${travelId} niet gevonden`,
-          message: `Reis ${travelId} kon niet worden opgehaald. Niet gevonden als idea of package in Travel Compositor.`,
+          message: `Reis ${travelId} kon niet worden opgehaald bij ${micrositesToTry.length} microsites. Controleer het reis-ID.`,
+          triedMicrosites: micrositesToTry,
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -224,7 +262,22 @@ Deno.serve(async (req: Request) => {
     const detail = travelDetails || {};
 
     const combinedData = buildTravelData(info, detail, travelId);
-    return await processAndReturnTravel(combinedData, detail, travelId, skipGeocode);
+    const response = await processAndReturnTravel(combinedData, detail, travelId, skipGeocode);
+    
+    // Inject the found microsite into the response for reference
+    if (foundMicrosite) {
+      try {
+        const respBody = await response.json();
+        respBody.sourceMicrosite = foundMicrosite;
+        return new Response(
+          JSON.stringify(respBody),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (_) {
+        return response;
+      }
+    }
+    return response;
 
   } catch (error: any) {
     console.error("Import error:", error);
