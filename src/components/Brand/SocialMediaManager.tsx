@@ -82,21 +82,22 @@ export function SocialMediaManager() {
   }, [effectiveBrandId, isAdmin]);
 
   const loadPosts = async () => {
-    if (!effectiveBrandId) {
-      console.log('[loadPosts] No effectiveBrandId, skipping load');
-      return;
-    }
+    // For Admin without effectiveBrandId, load from Admin Workspace
+    const brandIdToLoad = effectiveBrandId || '00000000-0000-0000-0000-000000000999';
+    
+    console.log('[loadPosts] Loading posts for brand:', brandIdToLoad);
 
     setLoading(true);
     try {
       const { data, error } = await db.supabase
         .from('social_media_posts')
         .select('*')
-        .eq('brand_id', effectiveBrandId)
+        .eq('brand_id', brandIdToLoad)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       setPosts(data || []);
+      console.log('[loadPosts] Loaded', data?.length || 0, 'posts');
     } catch (err: any) {
       console.error('Error loading posts:', err);
       setError('Fout bij laden van posts: ' + err.message);
