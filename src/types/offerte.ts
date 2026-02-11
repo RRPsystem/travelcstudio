@@ -42,6 +42,14 @@ export interface OfferteItem {
   sort_order: number;
 }
 
+export interface ExtraCost {
+  id: string;
+  label: string;
+  amount: number;
+  per_person?: boolean; // true = amount is per person, false = total amount
+  apply_to_all?: boolean; // true = apply to all future offertes for this brand
+}
+
 export interface Offerte {
   id: string;
   brand_id?: string;
@@ -61,6 +69,8 @@ export interface Offerte {
   destinations?: OfferteDestination[];
   // Items
   items: OfferteItem[];
+  // Extra costs (admin fees, SGR, etc.)
+  extra_costs?: ExtraCost[];
   // Pricing
   total_price?: number;
   price_per_person?: number;

@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS travel_offertes (
   
   destinations JSONB DEFAULT '[]'::jsonb,
   items JSONB DEFAULT '[]'::jsonb,
+  extra_costs JSONB DEFAULT '[]'::jsonb,
   
   total_price NUMERIC(10,2) DEFAULT 0,
   price_per_person NUMERIC(10,2) DEFAULT 0,

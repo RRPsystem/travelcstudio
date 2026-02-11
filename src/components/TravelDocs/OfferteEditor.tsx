@@ -6,7 +6,7 @@ import {
   Download, Loader2, AlertCircle, CheckCircle2, ExternalLink
 } from 'lucide-react';
 import { importTcTravel } from '../../lib/tcImportToOfferte';
-import { Offerte, OfferteItem, OfferteItemType, OfferteDestination, OFFERTE_ITEM_TYPES } from '../../types/offerte';
+import { Offerte, OfferteItem, OfferteItemType, OfferteDestination, ExtraCost, OFFERTE_ITEM_TYPES } from '../../types/offerte';
 import { OfferteItemTypeSelector } from './OfferteItemTypeSelector';
 import { OfferteItemPanel } from './OfferteItemPanel';
 import { SlidingMediaSelector } from '../shared/SlidingMediaSelector';
@@ -33,6 +33,79 @@ function isYouTubeUrl(url: string): boolean {
 const iconMap: Record<string, React.ComponentType<any>> = {
   Plane, Car, Building2, Compass, CarFront, Ship, Train, Shield, StickyNote,
 };
+
+// Inline form for adding/editing extra costs
+function ExtraCostForm({ initial, onSave }: { initial: ExtraCost | null; onSave: (ec: ExtraCost) => void }) {
+  const [label, setLabel] = useState(initial?.label || '');
+  const [amount, setAmount] = useState(initial?.amount?.toString() || '');
+  const [perPerson, setPerPerson] = useState(initial?.per_person || false);
+  const [applyToAll, setApplyToAll] = useState(initial?.apply_to_all || false);
+
+  const handleSubmit = () => {
+    if (!label.trim() || !amount) return;
+    onSave({
+      id: initial?.id || crypto.randomUUID(),
+      label: label.trim(),
+      amount: parseFloat(amount) || 0,
+      per_person: perPerson,
+      apply_to_all: applyToAll,
+    });
+  };
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Omschrijving *</label>
+        <input
+          type="text"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="bijv. Administratiekosten, SGR bijdrage..."
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Bedrag (€) *</label>
+        <input
+          type="number"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder="0.00"
+          step="0.01"
+          min="0"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+        />
+      </div>
+      <div className="flex items-center gap-3">
+        <label className="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" checked={perPerson} onChange={(e) => setPerPerson(e.target.checked)} className="sr-only peer" />
+          <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500"></div>
+        </label>
+        <span className="text-sm text-gray-700">Per persoon</span>
+      </div>
+      <p className="text-xs text-gray-400 -mt-3 ml-12">Aan = bedrag wordt vermenigvuldigd met aantal reizigers</p>
+      <div className="flex items-center gap-3 bg-orange-50 rounded-lg p-3 border border-orange-100">
+        <input
+          type="checkbox"
+          checked={applyToAll}
+          onChange={(e) => setApplyToAll(e.target.checked)}
+          className="w-4 h-4 text-orange-500 border-gray-300 rounded focus:ring-orange-500"
+        />
+        <div>
+          <span className="text-sm font-medium text-gray-700">Bij alle reizen toepassen</span>
+          <p className="text-xs text-gray-500">Deze kosten worden automatisch toegevoegd aan nieuwe offertes</p>
+        </div>
+      </div>
+      <button
+        onClick={handleSubmit}
+        disabled={!label.trim() || !amount}
+        className="w-full py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+      >
+        {initial ? 'Opslaan' : 'Toevoegen'}
+      </button>
+    </div>
+  );
+}
 
 interface Props {
   offerte?: Offerte;
@@ -72,8 +145,12 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
   const [tcImportError, setTcImportError] = useState<string | null>(null);
   const [tcImportSuccess, setTcImportSuccess] = useState<string | null>(null);
   const [sendSuccess, setSendSuccess] = useState(false);
+  const [extraCosts, setExtraCosts] = useState<ExtraCost[]>(offerte?.extra_costs || []);
+  const [showExtraCostPanel, setShowExtraCostPanel] = useState(false);
+  const [editingExtraCost, setEditingExtraCost] = useState<ExtraCost | null>(null);
 
-  const totalPrice = items.reduce((sum, item) => sum + (item.price || 0), 0);
+  const extraCostsTotal = extraCosts.reduce((sum, ec) => sum + (ec.per_person ? ec.amount * numberOfTravelers : ec.amount), 0);
+  const totalPrice = items.reduce((sum, item) => sum + (item.price || 0), 0) + extraCostsTotal;
 
   const handleTcImport = async () => {
     if (!travelCompositorId.trim()) return;
@@ -165,6 +242,7 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
       hero_video_url: heroVideo || undefined,
       destinations,
       items,
+      extra_costs: extraCosts.length > 0 ? extraCosts : undefined,
       total_price: totalPrice,
       price_per_person: pricePerPerson,
       number_of_travelers: numberOfTravelers,
@@ -893,7 +971,60 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
                     </div>
                   );
                 })}
-                <div className="border-t border-gray-200 pt-3 mt-3">
+
+                {/* Extra costs */}
+                {extraCosts.length > 0 && (
+                  <div className="border-t border-gray-100 pt-2 mt-2">
+                    {extraCosts.map(ec => {
+                      const ecTotal = ec.per_person ? ec.amount * numberOfTravelers : ec.amount;
+                      return (
+                        <div key={ec.id} className="flex items-center justify-between py-1.5 group">
+                          <div className="flex items-center gap-3">
+                            <div className="w-6 h-6 rounded-md flex items-center justify-center bg-gray-100">
+                              <Plus size={12} className="text-gray-400" />
+                            </div>
+                            <span className="text-sm text-gray-600">{ec.label}</span>
+                            {ec.per_person && <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">p.p.</span>}
+                            {ec.apply_to_all && <span className="text-[10px] text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded">alle reizen</span>}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-right">
+                              {(priceDisplay === 'total' || priceDisplay === 'both') && (
+                                <span className="text-sm font-medium text-gray-900">€ {ecTotal.toLocaleString('nl-NL', { minimumFractionDigits: 2 })}</span>
+                              )}
+                              {(priceDisplay === 'per_person' || priceDisplay === 'both') && (
+                                <div className="text-xs text-gray-500">€ {ec.amount.toLocaleString('nl-NL', { minimumFractionDigits: 2 })} p.p.</div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => { setEditingExtraCost(ec); setShowExtraCostPanel(true); }}
+                              className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 p-1 transition-opacity"
+                            >
+                              <ChevronDown size={14} />
+                            </button>
+                            <button
+                              onClick={() => setExtraCosts(extraCosts.filter(c => c.id !== ec.id))}
+                              className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 p-1 transition-opacity"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Add extra cost button */}
+                <button
+                  onClick={() => { setEditingExtraCost(null); setShowExtraCostPanel(true); }}
+                  className="flex items-center gap-2 text-sm text-gray-500 hover:text-orange-600 py-2 transition-colors"
+                >
+                  <Plus size={14} />
+                  Extra kosten toevoegen
+                </button>
+
+                <div className="border-t border-gray-200 pt-3 mt-1">
                   {(priceDisplay === 'total' || priceDisplay === 'both') && (
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-gray-900">Totaal</span>
@@ -973,6 +1104,37 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
         }}
         title={mediaSelectorMode === 'photo' ? 'Kies Hero Foto' : 'Kies Hero Video'}
       />
+
+      {/* Extra Cost Sliding Panel */}
+      {showExtraCostPanel && (
+        <>
+          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setShowExtraCostPanel(false)} />
+          <div className="fixed top-0 right-0 h-full w-[400px] bg-white shadow-2xl z-50 flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {editingExtraCost ? 'Extra kosten bewerken' : 'Extra kosten toevoegen'}
+              </h2>
+              <button onClick={() => setShowExtraCostPanel(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 p-6 overflow-y-auto">
+              <ExtraCostForm
+                initial={editingExtraCost}
+                onSave={(ec) => {
+                  if (editingExtraCost) {
+                    setExtraCosts(extraCosts.map(c => c.id === ec.id ? ec : c));
+                  } else {
+                    setExtraCosts([...extraCosts, ec]);
+                  }
+                  setShowExtraCostPanel(false);
+                  setEditingExtraCost(null);
+                }}
+              />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import {
   ChevronDown, Star, Calendar, Clock, ArrowLeft, ArrowRight, X
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { Offerte, OfferteItem, OfferteDestination, OFFERTE_ITEM_TYPES } from '../../types/offerte';
+import { Offerte, OfferteItem, OfferteDestination, ExtraCost, OFFERTE_ITEM_TYPES } from '../../types/offerte';
 import { RouteMap } from '../shared/RouteMap';
 
 function getYouTubeEmbedUrl(url: string): string | null {
@@ -174,15 +174,17 @@ export function OfferteViewer({ offerteId }: Props) {
 
   const items = (offerte.items || []).sort((a, b) => a.sort_order - b.sort_order);
   const destinations: OfferteDestination[] = offerte.destinations || [];
+  const extraCosts: ExtraCost[] = offerte.extra_costs || [];
   const priceDisplay = offerte.price_display || 'both';
-  const totalPrice = offerte.total_price || items.reduce((sum, item) => sum + (item.price || 0), 0);
   const numberOfTravelers = offerte.number_of_travelers || 2;
+  const extraCostsTotal = extraCosts.reduce((sum, ec) => sum + (ec.per_person ? ec.amount * numberOfTravelers : ec.amount), 0);
+  const totalPrice = offerte.total_price || (items.reduce((sum, item) => sum + (item.price || 0), 0) + extraCostsTotal);
   const pricePerPerson = offerte.price_per_person || (numberOfTravelers ? Math.round(totalPrice / numberOfTravelers) : totalPrice);
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* HERO */}
-      <div className="relative h-[50vh] min-h-[400px] overflow-hidden">
+      <div className="relative w-full" style={{ minHeight: '70vh' }}>
         {/* Background media */}
         {offerte.hero_video_url && isYouTubeUrl(offerte.hero_video_url) ? (
           <iframe
@@ -200,34 +202,37 @@ export function OfferteViewer({ offerteId }: Props) {
           <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900" />
         )}
 
-        {/* Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+        {/* Left-to-right overlay (matches editor) */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent" />
 
-        {/* Content */}
-        <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12 z-10">
-          <div className="max-w-4xl mx-auto flex items-end justify-between">
-            <div>
-              {offerte.subtitle && (
-                <p className="text-white/70 text-sm mb-2">{offerte.subtitle}</p>
-              )}
-              <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">{offerte.title}</h1>
-              {offerte.intro_text && (
-                <p className="text-white/80 text-lg max-w-2xl leading-relaxed">{offerte.intro_text}</p>
-              )}
-              {destinations.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-4">
+        {/* Content: left text + right price card */}
+        <div className="relative z-10 flex h-full" style={{ minHeight: '70vh' }}>
+          {/* Left side - text content */}
+          <div className="w-1/2 p-8 md:p-10 flex flex-col justify-center">
+            {offerte.subtitle && (
+              <p className="text-sm font-medium text-orange-400 mb-3 tracking-wider uppercase">{offerte.subtitle}</p>
+            )}
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">{offerte.title}</h1>
+            {offerte.intro_text && (
+              <p className="text-base text-white/80 leading-relaxed mb-6 max-w-lg">{offerte.intro_text}</p>
+            )}
+            {destinations.length > 0 && (
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10 inline-block">
+                <div className="flex flex-wrap gap-2">
                   {destinations.map((dest, i) => (
-                    <div key={i} className="flex items-center gap-1.5">
-                      <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] flex items-center justify-center font-bold">{i + 1}</span>
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-full bg-orange-500 text-white text-xs flex items-center justify-center font-bold">{i + 1}</span>
                       <span className="text-sm text-white/80">{dest.name}</span>
-                      {i < destinations.length - 1 && <span className="text-white/30 ml-1">→</span>}
+                      {i < destinations.length - 1 && <span className="text-white/30">→</span>}
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+          </div>
 
-            {/* Price card */}
+          {/* Right side - price card */}
+          <div className="w-1/2 p-8 md:p-10 flex items-end justify-end">
             {priceDisplay !== 'hidden' && (
               <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10 min-w-[240px] hidden md:block">
                 {(priceDisplay === 'per_person' || priceDisplay === 'both') && (
@@ -236,7 +241,7 @@ export function OfferteViewer({ offerteId }: Props) {
                     <div className="text-3xl font-bold text-white mb-1">
                       € {pricePerPerson.toLocaleString('nl-NL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </div>
-                    <div className="text-sm text-white/60 mb-3">per persoon</div>
+                    <div className="text-sm text-white/60 mb-4">per persoon</div>
                   </>
                 )}
                 {priceDisplay === 'total' && (
@@ -245,7 +250,7 @@ export function OfferteViewer({ offerteId }: Props) {
                     <div className="text-3xl font-bold text-white mb-1">
                       € {totalPrice.toLocaleString('nl-NL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </div>
-                    <div className="text-sm text-white/60 mb-3">{offerte.number_of_travelers} reizigers</div>
+                    <div className="text-sm text-white/60 mb-4">{numberOfTravelers} reizigers</div>
                   </>
                 )}
                 <div className="border-t border-white/10 pt-2 space-y-1">
@@ -494,6 +499,26 @@ export function OfferteViewer({ offerteId }: Props) {
                   </div>
                 );
               })}
+              {extraCosts.length > 0 && (
+                <div className="border-t border-gray-100 pt-2 mt-2">
+                  {extraCosts.map(ec => {
+                    const ecTotal = ec.per_person ? ec.amount * numberOfTravelers : ec.amount;
+                    return (
+                      <div key={ec.id} className="flex items-center justify-between py-1.5">
+                        <span className="text-sm text-gray-600">{ec.label}</span>
+                        <div className="text-right">
+                          {(priceDisplay === 'total' || priceDisplay === 'both') && (
+                            <span className="text-sm font-medium text-gray-900">€ {ecTotal.toLocaleString('nl-NL', { minimumFractionDigits: 2 })}</span>
+                          )}
+                          {(priceDisplay === 'per_person' || priceDisplay === 'both') && (
+                            <div className="text-xs text-gray-500">€ {ec.amount.toLocaleString('nl-NL', { minimumFractionDigits: 2 })} p.p.</div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
               <div className="border-t border-gray-200 pt-3 mt-3">
                 {(priceDisplay === 'total' || priceDisplay === 'both') && (
                   <div className="flex items-center justify-between">
