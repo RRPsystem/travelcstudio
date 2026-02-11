@@ -101,7 +101,7 @@ Deno.serve(async (req: Request) => {
       let query = supabase
         .from("travelc_travels")
         .select(`
-          id, travel_compositor_id, title, slug, intro_text,
+          id, travel_compositor_id, title, slug, intro_text, description,
           number_of_nights, number_of_days, price_per_person,
           destinations, countries, hero_image, images,
           categories, continents,
