@@ -945,7 +945,33 @@ export function SocialMediaManager() {
                         }
                       );
                       if (!response.ok) throw new Error('Fout bij genereren planning');
-                      setSuccess('Planning gegenereerd!');
+                      
+                      const data = await response.json();
+                      const generatedPosts = JSON.parse(data.content);
+                      
+                      // Save each post to database
+                      const brandIdToUse = effectiveBrandId || '00000000-0000-0000-0000-000000000999';
+                      const today = new Date();
+                      
+                      for (let i = 0; i < generatedPosts.length; i++) {
+                        const post = generatedPosts[i];
+                        const scheduledDate = new Date(today);
+                        scheduledDate.setDate(today.getDate() + i);
+                        scheduledDate.setHours(parseInt(post.best_time?.split(':')[0] || '12'), 0, 0, 0);
+                        
+                        await db.supabase
+                          ?.from('social_media_posts')
+                          .insert({
+                            brand_id: brandIdToUse,
+                            created_by: user?.id,
+                            content: post.content,
+                            platforms: post.platforms || [],
+                            scheduled_for: scheduledDate.toISOString(),
+                            status: 'draft'
+                          });
+                      }
+                      
+                      setSuccess(`${generatedPosts.length} posts gegenereerd en opgeslagen!`);
                       await loadPosts();
                     } catch (err: any) {
                       setError('Fout bij genereren: ' + err.message);
