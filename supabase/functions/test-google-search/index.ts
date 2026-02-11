@@ -63,7 +63,6 @@ Deno.serve(async (req: Request) => {
 
     console.log('🔑 API Key info:', {
       keyLength: google_search_api_key.length,
-      keyPrefix: google_search_api_key.substring(0, 10) + '...',
       cseId: google_search_engine_id,
       cseIdLength: google_search_engine_id.length
     });

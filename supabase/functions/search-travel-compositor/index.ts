@@ -724,7 +724,7 @@ Deno.serve(async (req: Request) => {
                 tokenSub = payload.sub || "";
               }
             } catch {}
-            authResults.push({ micrositeId: msId, status: authResp.status, tokenSub, rawToken: authText });
+            authResults.push({ micrositeId: msId, status: authResp.status, tokenSub, hasToken: authText.includes('token') });
           } catch (e: any) {
             authResults.push({ micrositeId: msId, status: "ERROR", body: e.message });
           }
@@ -732,13 +732,19 @@ Deno.serve(async (req: Request) => {
 
         // Also try the booking quote with each successful token
         for (const ar of authResults) {
-          if (ar.status === 200 && ar.rawToken) {
+          if (ar.status === 200 && ar.hasToken) {
             try {
-              const authJson = JSON.parse(ar.rawToken);
-              if (authJson.token) {
+              // Re-authenticate to get a fresh token for the quote test
+              const reAuthResp = await fetch(`${TC_API_BASE}/authentication/authenticate`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password, micrositeId: ar.micrositeId }),
+              });
+              const reAuthJson = await reAuthResp.json();
+              if (reAuthJson.token) {
                 const quoteResp = await fetch(`${TC_API_BASE}/booking/accommodations/quote`, {
                   method: "POST",
-                  headers: { "Content-Type": "application/json", "auth-token": authJson.token },
+                  headers: { "Content-Type": "application/json", "auth-token": reAuthJson.token },
                   body: JSON.stringify({
                     checkIn: body.checkIn || "2026-07-13",
                     checkOut: body.checkOut || "2026-07-16",
@@ -812,7 +818,7 @@ Deno.serve(async (req: Request) => {
           JSON.stringify({
             debug: true,
             microsite: debugMs,
-            token: debugToken.substring(0, 30) + "...",
+            tokenLength: debugToken.length,
             requestBody: debugBody,
             domainResults,
           }),

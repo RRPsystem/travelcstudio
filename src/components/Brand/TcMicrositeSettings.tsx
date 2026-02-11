@@ -139,31 +139,31 @@ export function TcMicrositeSettings() {
     setTesting(ms.id);
     setError('');
     try {
-      const authUrl = 'https://online.travelcompositor.com/resources/authentication/authenticate';
-      const response = await fetch(authUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: ms.username,
-          password: ms.password,
-          micrositeId: ms.microsite_id,
-        }),
-      });
+      // First save any pending changes so the Edge Function reads the latest credentials
+      await handleUpdate(ms);
 
-      if (response.ok) {
-        // Update last_verified_at
-        if (supabase) {
-          await supabase
-            .from('tc_microsites')
-            .update({ last_verified_at: new Date().toISOString() })
-            .eq('id', ms.id);
+      // Call server-side Edge Function — credentials never leave the server
+      const { data: sessionData } = await supabase!.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL || 'https://huaaogdxxdcakxryecnw.supabase.co'}/functions/v1/test-tc-credentials`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ micrositeId: ms.id }),
         }
+      );
+
+      const result = await response.json();
+      if (result.success) {
         setMicrosites(prev => prev.map(m => m.id === ms.id ? { ...m, last_verified_at: new Date().toISOString() } : m));
         setSuccess(`✅ ${ms.name}: Verbinding succesvol!`);
       } else {
-        const errText = await response.text();
-        setError(`❌ ${ms.name}: Authenticatie mislukt (${response.status}). Controleer credentials.`);
-        console.error('TC auth failed:', errText);
+        setError(`❌ ${ms.name}: ${result.error || 'Authenticatie mislukt. Controleer credentials.'}`);
       }
     } catch (err: any) {
       setError(`❌ ${ms.name}: Verbindingsfout - ${err.message}`);

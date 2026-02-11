@@ -40,7 +40,6 @@ Deno.serve(async (req: Request) => {
 
     console.log('Testing Twilio account:', cleanAccountSid);
     console.log('Auth token length:', cleanAuthToken.length);
-    console.log('Auth token first 8 chars:', cleanAuthToken.substring(0, 8));
 
     const accountResponse = await fetch(accountUrl, {
       method: 'GET',
@@ -69,7 +68,6 @@ Deno.serve(async (req: Request) => {
           debug: {
             accountSid: cleanAccountSid.substring(0, 8) + '...',
             tokenLength: cleanAuthToken.length,
-            tokenStart: cleanAuthToken.substring(0, 4),
             statusCode: accountResponse.status,
             originalTokenLength: authToken?.length,
             hadWhitespace: authToken !== cleanAuthToken

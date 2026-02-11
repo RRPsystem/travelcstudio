@@ -30,7 +30,7 @@ async function verifyBearerToken(req: Request, supabaseClient: any, requiredScop
     (error as any).statusCode = 401;
     throw error;
   }
-  console.log("[VERIFY] Token received:", { length: token.length, first30: token.substring(0, 30) });
+  console.log("[VERIFY] Token received, length:", token.length);
 
   const jwtSecret = Deno.env.get("JWT_SECRET");
   if (!jwtSecret) {
@@ -38,7 +38,7 @@ async function verifyBearerToken(req: Request, supabaseClient: any, requiredScop
     (error as any).statusCode = 500;
     throw error;
   }
-  console.log("[VERIFY] Secret available:", { length: jwtSecret.length, first10: jwtSecret.substring(0, 10) });
+  console.log("[VERIFY] Secret available, length:", jwtSecret.length);
 
   const encoder = new TextEncoder();
   const secretKey = encoder.encode(jwtSecret);
