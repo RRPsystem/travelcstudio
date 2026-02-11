@@ -20,6 +20,8 @@ interface SocialMediaPost {
   created_at: string;
   updated_at: string;
   enabled_for_brands?: boolean;
+  enabled_for_agents?: boolean;
+  created_by?: string;
 }
 
 interface SocialMediaAccount {
@@ -56,6 +58,8 @@ export function SocialMediaManager() {
     platforms: [] as string[],
     scheduled_for: '',
     media_urls: [] as string[],
+    enabled_for_brands: false,
+    enabled_for_agents: false,
   });
 
   const [brandVoice, setBrandVoice] = useState<BrandVoiceSettings>({
@@ -301,6 +305,54 @@ export function SocialMediaManager() {
     }
   };
 
+  const handleSaveForBrands = async () => {
+    if (!formData.content.trim()) {
+      setError('Content is verplicht');
+      return;
+    }
+
+    if (!formData.enabled_for_brands && !formData.enabled_for_agents) {
+      setError('Selecteer minimaal Brands of Agents');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      // Admin saves to system brand
+      const SYSTEM_BRAND_ID = '00000000-0000-0000-0000-000000000999';
+      
+      const postData = {
+        brand_id: SYSTEM_BRAND_ID,
+        created_by: user?.id,
+        content: formData.content,
+        platforms: formData.platforms,
+        media_urls: formData.media_urls,
+        status: 'draft',
+        enabled_for_brands: formData.enabled_for_brands,
+        enabled_for_agents: formData.enabled_for_agents
+      };
+
+      const { error } = await db.supabase
+        .from('social_media_posts')
+        .insert(postData);
+
+      if (error) throw error;
+
+      setSuccess('Post opgeslagen en beschikbaar gemaakt voor ' + 
+        (formData.enabled_for_brands && formData.enabled_for_agents ? 'Brands en Agents' :
+         formData.enabled_for_brands ? 'Brands' : 'Agents'));
+      resetForm();
+      await loadPosts();
+    } catch (err: any) {
+      console.error('Error saving post for brands:', err);
+      setError('Fout bij opslaan: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDeletePost = async (postId: string) => {
     if (!confirm('Weet je zeker dat je deze post wilt verwijderen?')) return;
 
@@ -342,6 +394,8 @@ export function SocialMediaManager() {
       platforms: [],
       scheduled_for: '',
       media_urls: [],
+      enabled_for_brands: false,
+      enabled_for_agents: false,
     });
   };
 
@@ -593,22 +647,67 @@ export function SocialMediaManager() {
                 </div>
               </div>
 
+              {/* Admin-only: Enable for Brands/Agents */}
+              {isAdmin && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h4 className="text-sm font-semibold text-blue-900 mb-3">Beschikbaar maken voor:</h4>
+                  <div className="space-y-2">
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.enabled_for_brands}
+                        onChange={(e) => setFormData(prev => ({ ...prev, enabled_for_brands: e.target.checked }))}
+                        className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                      />
+                      <span className="text-sm text-gray-700">Brands (reisbureaus)</span>
+                    </label>
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.enabled_for_agents}
+                        onChange={(e) => setFormData(prev => ({ ...prev, enabled_for_agents: e.target.checked }))}
+                        className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                      />
+                      <span className="text-sm text-gray-700">Agents (individuele adviseurs)</span>
+                    </label>
+                  </div>
+                  <p className="text-xs text-blue-700 mt-2">
+                    Deze post wordt opgeslagen en kan door geselecteerde gebruikers worden gebruikt op hun kanalen.
+                  </p>
+                </div>
+              )}
+
               <div className="flex space-x-3 pt-4 border-t border-gray-200">
-                <button
-                  onClick={handleSaveDraft}
-                  disabled={loading}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Opslaan als Concept
-                </button>
-                <button
-                  onClick={handlePublishPost}
-                  disabled={loading || formData.platforms.length === 0}
-                  className="flex-1 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-                >
-                  <Send className="w-4 h-4" />
-                  <span>{loading ? 'Bezig...' : 'Publiceer Nu'}</span>
-                </button>
+                {isAdmin ? (
+                  <>
+                    <button
+                      onClick={handleSaveForBrands}
+                      disabled={loading || !formData.content.trim()}
+                      className="flex-1 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      <span>{loading ? 'Bezig...' : 'Opslaan voor Brands/Agents'}</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={handleSaveDraft}
+                      disabled={loading}
+                      className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      Opslaan als Concept
+                    </button>
+                    <button
+                      onClick={handlePublishPost}
+                      disabled={loading || formData.platforms.length === 0}
+                      className="flex-1 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>{loading ? 'Bezig...' : 'Publiceer Nu'}</span>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
