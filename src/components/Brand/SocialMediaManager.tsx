@@ -305,6 +305,8 @@ export function SocialMediaManager() {
   };
 
   const handleSaveForBrands = async () => {
+    console.log('[handleSaveForBrands] Starting...');
+    
     if (!formData.content.trim()) {
       setError('Content is verplicht');
       return;
@@ -320,8 +322,14 @@ export function SocialMediaManager() {
       return;
     }
 
+    if (!db.supabase) {
+      setError('Database niet beschikbaar');
+      return;
+    }
+
     setLoading(true);
     setError('');
+    console.log('[handleSaveForBrands] Loading set to true');
 
     try {
       const postData = {
@@ -335,21 +343,31 @@ export function SocialMediaManager() {
         enabled_for_agents: formData.enabled_for_agents
       };
 
-      const { error } = await db.supabase
-        .from('social_media_posts')
-        .insert(postData);
+      console.log('[handleSaveForBrands] Inserting post:', postData);
 
-      if (error) throw error;
+      const { data, error } = await db.supabase
+        .from('social_media_posts')
+        .insert(postData)
+        .select();
+
+      console.log('[handleSaveForBrands] Insert result:', { data, error });
+
+      if (error) {
+        console.error('[handleSaveForBrands] Database error:', error);
+        throw error;
+      }
 
       setSuccess('Post opgeslagen en beschikbaar gemaakt voor ' + 
         (formData.enabled_for_brands && formData.enabled_for_agents ? 'Brands en Agents' :
          formData.enabled_for_brands ? 'Brands' : 'Agents'));
       resetForm();
       await loadPosts();
+      console.log('[handleSaveForBrands] Success!');
     } catch (err: any) {
-      console.error('Error saving post for brands:', err);
-      setError('Fout bij opslaan: ' + err.message);
+      console.error('[handleSaveForBrands] Error:', err);
+      setError('Fout bij opslaan: ' + (err.message || 'Onbekende fout'));
     } finally {
+      console.log('[handleSaveForBrands] Finally block - setting loading to false');
       setLoading(false);
     }
   };
