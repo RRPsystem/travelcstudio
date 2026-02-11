@@ -657,6 +657,77 @@ Deno.serve(async (req: Request) => {
         results = getConfiguredMicrosites().map(id => ({ id }));
         break;
 
+      case "debug-auth": {
+        // Try authenticating with different micrositeId formats to find booking access
+        const baseMs = body.micrositeId || getConfiguredMicrosites()[0] || "rondreis-planner";
+        const { username, password } = getCredentialsForMicrosite(baseMs);
+        
+        const msVariants = [
+          baseMs,
+          `${baseMs}.nl`,
+          `https://${baseMs}.nl`,
+          `https://${baseMs}.nl/`,
+          `https://www.${baseMs}.nl`,
+          `${baseMs}.travelcompositor.com`,
+          `https://${baseMs}.travelcompositor.com`,
+        ];
+        
+        const authResults: any[] = [];
+        for (const msId of msVariants) {
+          try {
+            const authResp = await fetch(`${TC_API_BASE}/authentication/authenticate`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ username, password, micrositeId: msId }),
+            });
+            const authText = await authResp.text();
+            let tokenSub = "";
+            try {
+              const authJson = JSON.parse(authText);
+              if (authJson.token) {
+                // Decode JWT payload to see the 'sub' claim
+                const payload = JSON.parse(atob(authJson.token.split(".")[1]));
+                tokenSub = payload.sub || "";
+              }
+            } catch {}
+            authResults.push({ micrositeId: msId, status: authResp.status, tokenSub, rawToken: authText });
+          } catch (e: any) {
+            authResults.push({ micrositeId: msId, status: "ERROR", body: e.message });
+          }
+        }
+
+        // Also try the booking quote with each successful token
+        for (const ar of authResults) {
+          if (ar.status === 200 && ar.rawToken) {
+            try {
+              const authJson = JSON.parse(ar.rawToken);
+              if (authJson.token) {
+                const quoteResp = await fetch(`${TC_API_BASE}/booking/accommodations/quote`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", "auth-token": authJson.token },
+                  body: JSON.stringify({
+                    checkIn: body.checkIn || "2026-07-13",
+                    checkOut: body.checkOut || "2026-07-16",
+                    distributions: [{ persons: [{ age: 30 }, { age: 30 }] }],
+                    language: "NL",
+                    destinationId: body.destination || "MAD",
+                  }),
+                });
+                ar.quoteStatus = quoteResp.status;
+                ar.quoteBody = (await quoteResp.text()).substring(0, 300);
+              }
+            } catch (e: any) {
+              ar.quoteError = e.message;
+            }
+          }
+        }
+
+        return new Response(
+          JSON.stringify({ debug: true, username: username.substring(0, 3) + "***", authResults }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       case "debug-quote": {
         // Raw debug: try multiple API domains and return results
         const debugMs = body.micrositeId || getConfiguredMicrosites()[0];
@@ -678,12 +749,14 @@ Deno.serve(async (req: Request) => {
 
         // Try multiple endpoints to find which ones this user has access to
         const endpoints = [
-          { method: "POST", url: `${TC_API_BASE}/booking/accommodations/quote`, label: "POST quote (online)" },
-          { method: "GET", url: `${TC_API_BASE}/accommodations?first=0&limit=5`, label: "GET accommodations list" },
-          { method: "GET", url: `${TC_API_BASE}/accommodations/preferred/${debugMs}?first=0&limit=5`, label: "GET preferred accommodations" },
-          { method: "GET", url: `${TC_API_BASE}/destination/${debugMs}?lang=NL`, label: "GET destinations" },
-          { method: "GET", url: `${TC_API_BASE}/accommodations/datasheet?accommodationId=1&lang=NL`, label: "GET datasheet" },
-          { method: "POST", url: `https://test-api-accommodation.travelcompositor.com/resources/booking/accommodations/quote`, label: "POST quote (test)" },
+          { method: "POST", url: `${TC_API_BASE}/booking/accommodations/quote`, label: "POST quote (no ms)" },
+          { method: "POST", url: `${TC_API_BASE}/booking/${debugMs}/accommodations/quote`, label: "POST quote (ms in path)" },
+          { method: "POST", url: `${TC_API_BASE}/booking/accommodations/${debugMs}/quote`, label: "POST quote (ms in path v2)" },
+          { method: "POST", url: `${TC_API_BASE}/${debugMs}/booking/accommodations/quote`, label: "POST quote (ms prefix)" },
+          { method: "POST", url: `https://api-accommodation.travelcompositor.com/resources/booking/accommodations/quote`, label: "POST quote (accom domain)" },
+          { method: "POST", url: `https://api.travelcompositor.com/resources/booking/accommodations/quote`, label: "POST quote (api domain)" },
+          { method: "GET", url: `${TC_API_BASE}/accommodations?first=0&limit=3`, label: "GET accommodations list" },
+          { method: "GET", url: `${TC_API_BASE}/booking/accommodations/quote?checkIn=${body.checkIn}&checkOut=${body.checkOut}&destinationId=${body.destination || 'MAD'}&language=NL`, label: "GET quote (as GET)" },
         ];
         const domainResults: any[] = [];
         for (const ep of endpoints) {

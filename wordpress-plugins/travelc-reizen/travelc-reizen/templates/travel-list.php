@@ -238,6 +238,8 @@ ksort($all_categories);
 
     // Active duration filter (set from hash param)
     var activeDagen = '';
+    // Fallback: raw hash bestemming value (used when dropdown can't match)
+    var hashBestemming = '';
 
     function matchDuration(nights, dagenRange) {
         if (!dagenRange) return true;
@@ -262,6 +264,8 @@ ksort($all_categories);
     function filterAndSort() {
         var query = (searchInput ? searchInput.value : '').toLowerCase();
         var dest = destFilter ? destFilter.value.toLowerCase() : '';
+        // Fallback: if dropdown is empty but we have a hash bestemming, use that
+        if (!dest && hashBestemming) dest = hashBestemming;
         var type = typeFilter ? typeFilter.value.toLowerCase() : '';
         var sort = sortSelect ? sortSelect.value : 'newest';
         var favs = showFavOnly ? getFavorites() : [];
@@ -283,7 +287,7 @@ ksort($all_categories);
             var normCategories = norm(categories);
             var normTitle = norm(title);
             var matchSearch = !query || normTitle.indexOf(normQuery) !== -1 || normCountries.indexOf(normQuery) !== -1 || normDestinations.indexOf(normQuery) !== -1;
-            var matchDest = !dest || normCountries.indexOf(normDest) !== -1;
+            var matchDest = !dest || normCountries.indexOf(normDest) !== -1 || normDestinations.indexOf(normDest) !== -1;
             var matchType = !type || normCategories.indexOf(normType) !== -1;
             var matchFav = !showFavOnly || favs.indexOf(cardId) !== -1;
             var matchDagen = matchDuration(nights, activeDagen);
@@ -366,8 +370,9 @@ ksort($all_categories);
     var hashParams = parseHash();
     console.log('[TravelC] Hash params:', hashParams);
     if (hashParams.bestemming && destFilter) {
+        hashBestemming = hashParams.bestemming.toLowerCase();
         setSelectValue(destFilter, hashParams.bestemming);
-        console.log('[TravelC] destFilter set to:', destFilter.value);
+        console.log('[TravelC] destFilter set to:', destFilter.value, '(hash:', hashBestemming, ')');
     }
     if (hashParams.type && typeFilter) {
         setSelectValue(typeFilter, hashParams.type);
@@ -382,7 +387,7 @@ ksort($all_categories);
 
     if (searchBtn) searchBtn.addEventListener('click', function() { filterAndSort(); updateHash(); });
     if (searchInput) searchInput.addEventListener('keyup', function(e) { if (e.key === 'Enter') { filterAndSort(); updateHash(); } });
-    if (destFilter) destFilter.addEventListener('change', function() { filterAndSort(); updateHash(); });
+    if (destFilter) destFilter.addEventListener('change', function() { hashBestemming = ''; filterAndSort(); updateHash(); });
     if (typeFilter) typeFilter.addEventListener('change', function() { filterAndSort(); updateHash(); });
     if (sortSelect) sortSelect.addEventListener('change', filterAndSort);
 
