@@ -49,6 +49,13 @@ export function OfferteViewer({ offerteId }: Props) {
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
+  // Override global overflow:hidden so this page can scroll
+  useEffect(() => {
+    const els = [document.documentElement, document.body, document.getElementById('root')].filter(Boolean) as HTMLElement[];
+    els.forEach(el => { el.style.overflow = 'auto'; el.style.height = 'auto'; });
+    return () => { els.forEach(el => { el.style.overflow = ''; el.style.height = ''; }); };
+  }, []);
+
   useEffect(() => {
     loadOfferte();
   }, [offerteId]);
