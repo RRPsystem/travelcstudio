@@ -2,14 +2,14 @@
 /**
  * Plugin Name: TravelC Reizen
  * Description: Toont reizen vanuit TravelCStudio op je WordPress website via shortcodes.
- * Version: 4.1.2
+ * Version: 4.1.3
  * Author: RBS / TravelCStudio
  * Text Domain: travelc-reizen
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('TRAVELC_REIZEN_VERSION', '4.1.2');
+define('TRAVELC_REIZEN_VERSION', '4.1.3');
 define('TRAVELC_REIZEN_PATH', plugin_dir_path(__FILE__));
 define('TRAVELC_REIZEN_URL', plugin_dir_url(__FILE__));
 
@@ -365,6 +365,9 @@ add_action('wp_enqueue_scripts', function() {
 
     // Travel detail v2 JS — loaded in HEAD (not footer) so functions are available for onclick handlers
     wp_enqueue_script('travelc-detail-v2', TRAVELC_REIZEN_URL . 'assets/js/travel-detail-v2.js', [], TRAVELC_REIZEN_VERSION, false);
+
+    // Travel list JS — filter, sort, favorites, routekaart panel (loaded in footer)
+    wp_enqueue_script('travelc-list', TRAVELC_REIZEN_URL . 'assets/js/travel-list.js', ['leaflet'], TRAVELC_REIZEN_VERSION, true);
 
     // Pass config to JS for quote form
     wp_localize_script('travelc-reizen', 'travelcConfig', [
