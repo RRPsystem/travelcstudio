@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import {
-  ArrowLeft, Save, Send, Eye, MapPin, Plus, GripVertical, X,
+  ArrowLeft, Save, Send, MapPin, Plus, GripVertical, X,
   Plane, Car, Building2, Compass, CarFront, Ship, Train, Shield, StickyNote,
   ChevronDown, ChevronUp, Image, Video, FileDown, Star, Users, Calendar,
-  Download, Loader2, AlertCircle, CheckCircle2
+  Download, Loader2, AlertCircle, CheckCircle2, ExternalLink
 } from 'lucide-react';
 import { importTcTravel } from '../../lib/tcImportToOfferte';
 import { Offerte, OfferteItem, OfferteItemType, OfferteDestination, OFFERTE_ITEM_TYPES } from '../../types/offerte';
@@ -53,6 +53,7 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
   const [tcImporting, setTcImporting] = useState(false);
   const [tcImportError, setTcImportError] = useState<string | null>(null);
   const [tcImportSuccess, setTcImportSuccess] = useState<string | null>(null);
+  const [sendSuccess, setSendSuccess] = useState(false);
 
   const totalPrice = items.reduce((sum, item) => sum + (item.price || 0), 0);
 
@@ -158,6 +159,44 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
       updated_at: new Date().toISOString(),
     };
     onSave?.(data);
+    return data;
+  };
+
+  const getOfferteUrl = () => {
+    const id = offerte?.id || '';
+    return `${window.location.origin}/offerte/${id}`;
+  };
+
+  const handlePreview = () => {
+    const id = offerte?.id;
+    if (!id) {
+      alert('Sla de offerte eerst op voordat je een preview kunt bekijken.');
+      return;
+    }
+    window.open(getOfferteUrl(), '_blank');
+  };
+
+  const handleSend = async () => {
+    // Save first
+    const data = handleSave();
+    if (!data) return;
+
+    // Copy link to clipboard
+    const url = getOfferteUrl();
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      // Fallback
+      const input = document.createElement('input');
+      input.value = url;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+    }
+
+    setSendSuccess(true);
+    setTimeout(() => setSendSuccess(false), 4000);
   };
 
   const getItemIcon = (type: OfferteItemType) => {
@@ -235,17 +274,17 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
             {showSettings ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             Instellingen
           </button>
-          <button className="px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2">
-            <Eye size={16} />
+          <button onClick={handlePreview} className="px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2">
+            <ExternalLink size={16} />
             Preview
           </button>
           <button onClick={handleSave} className="px-4 py-2 text-sm bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-colors flex items-center gap-2">
             <Save size={16} />
             Opslaan
           </button>
-          <button className="px-4 py-2 text-sm bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors flex items-center gap-2">
-            <Send size={16} />
-            Versturen
+          <button onClick={handleSend} className="px-4 py-2 text-sm bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors flex items-center gap-2">
+            {sendSuccess ? <CheckCircle2 size={16} /> : <Send size={16} />}
+            {sendSuccess ? 'Link gekopieerd!' : 'Versturen'}
           </button>
         </div>
       </div>

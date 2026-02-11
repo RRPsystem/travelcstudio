@@ -16,6 +16,7 @@ import { SubdomainViewer } from './components/Website/SubdomainViewer';
 import TravelJournal from './components/TravelJournal/TravelJournal';
 import QuestionSubmission from './components/Podcast/QuestionSubmission';
 import { TripViewer } from './components/Public/TripViewer';
+import { OfferteViewer } from './components/Public/OfferteViewer';
 
 function AppContent() {
   console.log('🚀 AppContent component rendering');
@@ -389,6 +390,13 @@ function App() {
   if (tripViewMatch) {
     console.log('[App] Rendering public trip viewer (outside AuthProvider)');
     return <TripViewer shareToken={tripViewMatch[1]} />;
+  }
+
+  // Public offerte viewer route
+  const offerteViewMatch = path.match(/^\/offerte\/([a-f0-9-]+)$/);
+  if (offerteViewMatch) {
+    console.log('[App] Rendering public offerte viewer (outside AuthProvider)');
+    return <OfferteViewer offerteId={offerteViewMatch[1]} />;
   }
 
   return (
