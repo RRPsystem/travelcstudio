@@ -7,31 +7,36 @@
     "use strict";
 
     // ============================================
-    // DATA FROM DOM
+    // DATA FROM DOM (parsed after DOM ready)
     // ============================================
     var panelData = {};
     var mapDests = [];
     var primaryColor = '#2a9d8f';
     var travelTitle = '';
+    var dataParsed = false;
 
-    try {
-        var panelEl = document.getElementById('tc2DataPanel');
-        if (panelEl) panelData = JSON.parse(panelEl.textContent);
-    } catch(e) { console.error('[TC2] panelData parse error:', e); }
+    function parseDataFromDOM() {
+        if (dataParsed) return;
+        dataParsed = true;
+        try {
+            var panelEl = document.getElementById('tc2DataPanel');
+            if (panelEl) panelData = JSON.parse(panelEl.textContent);
+        } catch(e) { console.error('[TC2] panelData parse error:', e); }
 
-    try {
-        var mapEl = document.getElementById('tc2DataMap');
-        if (mapEl) mapDests = JSON.parse(mapEl.textContent);
-    } catch(e) { console.error('[TC2] mapDests parse error:', e); }
+        try {
+            var mapEl = document.getElementById('tc2DataMap');
+            if (mapEl) mapDests = JSON.parse(mapEl.textContent);
+        } catch(e) { console.error('[TC2] mapDests parse error:', e); }
 
-    try {
-        var cfgEl = document.getElementById('tc2DataConfig');
-        if (cfgEl) {
-            var cfg = JSON.parse(cfgEl.textContent);
-            primaryColor = cfg.primaryColor || primaryColor;
-            travelTitle = cfg.travelTitle || '';
-        }
-    } catch(e) {}
+        try {
+            var cfgEl = document.getElementById('tc2DataConfig');
+            if (cfgEl) {
+                var cfg = JSON.parse(cfgEl.textContent);
+                primaryColor = cfg.primaryColor || primaryColor;
+                travelTitle = cfg.travelTitle || '';
+            }
+        } catch(e) {}
+    }
 
     // ============================================
     // HERO SLIDESHOW
@@ -58,6 +63,7 @@
     // ROUTE MAP (Leaflet)
     // ============================================
     function initRouteMap() {
+        parseDataFromDOM();
         var el = document.getElementById('tc2RouteMap');
         if (!el || !mapDests || mapDests.length < 2 || typeof L === 'undefined') return;
         try {
@@ -109,6 +115,7 @@
     }
 
     window.tc2ShowPanel = function(dataId) {
+        parseDataFromDOM();
         var data = panelData[dataId];
         if (!data) { console.error('[TC2 Panel] No data for:', dataId, Object.keys(panelData)); return; }
         var title = data.name || 'Details';
@@ -245,8 +252,9 @@
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() { waitForLeaflet(initRouteMap); });
+        document.addEventListener('DOMContentLoaded', function() { parseDataFromDOM(); waitForLeaflet(initRouteMap); });
     } else {
+        parseDataFromDOM();
         waitForLeaflet(initRouteMap);
     }
 })();
