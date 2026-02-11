@@ -30,13 +30,34 @@ export async function importTcTravel(travelId: string, micrositeId: string): Pro
   if (!supabase) throw new Error('Supabase niet geconfigureerd');
   if (!travelId.trim()) throw new Error('Voer een Travel Compositor ID in');
 
-  const { data, error } = await supabase.functions.invoke('import-travel-compositor', {
+  console.log('[TC Import] Fetching travel', travelId, 'from', micrositeId);
+
+  const response = await supabase.functions.invoke('import-travel-compositor', {
     body: { travelId: travelId.trim(), micrositeId },
   });
 
-  if (error) throw new Error(error.message || 'Fout bij ophalen reis');
+  const { data, error } = response;
+  console.log('[TC Import] Response:', { data, error });
+
+  // supabase.functions.invoke puts the parsed JSON body in `data` even on error status codes
+  if (error) {
+    // data often contains the real error message from the Edge Function
+    if (data && typeof data === 'object') {
+      if (data.error) throw new Error(data.error);
+      if (data.message) throw new Error(data.message);
+    }
+    // Try to parse error.context if available (Supabase wraps the body there sometimes)
+    if (error.context) {
+      try {
+        const body = await error.context.json();
+        if (body?.error) throw new Error(body.error);
+        if (body?.message) throw new Error(body.message);
+      } catch (_) { /* ignore parse errors */ }
+    }
+    throw new Error(error.message || 'Fout bij ophalen reis van Travel Compositor');
+  }
   if (!data || data.error) throw new Error(data?.error || data?.message || 'Reis niet gevonden');
-  if (!data.title) throw new Error('Ongeldige response: geen titel gevonden');
+  if (!data.title) throw new Error(`Reis ${travelId} gevonden maar bevat geen titel. Controleer het ID en de microsite.`);
 
   return mapTcDataToOfferte(data);
 }
