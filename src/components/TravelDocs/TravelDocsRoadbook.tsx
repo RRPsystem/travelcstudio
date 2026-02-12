@@ -6,6 +6,7 @@ import {
   Download, Loader2, AlertCircle, CheckCircle2, ExternalLink
 } from 'lucide-react';
 import { importTcTravel } from '../../lib/tcImportToOfferte';
+import { supabase } from '../../lib/supabase';
 import { Offerte, OfferteItem, OfferteItemType, OfferteDestination, ExtraCost, OFFERTE_ITEM_TYPES } from '../../types/offerte';
 import { OfferteItemTypeSelector } from './OfferteItemTypeSelector';
 import { OfferteItemPanel } from './OfferteItemPanel';
@@ -210,6 +211,9 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave, brandColor = '#2e7
   const [extraCosts, setExtraCosts] = useState<ExtraCost[]>(offerte?.extra_costs || []);
   const [showExtraCostPanel, setShowExtraCostPanel] = useState(false);
   const [editingExtraCost, setEditingExtraCost] = useState<ExtraCost | null>(null);
+  const [expandedDests, setExpandedDests] = useState<Set<number>>(new Set());
+  const [destMediaIdx, setDestMediaIdx] = useState<number | null>(null);
+  const [generatingAI, setGeneratingAI] = useState<number | null>(null);
 
   const extraCostsTotal = extraCosts.reduce((sum, ec) => sum + (ec.per_person ? ec.amount * numberOfTravelers : ec.amount), 0);
   const totalPrice = items.reduce((sum, item) => sum + (item.price || 0), 0) + extraCostsTotal;
@@ -286,6 +290,52 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave, brandColor = '#2e7
 
   const handleDragEnd = () => {
     setDragIndex(null);
+  };
+
+  // Update a single destination field
+  const updateDest = (idx: number, field: string, value: any) => {
+    setDestinations(prev => prev.map((d, i) => i === idx ? { ...d, [field]: value } : d));
+  };
+
+  // Generate AI description for a destination
+  const handleAIGenerate = async (idx: number) => {
+    const dest = destinations[idx];
+    if (!dest?.name) return;
+    setGeneratingAI(idx);
+    try {
+      if (!supabase) throw new Error('Supabase not configured');
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-content`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${session?.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contentType: 'destination',
+          prompt: `Genereer een korte maar inspirerende reisbeschrijving voor ${dest.name}${dest.country ? ` (${dest.country})` : ''}`,
+          structuredGeneration: {
+            name: dest.name,
+            type: 'destination',
+            fields: ['intro_text', 'description', 'highlights']
+          }
+        })
+      });
+      const data = await res.json();
+      if (data.content) {
+        const desc = data.content.description || data.content.intro_text || '';
+        const highlights = (data.content.highlights || []).map((h: any) =>
+          typeof h === 'string' ? h : h.title || h.name || ''
+        ).filter(Boolean);
+        setDestinations(prev => prev.map((d, i) => i === idx ? {
+          ...d,
+          description: desc,
+          highlights: highlights.length > 0 ? highlights : d.highlights,
+        } : d));
+      }
+    } catch (err) {
+      console.error('AI generation error:', err);
+      alert('AI tekst generatie mislukt. Probeer het opnieuw.');
+    } finally {
+      setGeneratingAI(null);
+    }
   };
 
   // Build the data object without saving
@@ -1018,6 +1068,167 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave, brandColor = '#2e7
             </div>
           </div>
         )}
+
+        {/* DESTINATION EDITOR — edit descriptions, AI generate, swap photos */}
+        {templateType === 'auto-rondreis' && destinations.length > 0 && (
+          <div className="max-w-5xl mx-auto px-6 py-8">
+            <h3 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">
+              <MapPin size={18} /> Bestemmingen bewerken
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">Pas beschrijvingen en foto's aan per bestemming</p>
+            <div className="space-y-2">
+              {destinations.map((dest, idx) => {
+                const isOpen = expandedDests.has(idx);
+                return (
+                  <div key={idx} className="border border-gray-200 rounded-lg overflow-hidden">
+                    {/* Header — always visible */}
+                    <button
+                      onClick={() => setExpandedDests(prev => {
+                        const s = new Set(prev);
+                        s.has(idx) ? s.delete(idx) : s.add(idx);
+                        return s;
+                      })}
+                      className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                    >
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: brandColor }}>
+                        {idx + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium text-gray-900 truncate block">{dest.name || `Bestemming ${idx + 1}`}</span>
+                        <span className="text-xs text-gray-500">{dest.country || ''} · {dest.images?.length || 0} foto's · {dest.description ? `${dest.description.substring(0, 60)}...` : 'Geen beschrijving'}</span>
+                      </div>
+                      {isOpen ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+                    </button>
+
+                    {/* Expanded editor */}
+                    {isOpen && (
+                      <div className="p-4 space-y-4 bg-white">
+                        {/* Name */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Naam</label>
+                          <input
+                            type="text"
+                            value={dest.name || ''}
+                            onChange={(e) => updateDest(idx, 'name', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          />
+                        </div>
+
+                        {/* Description + AI button */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-xs font-medium text-gray-600">Beschrijving</label>
+                            <button
+                              onClick={() => handleAIGenerate(idx)}
+                              disabled={generatingAI === idx}
+                              className="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+                              style={{ backgroundColor: brandColor, color: 'white' }}
+                            >
+                              {generatingAI === idx ? (
+                                <><Loader2 size={12} className="animate-spin" /> Genereren...</>
+                              ) : (
+                                <><Star size={12} /> AI Tekst</>
+                              )}
+                            </button>
+                          </div>
+                          <textarea
+                            value={dest.description || ''}
+                            onChange={(e) => updateDest(idx, 'description', e.target.value)}
+                            rows={5}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            placeholder="Schrijf een beschrijving of genereer met AI..."
+                          />
+                        </div>
+
+                        {/* Highlights */}
+                        <div>
+                          <label className="text-xs font-medium text-gray-600 mb-1 block">Highlights</label>
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {(dest.highlights || []).map((h, hi) => (
+                              <span key={hi} className="px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs flex items-center gap-1">
+                                {h}
+                                <button onClick={() => {
+                                  const hl = [...(dest.highlights || [])];
+                                  hl.splice(hi, 1);
+                                  updateDest(idx, 'highlights', hl);
+                                }} className="text-green-500 hover:text-red-500">×</button>
+                              </span>
+                            ))}
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="+ Highlight toevoegen (Enter)"
+                            className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs w-64"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                const input = e.target as HTMLInputElement;
+                                if (input.value.trim()) {
+                                  updateDest(idx, 'highlights', [...(dest.highlights || []), input.value.trim()]);
+                                  input.value = '';
+                                }
+                              }
+                            }}
+                          />
+                        </div>
+
+                        {/* Photos */}
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="text-xs font-medium text-gray-600">Foto's ({dest.images?.length || 0})</label>
+                            <button
+                              onClick={() => setDestMediaIdx(idx)}
+                              className="flex items-center gap-1 px-3 py-1 text-xs font-medium bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                            >
+                              <Image size={12} /> Foto's beheren
+                            </button>
+                          </div>
+                          <div className="flex gap-2 flex-wrap">
+                            {(dest.images || []).slice(0, 8).map((img, imgIdx) => (
+                              <div key={imgIdx} className="relative group">
+                                <img src={img} alt="" className="w-16 h-12 object-cover rounded border" />
+                                <button
+                                  onClick={() => {
+                                    const imgs = [...(dest.images || [])];
+                                    imgs.splice(imgIdx, 1);
+                                    updateDest(idx, 'images', imgs);
+                                  }}
+                                  className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                >×</button>
+                              </div>
+                            ))}
+                            {(dest.images?.length || 0) > 8 && (
+                              <span className="text-xs text-gray-400 self-end">+{dest.images!.length - 8} meer</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Destination Media Selector */}
+        <SlidingMediaSelector
+          isOpen={destMediaIdx !== null}
+          onClose={() => setDestMediaIdx(null)}
+          onSelect={(url) => {
+            if (destMediaIdx !== null) {
+              updateDest(destMediaIdx, 'images', [...(destinations[destMediaIdx]?.images || []), url]);
+            }
+            setDestMediaIdx(null);
+          }}
+          onSelectMultiple={(urls) => {
+            if (destMediaIdx !== null) {
+              updateDest(destMediaIdx, 'images', [...(destinations[destMediaIdx]?.images || []), ...urls]);
+            }
+            setDestMediaIdx(null);
+          }}
+          title={destMediaIdx !== null ? `Foto's voor ${destinations[destMediaIdx]?.name || 'bestemming'}` : "Foto's"}
+          allowMultiple={true}
+        />
 
         {/* DAG VOOR DAG - Road layout with scrolling car (auto-rondreis only) */}
         {templateType === 'auto-rondreis' && destinations.length > 0 && destinations.some(d => d.description || (d.images && d.images.length > 0)) && (
