@@ -197,7 +197,52 @@ export interface TcCruise {
   mandatory: boolean;
   fixed: boolean;
   // NOTE: Cruises do NOT have checkInDate/checkOutDate or startDate/endDate!
-  // Use closedTours for date info, or calculate from hotel context.
+  // departure/arrival CAN be datetimes — detect with regex /^\d{4}-/
+}
+
+// CruiseLine enum — official values from Swagger
+export type TcCruiseLineEnum =
+  | 'ROYAL_CARIBBEAN' | 'COSTA_CRUCEROS' | 'MSC' | 'CELEBRITY_CRUISES'
+  | 'CARNIVAL' | 'HOLLAND' | 'NCL' | 'SEABOURN' | 'PRINCESS' | 'CUNARD'
+  | 'REGENT' | 'OCEANIA' | 'CELESTYAL' | 'FAKE_CRUISES' | 'AZAMARA_CRUISES'
+  | 'AIDA' | 'TUI_CRUISES';
+
+// BUT: in IdeaDayToDayVO.cruises, cruiseLine is a SHORT CODE like "RCC", not the enum value!
+// Map: RCC=ROYAL_CARIBBEAN, CCL=CARNIVAL, HAL=HOLLAND, CEL=CELEBRITY_CRUISES, etc.
+
+export interface TcCruiseDeparture {
+  id: string;
+  date: string;                    // ← ACTUAL DATE ($date)
+  prices: TcCruiseMicrositePrice[];
+}
+
+export interface TcCruiseMicrositePrice {
+  [key: string]: any;
+}
+
+export interface TcCruiseItinerary {
+  id: string;
+  shipImage: string;
+  itinerarySteps: TcCruiseItineraryStep[];
+}
+
+export interface TcCruiseItineraryStep {
+  day: number;
+  destination: string;
+  departure: string;               // Time or port name (NOT a date here)
+  arrival: string;                 // Time or port name (NOT a date here)
+}
+
+export interface TcCruiseLineCharacteristics {
+  id: string;
+  included: string[];
+  excluded: string[];
+  benefits: TcCruiseLineBenefit[];
+}
+
+export interface TcCruiseLineBenefit {
+  name: string;
+  description: string;
 }
 
 // ═══════════════════════════════════════════════════════════
