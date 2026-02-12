@@ -766,30 +766,30 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                         {/* === HEADER SECTION === */}
                         {isFlight ? (
                           /* FLIGHT CARD - compact */
-                          <div className="p-4">
-                            <div className="flex items-center gap-2 mb-2">
-                              <div className="w-7 h-7 bg-green-500 rounded-md flex items-center justify-center flex-shrink-0">
-                                <Plane size={14} className="text-white" />
+                          <div className="p-3">
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <div className="w-6 h-6 bg-green-500 rounded-md flex items-center justify-center flex-shrink-0">
+                                <Plane size={12} className="text-white" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <div className="text-xs font-medium text-blue-600">{item.airline || 'Airline'} {item.flight_number || ''}</div>
+                                <div className="text-[11px] font-medium text-blue-600 truncate">{item.airline || 'Airline'} {item.flight_number || ''}</div>
                                 <div className="text-[10px] text-gray-400">{item.date_start ? new Date(item.date_start).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</div>
                               </div>
                             </div>
-                            <div className="bg-gray-50 rounded-lg p-3">
+                            <div className="bg-gray-50 rounded-lg p-2">
                               <div className="flex items-center justify-between">
                                 <div className="text-center">
                                   <div className="text-[10px] text-gray-500">{item.departure_airport || 'DEP'}</div>
-                                  <div className="text-base font-bold text-gray-900">{item.departure_time || '--:--'}</div>
+                                  <div className="text-sm font-bold text-gray-900">{item.departure_time ? item.departure_time.substring(0, 5) : '--:--'}</div>
                                 </div>
-                                <div className="flex-1 flex items-center justify-center px-2">
+                                <div className="flex-1 flex items-center justify-center px-1">
                                   <div className="h-px bg-gray-300 flex-1"></div>
-                                  <Plane size={12} className="mx-1 text-green-500" />
+                                  <Plane size={10} className="mx-0.5 text-green-500" />
                                   <div className="h-px bg-gray-300 flex-1"></div>
                                 </div>
                                 <div className="text-center">
                                   <div className="text-[10px] text-gray-500">{item.arrival_airport || 'ARR'}</div>
-                                  <div className="text-base font-bold text-gray-900">{item.arrival_time || '--:--'}</div>
+                                  <div className="text-sm font-bold text-gray-900">{item.arrival_time ? item.arrival_time.substring(0, 5) : '--:--'}</div>
                                 </div>
                               </div>
                             </div>
@@ -881,8 +881,12 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                         )}
 
                         {/* === CONTENT SECTION === */}
-                        {/* Compact transfers already show everything in header — minimal content */}
-                        {isTransfer && !item.image_url ? (
+                        {/* Compact cards: flights and transfers show everything in header */}
+                        {isFlight ? (
+                          <div className="px-3 pb-2 pt-0.5">
+                            <h4 className="font-semibold text-gray-900 text-xs">{String(item.title || '')}</h4>
+                          </div>
+                        ) : isTransfer && !item.image_url ? (
                           <div className="px-4 pb-3 pt-1">
                             <h4 className="font-semibold text-gray-900 text-sm">{String(item.title || '')}</h4>
                             {item.subtitle && item.subtitle !== item.transfer_type && (
