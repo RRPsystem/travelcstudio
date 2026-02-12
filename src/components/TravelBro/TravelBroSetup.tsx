@@ -181,34 +181,31 @@ export function TravelBroSetup() {
   const loadMicrosites = async () => {
     setLoadingMicrosites(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-external-api`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          url: 'https://www.ai-websitestudio.nl/api/config/microsites',
-          method: 'GET'
-        })
-      });
+      // Load microsites from tc_microsites table
+      const { data: micrositesData, error } = await db.supabase
+        .from('tc_microsites')
+        .select('microsite_id, name, is_active')
+        .eq('is_active', true)
+        .order('name');
 
-      if (!response.ok) {
-        throw new Error('Kon microsites niet ophalen');
-      }
+      if (error) throw error;
 
-      const result = await response.json();
-      if (result.success && result.data) {
-        setMicrosites(result.data.microsites || []);
-        if (result.data.microsites && result.data.microsites.length > 0) {
-          setMicrositeId(result.data.microsites[0].id);
-        }
+      if (micrositesData && micrositesData.length > 0) {
+        const formattedMicrosites = micrositesData.map(ms => ({
+          id: ms.microsite_id,
+          name: ms.name,
+          hasCredentials: true
+        }));
+        setMicrosites(formattedMicrosites);
+        setMicrositeId(formattedMicrosites[0].id);
       } else {
-        throw new Error(result.error || 'Geen data ontvangen');
+        // Fallback to default if no microsites configured
+        console.log('ℹ️ No microsites found in database, using default');
+        setMicrosites([{ id: 'rondreis-planner', name: 'Rondreis Planner', hasCredentials: true }]);
       }
     } catch (error) {
-      console.log('ℹ️ Using default microsite (external API not available)');
+      console.error('Error loading microsites:', error);
+      // Fallback to default on error
       setMicrosites([{ id: 'rondreis-planner', name: 'Rondreis Planner', hasCredentials: true }]);
     } finally {
       setLoadingMicrosites(false);
