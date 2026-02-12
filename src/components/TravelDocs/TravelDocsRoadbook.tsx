@@ -382,8 +382,6 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
               <span className="flex items-center gap-1"><Users size={12} /> {clientName || 'Geen klant'}</span>
               <span>·</span>
               <span>{items.length} items</span>
-              <span>·</span>
-              <span className="font-medium text-orange-600">€ {totalPrice.toLocaleString('nl-NL', { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
         </div>
