@@ -509,22 +509,20 @@ export function BrandDashboard() {
                 <ul className="mt-2 ml-6 space-y-1">
                   {aiToolsItems.map((item) => {
                     const Icon = item.icon;
-                    const isComingSoon = item.id === 'ai-import';
                     return (
                       <li key={item.id}>
                         <button
                           onClick={() => {
-                            if (isComingSoon) {
-                              return;
+                            if (item.id === 'ai-import') {
+                              handleTravelImportClick();
+                            } else if (item.id === 'ai-video') {
+                              handleVideoGeneratorClick();
                             } else {
                               setActiveSection(item.id);
                             }
                           }}
-                          disabled={isComingSoon}
                           className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors text-sm ${
-                            isComingSoon
-                              ? 'text-gray-500 cursor-not-allowed opacity-60'
-                              : activeSection === item.id
+                            activeSection === item.id
                               ? 'bg-gray-700 text-white'
                               : 'text-gray-400 hover:text-white hover:bg-gray-700'
                           }`}
@@ -533,11 +531,6 @@ export function BrandDashboard() {
                             <Icon size={16} />
                             <span>{item.label}</span>
                           </div>
-                          {isComingSoon && (
-                            <span className="text-xs bg-orange-600 text-white px-2 py-0.5 rounded-full">
-                              Soon
-                            </span>
-                          )}
                           {item.id === 'ai-booking-requests' && newBookingRequestsCount > 0 && (
                             <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                               {newBookingRequestsCount}
