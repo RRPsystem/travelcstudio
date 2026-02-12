@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   MapPin, Plane, Car, Building2, Compass, CarFront, Ship, Train, Shield, StickyNote,
   ChevronDown, Star, Calendar, Clock, ArrowLeft, ArrowRight, X,
@@ -77,11 +77,7 @@ export function OfferteViewer({ offerteId }: Props) {
     return () => { els.forEach(el => { el.style.overflow = ''; el.style.height = ''; }); };
   }, []);
 
-  useEffect(() => {
-    loadOfferte();
-  }, [offerteId]);
-
-  async function loadOfferte() {
+  const loadOfferte = useCallback(async () => {
     if (!supabase) {
       setError('Configuratiefout');
       setLoading(false);
@@ -164,7 +160,11 @@ export function OfferteViewer({ offerteId }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [offerteId]);
+
+  useEffect(() => {
+    loadOfferte();
+  }, [loadOfferte]);
 
   const toggleExpand = (id: string) => {
     setExpandedItems(prev => {
