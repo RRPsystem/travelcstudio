@@ -205,18 +205,35 @@ function mapTcDataToOfferte(tc: any): TcImportResult {
   }
 
   // --- Transfers (non-flight transports) ---
+  // Edge Function fields: originDestinationCode, targetDestinationCode, originCode, targetCode,
+  //   company, transportNumber, departureDate, departureTime, arrivalDate, arrivalTime, duration, transportType
   const transfers = tc.transfers || [];
   for (const t of transfers) {
+    const from = safeStr(t.originDestinationCode || t.originCode || t.departureCity || '');
+    const to = safeStr(t.targetDestinationCode || t.targetCode || t.arrivalCity || '');
+    const transportType = safeStr(t.transportType || t.type || 'TRANSFER');
+    const company = safeStr(t.company || '');
+    const transportNum = safeStr(t.transportNumber || '');
+    // Build descriptive title
+    let transferTitle = transportType;
+    if (from && to) transferTitle = `${from} → ${to}`;
+    if (company) transferTitle += ` (${company}${transportNum ? ' ' + transportNum : ''})`;
+    
+    console.log(`[TC Map] Transfer: type=${transportType}, from=${from}, to=${to}, company=${company}, date=${t.departureDate}`);
+    
     items.push({
       id: crypto.randomUUID(),
       type: 'transfer',
-      title: buildTransferTitle(t),
-      transfer_type: safeStr(t.transportType || t.type || 'transfer'),
-      pickup_location: safeStr(t.departureCity || t.departure || t.origin),
-      dropoff_location: safeStr(t.arrivalCity || t.arrival || t.target),
-      date_start: safeStr(t.departureDate || t.startDate),
-      departure_time: safeStr(t.departureTime),
-      arrival_time: safeStr(t.arrivalTime),
+      title: transferTitle,
+      subtitle: company || transportType,
+      transfer_type: transportType,
+      pickup_location: from,
+      dropoff_location: to,
+      date_start: safeStr(t.departureDate || t.startDate || ''),
+      date_end: safeStr(t.arrivalDate || ''),
+      departure_time: safeStr(t.departureTime || ''),
+      arrival_time: safeStr(t.arrivalTime || ''),
+      distance: safeStr(t.duration || ''),
       price: extractPrice(t),
       sort_order: 0,
     });
@@ -412,6 +429,7 @@ function mapTcDataToOfferte(tc: any): TcImportResult {
 // --- Helpers ---
 
 /** Find trip start date from first flight departure or TC meta data */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function findTripStartDate(items: OfferteItem[], tc: any): Date | null {
   // 1. Try first flight's departure date
   const firstFlight = items.find(i => i.type === 'flight' && i.date_start);
@@ -479,13 +497,6 @@ function buildFlightTitle(f: any): string {
   return f.company ? `Vlucht ${safeStr(f.company)}` : 'Vlucht';
 }
 
-function buildTransferTitle(t: any): string {
-  const from = safeStr(t.departureCity || t.departure);
-  const to = safeStr(t.arrivalCity || t.arrival);
-  const type = safeStr(t.transportType || 'Transfer');
-  if (from && to) return `${type}: ${from} → ${to}`;
-  return type;
-}
 
 function parseStars(category: string | number | undefined): number {
   if (!category) return 0;

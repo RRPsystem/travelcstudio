@@ -794,6 +794,41 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                               </div>
                             </div>
                           </div>
+                        ) : (isTransfer && !item.image_url) ? (
+                          /* TRANSFER CARD - compact like flight */
+                          <div className="p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0" style={{ backgroundColor: config.color }}>
+                                {(() => { const I = iconMap[config.icon]; return I ? <I size={14} className="text-white" /> : null; })()}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-medium" style={{ color: config.color }}>{item.transfer_type || 'Transfer'}</div>
+                                <div className="text-[10px] text-gray-400">{item.date_start ? new Date(item.date_start).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</div>
+                              </div>
+                            </div>
+                            {(item.pickup_location || item.dropoff_location) && (
+                              <div className="bg-gray-50 rounded-lg p-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="text-center flex-1">
+                                    <div className="text-[10px] text-gray-500">Van</div>
+                                    <div className="text-xs font-bold text-gray-900 truncate">{item.pickup_location || '—'}</div>
+                                  </div>
+                                  <div className="flex items-center justify-center px-2">
+                                    <div className="h-px bg-gray-300 w-4"></div>
+                                    <ArrowLeft size={10} className="mx-0.5 text-gray-400 rotate-180" />
+                                    <div className="h-px bg-gray-300 w-4"></div>
+                                  </div>
+                                  <div className="text-center flex-1">
+                                    <div className="text-[10px] text-gray-500">Naar</div>
+                                    <div className="text-xs font-bold text-gray-900 truncate">{item.dropoff_location || '—'}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            {item.distance && (
+                              <div className="text-[10px] text-gray-400 mt-1 text-center">{item.distance}</div>
+                            )}
+                          </div>
                         ) : item.image_url ? (
                           /* HOTEL / ITEM WITH IMAGE + photo arrows */
                           <div className="relative h-48 bg-gray-100 group">
@@ -837,8 +872,8 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                           </div>
                         ) : (
                           /* NO IMAGE - Compact colored header */
-                          <div className="h-16 flex items-center justify-center gap-2 px-4" style={{ backgroundColor: config.bgColor || '#f3f4f6' }}>
-                            <div className="w-9 h-9 rounded-full bg-white/80 flex items-center justify-center shadow-sm">
+                          <div className="h-12 flex items-center justify-center gap-2 px-4" style={{ backgroundColor: config.bgColor || '#f3f4f6' }}>
+                            <div className="w-7 h-7 rounded-full bg-white/80 flex items-center justify-center shadow-sm">
                               {getItemIcon(item.type)}
                             </div>
                             <span className="text-xs font-semibold" style={{ color: config.color }}>{config.label}</span>
@@ -846,14 +881,23 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                         )}
 
                         {/* === CONTENT SECTION === */}
+                        {/* Compact transfers already show everything in header — minimal content */}
+                        {isTransfer && !item.image_url ? (
+                          <div className="px-4 pb-3 pt-1">
+                            <h4 className="font-semibold text-gray-900 text-sm">{String(item.title || '')}</h4>
+                            {item.subtitle && item.subtitle !== item.transfer_type && (
+                              <p className="text-[11px] text-gray-400">{item.subtitle}</p>
+                            )}
+                          </div>
+                        ) : (
                         <div className="p-4 flex flex-col flex-1">
                           <h4 className="font-bold text-gray-900 text-base mb-0.5">{String(item.title || '')}</h4>
                           
-                          {/* Subtitle - location for hotels, route for transfers */}
+                          {/* Subtitle - location for hotels, route for car rentals */}
                           {isHotel && item.location && (
                             <p className="text-sm text-gray-500 mb-2">📍 {typeof item.location === 'object' ? (item.location as any).name || JSON.stringify(item.location) : item.location}</p>
                           )}
-                          {(isTransfer || isCarRental) && (item.pickup_location || item.dropoff_location) && (
+                          {isCarRental && (item.pickup_location || item.dropoff_location) && (
                             <p className="text-sm text-gray-500 mb-2">{[item.pickup_location, item.dropoff_location].filter(Boolean).map(v => typeof v === 'object' ? (v as any).name || '' : v).join(' → ')}</p>
                           )}
                           {isCruise && item.subtitle && (
@@ -863,7 +907,7 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                           {/* Detail rows with icons */}
                           <div className="space-y-1.5 text-xs text-gray-600 mb-3">
                             {/* Date */}
-                            {!isFlight && item.date_start && (
+                            {!isFlight && !isTransfer && item.date_start && (
                               <div className="flex items-center gap-2">
                                 <span>📅</span>
                                 <span>{new Date(item.date_start).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}{item.date_end ? ` - ${new Date(item.date_end).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}` : ''}</span>
@@ -888,20 +932,6 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                               <div className="flex items-center gap-2">
                                 <span>🍽️</span>
                                 <span>{typeof item.board_type === 'object' ? (item.board_type as any).name || '' : item.board_type}</span>
-                              </div>
-                            )}
-                            {/* Distance */}
-                            {item.distance && (
-                              <div className="flex items-center gap-2 text-orange-600 font-medium">
-                                <span>🚗</span>
-                                <span>{typeof item.distance === 'object' ? (item.distance as any).name || '' : item.distance}</span>
-                              </div>
-                            )}
-                            {/* Transfer type */}
-                            {(isTransfer || isCarRental) && item.transfer_type && (
-                              <div className="flex items-center gap-2">
-                                <span>🚐</span>
-                                <span>{typeof item.transfer_type === 'object' ? (item.transfer_type as any).name || '' : item.transfer_type}</span>
                               </div>
                             )}
                             {/* Car rental dates */}
@@ -940,6 +970,7 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                             </div>
                           )}
                         </div>
+                        )}
                       </div>
                     </div>
                   );
