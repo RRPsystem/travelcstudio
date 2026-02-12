@@ -748,13 +748,47 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
             <div className="max-w-7xl mx-auto px-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Jouw Reis Timeline</h2>
               <div className="flex gap-6 overflow-x-auto pb-4" style={{ scrollbarWidth: 'thin' }}>
-                {items.map((item, index) => {
+                {[...items].sort((a, b) => {
+                  const dateA = a.date_start ? new Date(a.date_start).getTime() : 0;
+                  const dateB = b.date_start ? new Date(b.date_start).getTime() : 0;
+                  return dateA - dateB;
+                }).map((item, index) => {
                   const config = getItemConfig(item.type);
+                  const isFlight = item.type === 'flight';
+                  
                   return (
                     <div key={item.id} className="flex-shrink-0 w-80">
                       <div className="bg-white rounded-xl border border-gray-200 shadow-md hover:shadow-xl transition-all overflow-hidden h-full">
-                        {/* Image */}
-                        {item.image_url && (
+                        {/* Image or Flight Header */}
+                        {isFlight ? (
+                          <div className="relative bg-gradient-to-br from-blue-500 to-blue-600 p-6">
+                            <div className="absolute top-3 left-3 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-xs font-semibold text-white">
+                              ✈️ {config.label}
+                            </div>
+                            {item.date_start && (
+                              <div className="absolute top-3 right-3 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-full text-xs font-medium text-gray-700">
+                                {new Date(item.date_start).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}
+                              </div>
+                            )}
+                            <div className="mt-8 flex items-center justify-between text-white">
+                              <div className="text-center">
+                                <div className="text-xs opacity-80 mb-1">Vertrek</div>
+                                <div className="text-2xl font-bold">{item.departure_time || '--:--'}</div>
+                                <div className="text-xs opacity-80 mt-1">{item.departure_airport || 'N/A'}</div>
+                              </div>
+                              <div className="flex-1 flex items-center justify-center px-4">
+                                <div className="h-px bg-white/30 flex-1"></div>
+                                <Plane size={20} className="mx-2" />
+                                <div className="h-px bg-white/30 flex-1"></div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-xs opacity-80 mb-1">Aankomst</div>
+                                <div className="text-2xl font-bold">{item.arrival_time || '--:--'}</div>
+                                <div className="text-xs opacity-80 mt-1">{item.arrival_airport || 'N/A'}</div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : item.image_url ? (
                           <div className="relative h-48 bg-gray-100">
                             <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
                             <div className="absolute top-3 left-3 px-3 py-1.5 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: config.color }}>
@@ -767,19 +801,19 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                               </div>
                             )}
                           </div>
-                        )}
+                        ) : null}
                         
                         {/* Content */}
                         <div className="p-4">
                           <h4 className="font-bold text-gray-900 text-lg mb-1">{item.title}</h4>
                           <p className="text-sm text-gray-500 mb-3">{formatItemSubtitle(item)}</p>
                           
-                          {/* Details */}
+                          {/* Details with professional icons */}
                           <div className="space-y-2 text-xs text-gray-600">
-                            {item.date_start && item.date_end && (
+                            {!isFlight && item.date_start && item.date_end && (
                               <div className="flex items-center gap-2">
-                                <Calendar size={12} className="text-gray-400" />
-                                <span>{new Date(item.date_start).toLocaleDateString('nl-NL')} - {new Date(item.date_end).toLocaleDateString('nl-NL')}</span>
+                                <span className="text-gray-400">📅</span>
+                                <span>{new Date(item.date_start).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })} - {new Date(item.date_end).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}</span>
                               </div>
                             )}
                             {item.nights && (
@@ -790,7 +824,7 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                             )}
                             {item.distance && (
                               <div className="flex items-center gap-2 text-orange-600 font-medium">
-                                <Car size={12} />
+                                <span>🚗</span>
                                 <span>{item.distance}</span>
                               </div>
                             )}
@@ -798,6 +832,18 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                               <div className="flex items-center gap-2">
                                 <span className="text-gray-400">🍽️</span>
                                 <span>{item.board_type}</span>
+                              </div>
+                            )}
+                            {isFlight && item.airline && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-400">✈️</span>
+                                <span>{item.airline}</span>
+                              </div>
+                            )}
+                            {isFlight && item.flight_number && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-400">🎫</span>
+                                <span>Vlucht {item.flight_number}</span>
                               </div>
                             )}
                           </div>
