@@ -716,11 +716,11 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave, brandColor = '#2e7
 
           {/* Upload controls (top right) */}
           <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
-            <button onClick={() => { setMediaSelectorMode('photo'); setShowMediaSelector(true); }} className="px-3 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-2">
+            <button onClick={() => { setMediaSelectorMode('photo'); setShowMediaSelector(true); }} className="px-3 py-2 bg-gray-900/70 backdrop-blur-sm hover:bg-gray-900/90 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-2 shadow-lg">
               <Image size={14} />
               {heroImages.length > 0 ? 'Foto +' : 'Foto'}
             </button>
-            <button onClick={() => { setMediaSelectorMode('video'); setShowMediaSelector(true); }} className="px-3 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-2">
+            <button onClick={() => { setMediaSelectorMode('video'); setShowMediaSelector(true); }} className="px-3 py-2 bg-gray-900/70 backdrop-blur-sm hover:bg-gray-900/90 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-2 shadow-lg">
               <Video size={14} />
               Video
             </button>
@@ -1518,15 +1518,6 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave, brandColor = '#2e7
                 </div>
               </div>
 
-              {/* Preview button */}
-              <div className="mt-4 text-center">
-                <button
-                  onClick={() => window.open(`${window.location.origin}/travelbro/${travelbroShareToken}`, '_blank')}
-                  className="px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors inline-flex items-center gap-2"
-                >
-                  <ExternalLink size={14} /> Volledige TravelBro pagina openen
-                </button>
-              </div>
             </>
           ) : (
             <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-8 text-center">

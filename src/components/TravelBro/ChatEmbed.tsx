@@ -68,6 +68,8 @@ export function ChatEmbed({ tripId, shareToken }: ChatEmbedProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const isInitialLoad = useRef(true);
 
   useEffect(() => {
     loadTrip();
@@ -75,7 +77,15 @@ export function ChatEmbed({ tripId, shareToken }: ChatEmbedProps) {
   }, [tripId, shareToken]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // Don't scroll the page on initial load - only scroll within the chat container after user interaction
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false;
+      return;
+    }
+    // Scroll only within the chat container, not the page
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
   }, [messages]);
 
   const requestLocation = async () => {
@@ -322,7 +332,7 @@ export function ChatEmbed({ tripId, shareToken }: ChatEmbedProps) {
   return (
     <div className="h-full flex flex-col bg-gradient-to-br from-orange-50 to-amber-50">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4">
         <div className="space-y-3 max-w-2xl mx-auto">
           {messages.map((msg, index) => (
             <div
