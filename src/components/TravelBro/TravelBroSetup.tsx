@@ -883,19 +883,26 @@ export function TravelBroSetup() {
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error('❌ Fetch-external-api error:', errorText);
         throw new Error(`Compositor API fout (${response.status}): ${errorText || response.statusText}`);
       }
 
       const proxyResult = await response.json();
+      console.log('📦 Proxy result:', proxyResult);
 
       if (!proxyResult.success) {
-        throw new Error(proxyResult.error || 'Sync failed');
+        const errorMsg = proxyResult.error || proxyResult.details || 'Sync failed';
+        console.error('❌ Proxy error:', errorMsg);
+        throw new Error(errorMsg);
       }
 
       const result = proxyResult.data;
+      console.log('📦 API result:', result);
 
       if (!result.success) {
-        throw new Error(result.error || 'Sync failed');
+        const errorMsg = result.error || result.details || 'Sync failed';
+        console.error('❌ API error:', errorMsg);
+        throw new Error(errorMsg);
       }
 
       setCompositorData(result.data);
