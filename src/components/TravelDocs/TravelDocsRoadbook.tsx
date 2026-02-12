@@ -196,6 +196,7 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
   const [mediaSelectorMode, setMediaSelectorMode] = useState<'photo' | 'video'>('photo');
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [mapOpen, setMapOpen] = useState(false);
+  const [detailItem, setDetailItem] = useState<OfferteItem | null>(null);
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [tcImporting, setTcImporting] = useState(false);
@@ -801,20 +802,11 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                             )}
                           </div>
                           
-                          {/* Price */}
-                          {(item.price || item.price_per_person) && (
-                            <div className="mt-4 pt-3 border-t border-gray-100">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-gray-500">Prijs</span>
-                                <span className="text-sm font-bold text-gray-900">
-                                  € {(item.price || item.price_per_person || 0).toLocaleString('nl-NL')}
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                          
                           {/* Action button */}
-                          <button className="mt-3 w-full bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 rounded-lg transition-colors flex items-center justify-center gap-2">
+                          <button 
+                            onClick={() => setDetailItem(item)}
+                            className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                          >
                             <Star size={14} />
                             Meer informatie
                           </button>
@@ -1254,6 +1246,138 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
               {lightboxIndex + 1} / {lightboxImages.length}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Detail Panel - Sliding from right */}
+      {detailItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-end">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setDetailItem(null)}
+          />
+          
+          {/* Panel */}
+          <div className="relative w-full max-w-2xl h-full bg-white shadow-2xl overflow-y-auto animate-slide-in-right">
+            {/* Header */}
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: getItemConfig(detailItem.type).bgColor }}>
+                  {getItemIcon(detailItem.type)}
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">{detailItem.title}</h3>
+                  <p className="text-sm text-gray-500">{getItemConfig(detailItem.type).label}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setDetailItem(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
+              {/* Image */}
+              {detailItem.image_url && (
+                <div className="rounded-xl overflow-hidden">
+                  <img src={detailItem.image_url} alt={detailItem.title} className="w-full h-64 object-cover" />
+                </div>
+              )}
+
+              {/* Basic Info */}
+              <div className="space-y-3">
+                {detailItem.subtitle && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500 mb-1">Locatie</h4>
+                    <p className="text-gray-900">{detailItem.subtitle}</p>
+                  </div>
+                )}
+                
+                {detailItem.description && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500 mb-1">Beschrijving</h4>
+                    <p className="text-gray-700 leading-relaxed">{detailItem.description}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Details Grid */}
+              <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-xl">
+                {detailItem.date_start && (
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Check-in</div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {new Date(detailItem.date_start).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </div>
+                  </div>
+                )}
+                {detailItem.date_end && (
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Check-out</div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {new Date(detailItem.date_end).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </div>
+                  </div>
+                )}
+                {detailItem.nights && (
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Nachten</div>
+                    <div className="text-sm font-medium text-gray-900">{detailItem.nights} nachten</div>
+                  </div>
+                )}
+                {detailItem.board_type && (
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Maaltijden</div>
+                    <div className="text-sm font-medium text-gray-900">{detailItem.board_type}</div>
+                  </div>
+                )}
+                {detailItem.distance && (
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Afstand</div>
+                    <div className="text-sm font-medium text-orange-600 flex items-center gap-1">
+                      <Car size={14} />
+                      {detailItem.distance}
+                    </div>
+                  </div>
+                )}
+                {detailItem.room_type && (
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Kamertype</div>
+                    <div className="text-sm font-medium text-gray-900">{detailItem.room_type}</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Facilities */}
+              {detailItem.facilities && detailItem.facilities.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">Faciliteiten</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {detailItem.facilities.map((facility, idx) => (
+                      <span key={idx} className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
+                        {facility}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Supplier Info */}
+              {detailItem.supplier && (
+                <div className="p-4 bg-gray-50 rounded-xl">
+                  <h4 className="text-sm font-medium text-gray-500 mb-2">Aanbieder</h4>
+                  <p className="text-gray-900 font-medium">{detailItem.supplier}</p>
+                  {detailItem.booking_reference && (
+                    <p className="text-xs text-gray-500 mt-1">Referentie: {detailItem.booking_reference}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
