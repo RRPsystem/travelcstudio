@@ -95,10 +95,12 @@ export function DayByDaySection({ destinations, items, brandColor = '#2e7d32', c
 
   return (
     <div className="w-full">
-      {/* Section header */}
-      <div className="px-8 pt-12 pb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Dag voor Dag</h2>
-        <p className="text-sm text-gray-500 mt-1">{numDest} bestemmingen op deze rondreis</p>
+      {/* Section banner */}
+      <div className="w-full py-10 text-center" style={{ backgroundColor: brandColor }}>
+        <h2 className="text-2xl md:text-3xl text-white tracking-wide">
+          DE REIS <span className="font-bold">DAG BIJ DAG</span>
+        </h2>
+        <p className="text-white/80 text-sm italic mt-2">Highlights Of Your Journey</p>
       </div>
 
       {/*
