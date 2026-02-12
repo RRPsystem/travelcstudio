@@ -689,7 +689,7 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                 )}
                 <div className="border-t border-white/10 pt-3 mt-4 space-y-1">
                   <div className="flex justify-between text-sm">
-                    <span className="text-white/60">Dagen</span>
+                    <span className="text-white/60">Items</span>
                     <span className="text-white/80">{items.length}</span>
                   </div>
                   {departureDate && (
