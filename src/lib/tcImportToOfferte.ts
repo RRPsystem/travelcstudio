@@ -86,6 +86,13 @@ function mapTcDataToOfferte(tc: any): TcImportResult {
   // --- Flights ---
   const flights = tc.flights || [];
   for (const f of flights) {
+    const duration = safeStr(f.duration || '');
+    const operatedBy = safeStr(f.operatedBy || f.operatingCompany || '');
+    const fare = safeStr(f.fare || '');
+    // Check if direct flight (no segments or single segment)
+    const segments = f.segments || [];
+    const isDirect = segments.length <= 1;
+
     items.push({
       id: crypto.randomUUID(),
       type: 'flight',
@@ -100,7 +107,15 @@ function mapTcDataToOfferte(tc: any): TcImportResult {
       date_start: safeStr(f.departureDate),
       date_end: safeStr(f.arrivalDate),
       price: extractPrice(f),
-      sort_order: 0, // will be reassigned after chronological sort
+      sort_order: 0,
+      details: {
+        duration,
+        operatedBy,
+        fare,
+        isDirect,
+        stops: isDirect ? 0 : segments.length - 1,
+        baggage: fare ? `${fare}` : '1PC',
+      },
     });
   }
 

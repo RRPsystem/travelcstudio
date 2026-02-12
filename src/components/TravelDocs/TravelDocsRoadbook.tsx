@@ -766,14 +766,17 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                         
                         {/* === HEADER SECTION === */}
                         {isFlight ? (
-                          /* FLIGHT CARD - compact */
+                          /* FLIGHT CARD - compact with extra info */
                           <div className="p-3">
                             <div className="flex items-center gap-1.5 mb-1.5">
                               <div className="w-6 h-6 bg-green-500 rounded-md flex items-center justify-center flex-shrink-0">
                                 <Plane size={12} className="text-white" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <div className="text-[11px] font-medium text-blue-600 truncate">{item.airline || 'Airline'} {item.flight_number || ''}</div>
+                                <div className="text-[11px] font-medium text-blue-600 truncate">
+                                  {item.airline || 'Airline'} {item.flight_number || ''}
+                                  {item.details?.operatedBy ? <span className="text-gray-400 font-normal"> - Uitgevoerd door: {item.details.operatedBy}</span> : null}
+                                </div>
                                 <div className="text-[10px] text-gray-400">{item.date_start ? new Date(item.date_start).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</div>
                               </div>
                             </div>
@@ -793,6 +796,16 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                                   <div className="text-sm font-bold text-gray-900">{item.arrival_time ? item.arrival_time.substring(0, 5) : '--:--'}</div>
                                 </div>
                               </div>
+                            </div>
+                            {/* Extra flight info row */}
+                            <div className="flex items-center justify-center gap-3 mt-1.5 text-[10px] text-gray-500">
+                              {item.details?.duration && (
+                                <span>⏱ {item.details.duration}</span>
+                              )}
+                              {item.details?.baggage && (
+                                <span>🧳 {item.details.baggage}</span>
+                              )}
+                              <span>{item.details?.isDirect !== false ? '→ Rechtstreeks' : `↔ ${item.details?.stops || 1} overstap`}</span>
                             </div>
                           </div>
                         ) : (isTransfer && !item.image_url) ? (
@@ -1244,8 +1257,8 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
             </div>
           )}
 
-          {/* Price summary */}
-          {items.length > 0 && priceDisplay !== 'hidden' && (
+          {/* Price summary — hidden for auto-rondreis (reis is geboekt) */}
+          {items.length > 0 && priceDisplay !== 'hidden' && templateType !== 'auto-rondreis' && (
             <div className="mt-8 bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Prijsoverzicht</h3>
               <div className="space-y-2">
