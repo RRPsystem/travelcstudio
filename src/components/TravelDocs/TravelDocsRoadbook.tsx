@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ArrowLeft, Save, Send, MapPin, Plus, GripVertical, X,
   Plane, Car, Building2, Compass, CarFront, Ship, Train, Shield, StickyNote,
@@ -11,6 +11,58 @@ import { OfferteItemTypeSelector } from './OfferteItemTypeSelector';
 import { OfferteItemPanel } from './OfferteItemPanel';
 import { SlidingMediaSelector } from '../shared/SlidingMediaSelector';
 import { RouteMap } from '../shared/RouteMap';
+
+// Countdown Timer Component for Roadbooks
+function CountdownTimer({ targetDate }: { targetDate: string }) {
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
+  useEffect(() => {
+    if (!targetDate) return;
+
+    const calculateTimeLeft = () => {
+      const difference = new Date(targetDate).getTime() - new Date().getTime();
+      
+      if (difference > 0) {
+        setTimeLeft({
+          days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+          hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+          minutes: Math.floor((difference / 1000 / 60) % 60),
+          seconds: Math.floor((difference / 1000) % 60)
+        });
+      }
+    };
+
+    calculateTimeLeft();
+    const timer = setInterval(calculateTimeLeft, 1000);
+    return () => clearInterval(timer);
+  }, [targetDate]);
+
+  if (!targetDate) return null;
+
+  return (
+    <div className="space-y-2">
+      <div className="text-sm text-white/60">Vertrek over</div>
+      <div className="grid grid-cols-4 gap-2">
+        <div className="bg-white/10 rounded-lg p-2 text-center">
+          <div className="text-2xl font-bold text-white">{timeLeft.days}</div>
+          <div className="text-xs text-white/60">dagen</div>
+        </div>
+        <div className="bg-white/10 rounded-lg p-2 text-center">
+          <div className="text-2xl font-bold text-white">{timeLeft.hours}</div>
+          <div className="text-xs text-white/60">uur</div>
+        </div>
+        <div className="bg-white/10 rounded-lg p-2 text-center">
+          <div className="text-2xl font-bold text-white">{timeLeft.minutes}</div>
+          <div className="text-xs text-white/60">min</div>
+        </div>
+        <div className="bg-white/10 rounded-lg p-2 text-center">
+          <div className="text-2xl font-bold text-white">{timeLeft.seconds}</div>
+          <div className="text-xs text-white/60">sec</div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Convert YouTube URLs to embed format
 function getYouTubeEmbedUrl(url: string): string | null {
@@ -624,46 +676,26 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
               </div>
             </div>
 
-            {/* Right side - price summary card */}
+            {/* Right side - countdown timer for roadbooks */}
             <div className="w-1/2 p-10 flex items-end justify-end">
               <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10 min-w-[280px]">
-                {priceDisplay !== 'hidden' && (
-                  <>
-                    {(priceDisplay === 'per_person' || priceDisplay === 'both') && (
-                      <>
-                        <div className="text-sm text-white/60 mb-1">Vanaf</div>
-                        <div className="text-3xl font-bold text-white mb-1">
-                          € {pricePerPerson.toLocaleString('nl-NL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                        </div>
-                        <div className="text-sm text-white/60 mb-4">per persoon</div>
-                      </>
-                    )}
-                    {priceDisplay === 'total' && (
-                      <>
-                        <div className="text-sm text-white/60 mb-1">Totaalprijs</div>
-                        <div className="text-3xl font-bold text-white mb-1">
-                          € {totalPrice.toLocaleString('nl-NL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                        </div>
-                        <div className="text-sm text-white/60 mb-4">{numberOfTravelers} reizigers</div>
-                      </>
-                    )}
-                  </>
+                {departureDate ? (
+                  <CountdownTimer targetDate={departureDate} />
+                ) : (
+                  <div className="text-center py-4">
+                    <Calendar className="w-8 h-8 text-white/40 mx-auto mb-2" />
+                    <div className="text-sm text-white/60">Stel een vertrekdatum in</div>
+                  </div>
                 )}
-                <div className="border-t border-white/10 pt-3 space-y-1">
-                  {priceDisplay !== 'hidden' && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-white/60">Totaal ({numberOfTravelers} pers.)</span>
-                      <span className="text-white font-medium">€ {totalPrice.toLocaleString('nl-NL', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                  )}
+                <div className="border-t border-white/10 pt-3 mt-4 space-y-1">
                   <div className="flex justify-between text-sm">
-                    <span className="text-white/60">Items</span>
+                    <span className="text-white/60">Dagen</span>
                     <span className="text-white/80">{items.length}</span>
                   </div>
-                  {validUntil && (
+                  {departureDate && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-white/60">Geldig tot</span>
-                      <span className="text-white/80">{new Date(validUntil).toLocaleDateString('nl-NL')}</span>
+                      <span className="text-white/60">Vertrek</span>
+                      <span className="text-white/80">{new Date(departureDate).toLocaleDateString('nl-NL')}</span>
                     </div>
                   )}
                 </div>
