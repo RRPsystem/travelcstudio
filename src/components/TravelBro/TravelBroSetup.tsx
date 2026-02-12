@@ -876,7 +876,7 @@ export function TravelBroSetup() {
             id: compositorBookingId.trim(),
             micrositeId: micrositeId,
             language: 'NL',
-            brand_id: user?.brand_id
+            brand_id: user?.brand_id || '00000000-0000-0000-0000-000000000999' // Admin Workspace fallback
           }
         })
       });
