@@ -132,6 +132,8 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
   const [validUntil, setValidUntil] = useState(offerte?.valid_until || '');
   const [internalNotes, setInternalNotes] = useState(offerte?.internal_notes || '');
   const [destinations, setDestinations] = useState<OfferteDestination[]>(offerte?.destinations || []);
+  const [departureDate, setDepartureDate] = useState(offerte?.departure_date || '');
+  const templateType = offerte?.template_type || 'auto-rondreis';
 
   const [items, setItems] = useState<OfferteItem[]>(offerte?.items || []);
   const [addMenuIndex, setAddMenuIndex] = useState<number | null>(null);
@@ -373,7 +375,7 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              placeholder="Naam van de offerte..."
+              placeholder="Naam van het Roadbook..."
               className="text-lg font-bold text-gray-900 border-none outline-none bg-transparent placeholder:text-gray-300 w-80"
             />
             <div className="flex items-center gap-3 text-xs text-gray-500">
@@ -426,13 +428,8 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
               <input type="number" value={numberOfTravelers} onChange={e => setNumberOfTravelers(parseInt(e.target.value) || 1)} min={1} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Prijsweergave</label>
-              <select value={priceDisplay} onChange={e => setPriceDisplay(e.target.value as any)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none">
-                <option value="both">Totaal + per persoon</option>
-                <option value="total">Alleen totaalprijs</option>
-                <option value="per_person">Alleen prijs p.p.</option>
-                <option value="hidden">Prijzen verbergen</option>
-              </select>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Vertrekdatum</label>
+              <input type="date" value={departureDate} onChange={e => setDepartureDate(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none" />
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-medium text-gray-500 mb-1">Importeer vanuit Travel Compositor</label>
@@ -466,10 +463,6 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                   {tcImportSuccess}
                 </div>
               )}
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Geldig tot</label>
-              <input type="date" value={validUntil} onChange={e => setValidUntil(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none" />
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-medium text-gray-500 mb-1">Interne notities</label>
