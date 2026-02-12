@@ -749,7 +749,7 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
           <div className="bg-gray-50 py-8">
             <div className="max-w-7xl mx-auto px-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Jouw Reis Timeline</h2>
-              <div ref={carouselRef} className="flex gap-6 overflow-x-auto pb-4 mb-6" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              <div ref={carouselRef} className="grid gap-5 pb-4 mb-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
                 {[...items].sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999)).map((item) => {
                   const config = getItemConfig(item.type);
                   const isFlight = item.type === 'flight';
@@ -759,7 +759,7 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                   const isCarRental = item.type === 'car_rental';
                   
                   return (
-                    <div key={item.id} className="flex-shrink-0 w-80">
+                    <div key={item.id}>
                       <div className="bg-white rounded-xl border border-gray-200 shadow-md hover:shadow-xl transition-all overflow-hidden flex flex-col">
                         
                         {/* === HEADER SECTION === */}
@@ -948,29 +948,7 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                 })}
               </div>
               
-              {/* Navigation arrows - centered below carousel */}
-              <div className="flex justify-center gap-3">
-                <button
-                  onClick={() => {
-                    if (carouselRef.current) {
-                      carouselRef.current.scrollBy({ left: -340, behavior: 'smooth' });
-                    }
-                  }}
-                  className="p-3 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors shadow-sm"
-                >
-                  <ArrowLeft size={20} className="text-gray-600" />
-                </button>
-                <button
-                  onClick={() => {
-                    if (carouselRef.current) {
-                      carouselRef.current.scrollBy({ left: 340, behavior: 'smooth' });
-                    }
-                  }}
-                  className="p-3 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors shadow-sm"
-                >
-                  <ArrowLeft size={20} className="text-gray-600 rotate-180" />
-                </button>
-              </div>
+              {/* Grid layout - all cards visible, no scroll needed */}
             </div>
           </div>
         )}
@@ -1436,19 +1414,71 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
 
             {/* Content */}
             <div className="p-6 space-y-6">
-              {/* Image */}
-              {detailItem.image_url && (
-                <div className="rounded-xl overflow-hidden">
-                  <img src={detailItem.image_url} alt={detailItem.title} className="w-full h-64 object-cover" />
+              {/* Photo Gallery */}
+              {detailItem.images && detailItem.images.length > 0 ? (
+                <div>
+                  <div className="relative rounded-xl overflow-hidden">
+                    <img 
+                      src={detailItem.images[cardPhotoIdx[`detail-${detailItem.id}`] || 0] || detailItem.image_url} 
+                      alt={detailItem.title} 
+                      className="w-full h-72 object-cover cursor-pointer"
+                      onClick={() => { setLightboxImages(detailItem.images!); setLightboxIndex(cardPhotoIdx[`detail-${detailItem.id}`] || 0); }}
+                    />
+                    {detailItem.images.length > 1 && (
+                      <>
+                        <button
+                          onClick={() => setCardPhotoIdx(prev => {
+                            const cur = prev[`detail-${detailItem.id}`] || 0;
+                            return { ...prev, [`detail-${detailItem.id}`]: cur > 0 ? cur - 1 : detailItem.images!.length - 1 };
+                          })}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow-lg flex items-center justify-center hover:bg-white"
+                        >
+                          <ArrowLeft size={16} className="text-gray-700" />
+                        </button>
+                        <button
+                          onClick={() => setCardPhotoIdx(prev => {
+                            const cur = prev[`detail-${detailItem.id}`] || 0;
+                            return { ...prev, [`detail-${detailItem.id}`]: cur < detailItem.images!.length - 1 ? cur + 1 : 0 };
+                          })}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow-lg flex items-center justify-center hover:bg-white"
+                        >
+                          <ArrowLeft size={16} className="text-gray-700 rotate-180" />
+                        </button>
+                        <div className="absolute bottom-3 right-3 px-2 py-1 bg-black/60 text-white text-xs rounded-full">
+                          {(cardPhotoIdx[`detail-${detailItem.id}`] || 0) + 1} / {detailItem.images.length}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  {/* Thumbnail strip */}
+                  {detailItem.images.length > 1 && (
+                    <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+                      {detailItem.images.map((img, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => setCardPhotoIdx(prev => ({ ...prev, [`detail-${detailItem.id}`]: idx }))}
+                          className={`w-16 h-12 rounded-lg overflow-hidden cursor-pointer flex-shrink-0 border-2 transition-all ${
+                            (cardPhotoIdx[`detail-${detailItem.id}`] || 0) === idx ? 'border-orange-500 shadow-md' : 'border-transparent opacity-70 hover:opacity-100'
+                          }`}
+                        >
+                          <img src={img} alt="" className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
+              ) : detailItem.image_url ? (
+                <div className="rounded-xl overflow-hidden">
+                  <img src={detailItem.image_url} alt={detailItem.title} className="w-full h-72 object-cover" />
+                </div>
+              ) : null}
 
               {/* Basic Info */}
               <div className="space-y-3">
-                {detailItem.subtitle && (
+                {(detailItem.location || detailItem.subtitle) && (
                   <div>
                     <h4 className="text-sm font-medium text-gray-500 mb-1">Locatie</h4>
-                    <p className="text-gray-900">{detailItem.subtitle}</p>
+                    <p className="text-gray-900">{typeof (detailItem.location || detailItem.subtitle) === 'object' ? ((detailItem.location || detailItem.subtitle) as any).name || '' : (detailItem.location || detailItem.subtitle)}</p>
                   </div>
                 )}
                 
