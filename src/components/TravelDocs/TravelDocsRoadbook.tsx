@@ -164,9 +164,10 @@ interface Props {
   offerte?: Offerte;
   onBack: () => void;
   onSave?: (offerte: Offerte) => void;
+  brandColor?: string;
 }
 
-export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
+export function TravelDocsRoadbook({ offerte, onBack, onSave, brandColor = '#2e7d32' }: Props) {
   const [title, setTitle] = useState(offerte?.title || '');
   const [subtitle, setSubtitle] = useState(offerte?.subtitle || '');
   const [introText, setIntroText] = useState(offerte?.intro_text || '');
@@ -1022,7 +1023,7 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
           <DayByDaySection
             destinations={destinations}
             items={items}
-            brandColor="#2e7d32"
+            brandColor={brandColor}
             carImageUrl="/auto.png"
           />
         )}

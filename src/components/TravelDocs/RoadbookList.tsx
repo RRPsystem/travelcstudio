@@ -24,19 +24,22 @@ export function RoadbookList() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [brandColor, setBrandColor] = useState('#2e7d32');
 
   const loadRoadbooks = async () => {
     if (!db.supabase || !user?.brand_id) return;
     try {
       setLoading(true);
       setError(null);
-      const { data, error: dbError } = await db.supabase
-        .from('travel_roadbooks')
-        .select('*')
-        .eq('brand_id', user.brand_id)
-        .order('created_at', { ascending: false });
-      if (dbError) throw dbError;
-      setRoadbooks(data || []);
+      const [rbResult, brandResult] = await Promise.all([
+        db.supabase.from('travel_roadbooks').select('*').eq('brand_id', user.brand_id).order('created_at', { ascending: false }),
+        db.supabase.from('brands').select('primary_color, secondary_color').eq('id', user.brand_id).single(),
+      ]);
+      if (rbResult.error) throw rbResult.error;
+      setRoadbooks(rbResult.data || []);
+      if (brandResult.data?.primary_color) {
+        setBrandColor(brandResult.data.primary_color);
+      }
     } catch (err: any) {
       console.error('Error loading roadbooks:', err);
       setError(err.message || 'Kon roadbooks niet laden');
@@ -291,6 +294,7 @@ export function RoadbookList() {
         offerte={editingRoadbook as any}
         onBack={() => setView('list')}
         onSave={handleSaveRoadbook}
+        brandColor={brandColor}
       />
     );
   }
