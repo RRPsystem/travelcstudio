@@ -189,6 +189,9 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave, brandColor = '#2e7
   const [destinations, setDestinations] = useState<OfferteDestination[]>(offerte?.destinations || []);
   const [departureDate, setDepartureDate] = useState(offerte?.departure_date || '');
   const templateType = offerte?.template_type || 'auto-rondreis';
+  const [travelbroTripId, setTravelbroTripId] = useState(offerte?.travelbro_trip_id || '');
+  const [travelbroShareToken, setTravelbroShareToken] = useState(offerte?.travelbro_share_token || '');
+  const [creatingTravelbro, setCreatingTravelbro] = useState(false);
 
   const [items, setItems] = useState<OfferteItem[]>(offerte?.items || []);
   const [addMenuIndex, setAddMenuIndex] = useState<number | null>(null);
@@ -338,6 +341,47 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave, brandColor = '#2e7
     }
   };
 
+  // Create a TravelBro trip linked to this roadbook
+  const handleCreateTravelbro = async () => {
+    if (!supabase || !offerte?.brand_id) {
+      alert('Sla eerst het roadbook op.');
+      return;
+    }
+    if (!offerte?.id) {
+      alert('Sla eerst het roadbook op voordat je TravelBro koppelt.');
+      return;
+    }
+    setCreatingTravelbro(true);
+    try {
+      const shareToken = crypto.randomUUID().replace(/-/g, '');
+      const destNames = destinations.map(d => d.name).filter(Boolean).join(', ');
+      const { data: tripData, error: tripErr } = await supabase
+        .from('travel_trips')
+        .insert({
+          brand_id: offerte.brand_id,
+          name: title || 'Roadbook Reis',
+          share_token: shareToken,
+          parsed_data: { destinations, items, title, subtitle, client_name: clientName },
+          source_urls: [],
+          custom_context: `Dit is een roadbook voor ${clientName || 'de reiziger'}. Bestemmingen: ${destNames}. ${introText || ''}`,
+          created_by: offerte.agent_id || null,
+        })
+        .select()
+        .single();
+      if (tripErr) throw tripErr;
+      setTravelbroTripId(tripData.id);
+      setTravelbroShareToken(shareToken);
+      // Auto-save so the link persists
+      const data = { ...buildData(), travelbro_trip_id: tripData.id, travelbro_share_token: shareToken };
+      onSave?.(data);
+    } catch (err: any) {
+      console.error('Error creating TravelBro:', err);
+      alert('Fout bij aanmaken TravelBro: ' + (err.message || ''));
+    } finally {
+      setCreatingTravelbro(false);
+    }
+  };
+
   // Build the data object without saving
   const buildData = (): Offerte => ({
     id: offerte?.id || '',
@@ -363,6 +407,8 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave, brandColor = '#2e7
     price_display: priceDisplay,
     template_type: templateType as any,
     departure_date: departureDate || undefined,
+    travelbro_trip_id: travelbroTripId || undefined,
+    travelbro_share_token: travelbroShareToken || undefined,
     status: offerte?.status || 'draft',
     valid_until: validUntil || undefined,
     internal_notes: internalNotes || undefined,
@@ -1239,6 +1285,75 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave, brandColor = '#2e7
             carImageUrl="/auto.png"
           />
         )}
+
+        {/* TRAVELBRO SECTION */}
+        <div className="max-w-5xl mx-auto px-6 py-8">
+          <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">
+              <Compass size={18} className="text-orange-600" /> TravelBro
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">Persoonlijke AI reisassistent voor je klant</p>
+
+            {travelbroShareToken ? (
+              <div className="space-y-4">
+                {/* QR Code + Info */}
+                <div className="flex items-start gap-6">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${window.location.origin}/trip/${travelbroShareToken}`)}`}
+                    alt="TravelBro QR"
+                    className="w-28 h-28 rounded-lg shadow bg-white p-1.5"
+                  />
+                  <div className="flex-1 space-y-2">
+                    <div>
+                      <label className="text-xs font-medium text-gray-500">Intake link (voor klant)</label>
+                      <div className="flex gap-2 mt-0.5">
+                        <input
+                          type="text"
+                          readOnly
+                          value={`${window.location.origin}/trip/${travelbroShareToken}`}
+                          className="flex-1 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-mono text-gray-700"
+                        />
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/trip/${travelbroShareToken}`); alert('Link gekopieerd!'); }}
+                          className="px-3 py-1.5 bg-orange-600 text-white text-xs font-medium rounded-lg hover:bg-orange-700 transition-colors"
+                        >
+                          Kopieer
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      De reiziger kan deze QR code scannen of de link openen om het intake formulier in te vullen en de TravelBro AI assistent te gebruiken.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => window.open(`${window.location.origin}/trip/${travelbroShareToken}`, '_blank')}
+                        className="px-3 py-1.5 bg-white border border-gray-300 text-xs font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <ExternalLink size={12} className="inline mr-1" /> Preview openen
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-sm text-gray-600 mb-3">Koppel een TravelBro aan dit roadbook zodat je klant een AI reisassistent krijgt met intake formulier en QR code.</p>
+                <button
+                  onClick={handleCreateTravelbro}
+                  disabled={creatingTravelbro || !offerte?.id}
+                  className="px-6 py-2.5 bg-orange-600 text-white font-medium rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 flex items-center gap-2 mx-auto"
+                >
+                  {creatingTravelbro ? (
+                    <><Loader2 size={16} className="animate-spin" /> TravelBro aanmaken...</>
+                  ) : (
+                    <><Compass size={16} /> TravelBro koppelen</>
+                  )}
+                </button>
+                {!offerte?.id && <p className="text-xs text-red-500 mt-2">Sla het roadbook eerst op</p>}
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* DESTINATION INFO CARDS - Fallback for standard template */}
         {templateType !== 'auto-rondreis' && destinations.length > 0 && destinations.some(d => d.description || (d.images && d.images.length > 0)) && (

@@ -109,6 +109,8 @@ export function RoadbookList() {
         if (includeExtras) {
           payload.template_type = roadbook.template_type || 'standard';
           payload.departure_date = roadbook.departure_date || null;
+          payload.travelbro_trip_id = roadbook.travelbro_trip_id || null;
+          payload.travelbro_share_token = roadbook.travelbro_share_token || null;
         }
 
         if (isExisting) {

@@ -168,6 +168,8 @@ export function OfferteViewer({ offerteId }: Props) {
           terms_conditions: data.terms_conditions,
           template_type: data.template_type,
           departure_date: data.departure_date,
+          travelbro_trip_id: data.travelbro_trip_id,
+          travelbro_share_token: data.travelbro_share_token,
           created_at: data.created_at,
           updated_at: data.updated_at,
         };
@@ -669,6 +671,35 @@ export function OfferteViewer({ offerteId }: Props) {
           <div className="flex items-center gap-2 text-sm text-gray-400">
             <Clock size={14} />
             Offerte geldig tot {new Date(offerte.valid_until).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </div>
+        </div>
+      )}
+
+      {/* TRAVELBRO — QR code + intake link for traveler */}
+      {offerte.travelbro_share_token && (
+        <div className="max-w-4xl mx-auto px-6 pb-8">
+          <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-2xl p-8 text-center">
+            <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Globe size={28} className="text-white" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-1">Jouw persoonlijke reisassistent</h3>
+            <p className="text-sm text-gray-600 mb-6">Scan de QR code of klik op de knop om TravelBro te openen — je AI reisassistent die al je vragen beantwoordt.</p>
+            <div className="flex flex-col items-center gap-4">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`${window.location.origin}/trip/${offerte.travelbro_share_token}`)}`}
+                alt="TravelBro QR"
+                className="w-40 h-40 rounded-xl shadow-lg bg-white p-2"
+              />
+              <a
+                href={`${window.location.origin}/trip/${offerte.travelbro_share_token}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-6 py-3 text-white font-semibold rounded-xl transition-colors hover:opacity-90"
+                style={{ backgroundColor: brand?.primary_color || '#f97316' }}
+              >
+                <Globe size={18} /> Open TravelBro
+              </a>
+            </div>
           </div>
         </div>
       )}

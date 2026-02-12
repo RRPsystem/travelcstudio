@@ -83,6 +83,9 @@ export interface Offerte {
   // Auto rondreis specific
   departure_date?: string; // For countdown timer
   template_type?: 'standard' | 'auto-rondreis';
+  // TravelBro link
+  travelbro_trip_id?: string;
+  travelbro_share_token?: string;
   // Status
   status: 'draft' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'revised' | 'expired';
   sent_at?: string;
