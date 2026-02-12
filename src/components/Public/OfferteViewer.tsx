@@ -7,6 +7,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { Offerte, OfferteItem, OfferteDestination, ExtraCost, OFFERTE_ITEM_TYPES } from '../../types/offerte';
 import { RouteMap } from '../shared/RouteMap';
+import { DayByDaySection } from '../TravelDocs/DayByDaySection';
 
 function getYouTubeEmbedUrl(url: string): string | null {
   if (!url) return null;
@@ -165,6 +166,8 @@ export function OfferteViewer({ offerteId }: Props) {
           client_response_note: data.client_response_note,
           internal_notes: data.internal_notes,
           terms_conditions: data.terms_conditions,
+          template_type: data.template_type,
+          departure_date: data.departure_date,
           created_at: data.created_at,
           updated_at: data.updated_at,
         };
@@ -180,7 +183,7 @@ export function OfferteViewer({ offerteId }: Props) {
         if (data.brand_id) {
           const { data: brandData } = await supabase
             .from('brands')
-            .select('name, logo_url, contact_email, contact_phone, website_url, street_address, city, postal_code, country')
+            .select('name, logo_url, contact_email, contact_phone, website_url, street_address, city, postal_code, country, primary_color, secondary_color')
             .eq('id', data.brand_id)
             .single();
           if (mounted && brandData) setBrand(brandData);
@@ -407,8 +410,18 @@ export function OfferteViewer({ offerteId }: Props) {
         </div>
       )}
 
-      {/* DESTINATIONS */}
-      {destinations.length > 0 && destinations.some(d => d.description || (d.images && d.images.length > 0)) && (
+      {/* DAG VOOR DAG — auto-rondreis layout */}
+      {offerte.template_type === 'auto-rondreis' && destinations.length > 0 && destinations.some(d => d.description || (d.images && d.images.length > 0)) && (
+        <DayByDaySection
+          destinations={destinations}
+          items={items}
+          brandColor={brand?.primary_color || '#2e7d32'}
+          carImageUrl="/auto.png"
+        />
+      )}
+
+      {/* DESTINATIONS — standard layout */}
+      {offerte.template_type !== 'auto-rondreis' && destinations.length > 0 && destinations.some(d => d.description || (d.images && d.images.length > 0)) && (
         <div className="max-w-4xl mx-auto px-6 pt-10 pb-4">
           <h2 className="text-2xl font-bold text-gray-900 mb-1">Bestemmingen</h2>
           <p className="text-sm text-gray-500 mb-6">{destinations.length} bestemmingen op deze reis</p>
