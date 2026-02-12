@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft, Save, Send, MapPin, Plus, GripVertical, X,
   Plane, Car, Building2, Compass, CarFront, Ship, Train, Shield, StickyNote,
@@ -197,6 +197,7 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [mapOpen, setMapOpen] = useState(false);
   const [detailItem, setDetailItem] = useState<OfferteItem | null>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [tcImporting, setTcImporting] = useState(false);
@@ -746,8 +747,32 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
         {items.length > 0 && templateType === 'auto-rondreis' && (
           <div className="bg-gray-50 py-8">
             <div className="max-w-7xl mx-auto px-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Jouw Reis Timeline</h2>
-              <div className="flex gap-6 overflow-x-auto pb-4" style={{ scrollbarWidth: 'thin' }}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Jouw Reis Timeline</h2>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      if (carouselRef.current) {
+                        carouselRef.current.scrollBy({ left: -400, behavior: 'smooth' });
+                      }
+                    }}
+                    className="p-2 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors"
+                  >
+                    <ArrowLeft size={20} className="text-gray-600" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (carouselRef.current) {
+                        carouselRef.current.scrollBy({ left: 400, behavior: 'smooth' });
+                      }
+                    }}
+                    className="p-2 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors"
+                  >
+                    <ArrowLeft size={20} className="text-gray-600 rotate-180" />
+                  </button>
+                </div>
+              </div>
+              <div ref={carouselRef} className="flex gap-6 overflow-x-auto pb-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {[...items].sort((a, b) => {
                   const dateA = a.date_start ? new Date(a.date_start).getTime() : 0;
                   const dateB = b.date_start ? new Date(b.date_start).getTime() : 0;
@@ -759,32 +784,34 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                   return (
                     <div key={item.id} className="flex-shrink-0 w-80">
                       <div className="bg-white rounded-xl border border-gray-200 shadow-md hover:shadow-xl transition-all overflow-hidden h-full">
-                        {/* Image or Flight Header */}
+                        {/* Image or Flight/Cruise Header */}
                         {isFlight ? (
-                          <div className="relative bg-gradient-to-br from-blue-500 to-blue-600 p-6">
-                            <div className="absolute top-3 left-3 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-xs font-semibold text-white">
-                              ✈️ {config.label}
-                            </div>
-                            {item.date_start && (
-                              <div className="absolute top-3 right-3 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-full text-xs font-medium text-gray-700">
-                                {new Date(item.date_start).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}
+                          <div className="relative bg-white border-b border-gray-200 p-4">
+                            <div className="flex items-start gap-3 mb-4">
+                              <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <Plane size={20} className="text-white" />
                               </div>
-                            )}
-                            <div className="mt-8 flex items-center justify-between text-white">
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs text-gray-500 mb-1">{item.date_start ? new Date(item.date_start).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</div>
+                                <div className="text-sm font-medium text-blue-600">{item.airline || 'Airline'}</div>
+                                <div className="text-xs text-gray-500">{item.flight_number ? `Vlucht ${item.flight_number}` : ''}</div>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between">
                               <div className="text-center">
-                                <div className="text-xs opacity-80 mb-1">Vertrek</div>
-                                <div className="text-2xl font-bold">{item.departure_time || '--:--'}</div>
-                                <div className="text-xs opacity-80 mt-1">{item.departure_airport || 'N/A'}</div>
+                                <div className="text-xs text-gray-500 mb-1">MST</div>
+                                <div className="text-xl font-bold text-gray-900">{item.departure_time || '--:--'}</div>
+                                <div className="text-xs text-gray-500 mt-1">{item.departure_airport || 'N/A'}</div>
                               </div>
                               <div className="flex-1 flex items-center justify-center px-4">
-                                <div className="h-px bg-white/30 flex-1"></div>
-                                <Plane size={20} className="mx-2" />
-                                <div className="h-px bg-white/30 flex-1"></div>
+                                <div className="h-px bg-gray-300 flex-1"></div>
+                                <Plane size={16} className="mx-2 text-green-500" />
+                                <div className="h-px bg-gray-300 flex-1"></div>
                               </div>
                               <div className="text-center">
-                                <div className="text-xs opacity-80 mb-1">Aankomst</div>
-                                <div className="text-2xl font-bold">{item.arrival_time || '--:--'}</div>
-                                <div className="text-xs opacity-80 mt-1">{item.arrival_airport || 'N/A'}</div>
+                                <div className="text-xs text-gray-500 mb-1">JNB</div>
+                                <div className="text-xl font-bold text-gray-900">{item.arrival_time || '--:--'}</div>
+                                <div className="text-xs text-gray-500 mt-1">{item.arrival_airport || 'N/A'}</div>
                               </div>
                             </div>
                           </div>
@@ -801,7 +828,16 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                               </div>
                             )}
                           </div>
-                        ) : null}
+                        ) : (
+                          <div className="relative bg-white border-b border-gray-200 p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: config.bgColor }}>
+                                {getItemIcon(item.type)}
+                              </div>
+                              <div className="text-sm font-medium text-gray-500">{config.label}</div>
+                            </div>
+                          </div>
+                        )}
                         
                         {/* Content */}
                         <div className="p-4">
@@ -810,22 +846,10 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                           
                           {/* Details with professional icons */}
                           <div className="space-y-2 text-xs text-gray-600">
-                            {!isFlight && item.date_start && item.date_end && (
-                              <div className="flex items-center gap-2">
-                                <span className="text-gray-400">📅</span>
-                                <span>{new Date(item.date_start).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })} - {new Date(item.date_end).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}</span>
-                              </div>
-                            )}
                             {item.nights && (
                               <div className="flex items-center gap-2">
                                 <span className="text-gray-400">🌙</span>
                                 <span>{item.nights} nachten</span>
-                              </div>
-                            )}
-                            {item.distance && (
-                              <div className="flex items-center gap-2 text-orange-600 font-medium">
-                                <span>🚗</span>
-                                <span>{item.distance}</span>
                               </div>
                             )}
                             {item.board_type && (
@@ -834,16 +858,16 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                                 <span>{item.board_type}</span>
                               </div>
                             )}
-                            {isFlight && item.airline && (
-                              <div className="flex items-center gap-2">
-                                <span className="text-gray-400">✈️</span>
-                                <span>{item.airline}</span>
+                            {item.distance && (
+                              <div className="flex items-center gap-2 text-orange-600 font-medium">
+                                <span>🚗</span>
+                                <span>{item.distance}</span>
                               </div>
                             )}
-                            {isFlight && item.flight_number && (
+                            {isFlight && (
                               <div className="flex items-center gap-2">
-                                <span className="text-gray-400">🎫</span>
-                                <span>Vlucht {item.flight_number}</span>
+                                <span className="text-gray-400">🧳</span>
+                                <span>Bagage 1PC</span>
                               </div>
                             )}
                           </div>
