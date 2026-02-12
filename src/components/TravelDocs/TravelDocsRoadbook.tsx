@@ -13,6 +13,7 @@ import { OfferteItemPanel } from './OfferteItemPanel';
 import { SlidingMediaSelector } from '../shared/SlidingMediaSelector';
 import { RouteMap } from '../shared/RouteMap';
 import { DayByDaySection } from './DayByDaySection';
+import { ChatEmbed } from '../TravelBro/ChatEmbed';
 
 // Countdown Timer Component for Roadbooks
 function CountdownTimer({ targetDate }: { targetDate: string }) {
@@ -1288,71 +1289,107 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave, brandColor = '#2e7
 
         {/* TRAVELBRO SECTION */}
         <div className="max-w-5xl mx-auto px-6 py-8">
-          <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">
-              <Compass size={18} className="text-orange-600" /> TravelBro
-            </h3>
-            <p className="text-sm text-gray-500 mb-4">Persoonlijke AI reisassistent voor je klant</p>
+          {travelbroShareToken ? (
+            <>
+              {/* Header */}
+              <div className="text-center mb-6">
+                <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg">
+                  <Compass size={28} className="text-white" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-1">TravelBro — Jouw Reisassistent</h2>
+                <p className="text-sm text-gray-500 max-w-lg mx-auto">Stel vragen, ontdek nieuwe plekken en maak het meeste van je reis.</p>
+              </div>
 
-            {travelbroShareToken ? (
-              <div className="space-y-4">
-                {/* QR Code + Info */}
-                <div className="flex items-start gap-6">
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${window.location.origin}/travelbro/${travelbroShareToken}`)}`}
-                    alt="TravelBro QR"
-                    className="w-28 h-28 rounded-lg shadow bg-white p-1.5"
-                  />
-                  <div className="flex-1 space-y-2">
-                    <div>
-                      <label className="text-xs font-medium text-gray-500">Intake link (voor klant)</label>
-                      <div className="flex gap-2 mt-0.5">
-                        <input
-                          type="text"
-                          readOnly
-                          value={`${window.location.origin}/travelbro/${travelbroShareToken}`}
-                          className="flex-1 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-mono text-gray-700"
-                        />
-                        <button
-                          onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/travelbro/${travelbroShareToken}`); alert('Link gekopieerd!'); }}
-                          className="px-3 py-1.5 bg-orange-600 text-white text-xs font-medium rounded-lg hover:bg-orange-700 transition-colors"
-                        >
-                          Kopieer
-                        </button>
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      De reiziger kan deze QR code scannen of de link openen om het intake formulier in te vullen en de TravelBro AI assistent te gebruiken.
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => window.open(`${window.location.origin}/travelbro/${travelbroShareToken}`, '_blank')}
-                        className="px-3 py-1.5 bg-white border border-gray-300 text-xs font-medium rounded-lg hover:bg-gray-50 transition-colors"
-                      >
-                        <ExternalLink size={12} className="inline mr-1" /> Preview openen
-                      </button>
-                    </div>
+              {/* Feature cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                <div className="bg-white rounded-xl border border-gray-200 p-4 text-center hover:shadow-md transition-shadow">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-2">
+                    <MapPin size={20} className="text-blue-600" />
                   </div>
+                  <p className="text-xs font-semibold text-gray-800">Wandelroutes</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">In de buurt ontdekken</p>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 p-4 text-center hover:shadow-md transition-shadow">
+                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-2">
+                    <Car size={20} className="text-green-600" />
+                  </div>
+                  <p className="text-xs font-semibold text-gray-800">Fietsverhuur</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Verhuurpunten zoeken</p>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 p-4 text-center hover:shadow-md transition-shadow">
+                  <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-2">
+                    <Building2 size={20} className="text-purple-600" />
+                  </div>
+                  <p className="text-xs font-semibold text-gray-800">Foto herkenning</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Stuur een foto</p>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 p-4 text-center hover:shadow-md transition-shadow">
+                  <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-2">
+                    <Star size={20} className="text-amber-600" />
+                  </div>
+                  <p className="text-xs font-semibold text-gray-800">Restaurants</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Tips en reserveringen</p>
                 </div>
               </div>
-            ) : (
-              <div className="text-center py-4">
-                <p className="text-sm text-gray-600 mb-3">Koppel een TravelBro aan dit roadbook zodat je klant een AI reisassistent krijgt met intake formulier en QR code.</p>
-                <button
-                  onClick={handleCreateTravelbro}
-                  disabled={creatingTravelbro || !offerte?.id}
-                  className="px-6 py-2.5 bg-orange-600 text-white font-medium rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 flex items-center gap-2 mx-auto"
-                >
-                  {creatingTravelbro ? (
-                    <><Loader2 size={16} className="animate-spin" /> TravelBro aanmaken...</>
-                  ) : (
-                    <><Compass size={16} /> TravelBro koppelen</>
-                  )}
-                </button>
-                {!offerte?.id && <p className="text-xs text-red-500 mt-2">Sla het roadbook eerst op</p>}
+
+              {/* Embedded Chat */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden mb-6" style={{ height: '500px' }}>
+                <ChatEmbed shareToken={travelbroShareToken} />
               </div>
-            )}
-          </div>
+
+              {/* QR Code + link tools */}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-6 bg-gray-50 rounded-xl p-5 border border-gray-200">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${window.location.origin}/travelbro/${travelbroShareToken}`)}`}
+                  alt="TravelBro QR"
+                  className="w-24 h-24 rounded-lg shadow bg-white p-1.5"
+                />
+                <div className="text-center sm:text-left flex-1">
+                  <p className="text-sm font-semibold text-gray-800 mb-1">Deel met je klant</p>
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={`${window.location.origin}/travelbro/${travelbroShareToken}`}
+                      className="flex-1 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-mono text-gray-700"
+                    />
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/travelbro/${travelbroShareToken}`); alert('Link gekopieerd!'); }}
+                      className="px-3 py-1.5 bg-orange-600 text-white text-xs font-medium rounded-lg hover:bg-orange-700 transition-colors"
+                    >
+                      Kopieer
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => window.open(`${window.location.origin}/travelbro/${travelbroShareToken}`, '_blank')}
+                    className="px-3 py-1.5 bg-white border border-gray-300 text-xs font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <ExternalLink size={12} className="inline mr-1" /> Preview openen
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-8 text-center">
+              <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <Compass size={28} className="text-white" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">TravelBro koppelen</h3>
+              <p className="text-sm text-gray-600 mb-4 max-w-md mx-auto">Geef je klant een persoonlijke AI reisassistent — wandelroutes, fietsverhuur, foto herkenning, restaurants en meer.</p>
+              <button
+                onClick={handleCreateTravelbro}
+                disabled={creatingTravelbro || !offerte?.id}
+                className="px-6 py-2.5 bg-orange-600 text-white font-medium rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 flex items-center gap-2 mx-auto"
+              >
+                {creatingTravelbro ? (
+                  <><Loader2 size={16} className="animate-spin" /> TravelBro aanmaken...</>
+                ) : (
+                  <><Compass size={16} /> TravelBro koppelen</>
+                )}
+              </button>
+              {!offerte?.id && <p className="text-xs text-red-500 mt-2">Sla het roadbook eerst op</p>}
+            </div>
+          )}
         </div>
 
         {/* DESTINATION INFO CARDS - Fallback for standard template */}
