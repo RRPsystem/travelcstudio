@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db, supabase } from '../../lib/supabase';
-import { Bot, Phone, MessageSquare, Users, Settings, CheckCircle, XCircle, ExternalLink, Copy, Send, Plus, FileText, Link as LinkIcon, Trash2, Share2, Upload, Loader, CreditCard as Edit, Clock, Calendar, ArrowRight, MapPin, Route, Navigation, CreditCard } from 'lucide-react';
+import { Bot, Phone, MessageSquare, Users, Settings, CheckCircle, XCircle, ExternalLink, Copy, Send, Plus, FileText, Link as LinkIcon, Trash2, Upload, Loader, CreditCard as Edit, Clock, Calendar, ArrowRight, MapPin, Route, Navigation, CreditCard, BookOpen } from 'lucide-react';
 import { GooglePlacesAutocomplete } from '../shared/GooglePlacesAutocomplete';
 import { edgeAIService } from '../../lib/apiServices';
 
@@ -109,10 +109,15 @@ export function TravelBroSetup() {
   const [savingTripEdit, setSavingTripEdit] = useState(false);
 
   const [creditBalance, setCreditBalance] = useState<number | null>(null);
+  
+  const [roadbooks, setRoadbooks] = useState<any[]>([]);
+  const [selectedRoadbookId, setSelectedRoadbookId] = useState<string>('');
+  const [loadingRoadbooks, setLoadingRoadbooks] = useState(false);
 
   useEffect(() => {
     loadData();
     loadMicrosites();
+    loadRoadbooks();
   }, []);
 
   const loadData = async () => {
@@ -209,6 +214,25 @@ export function TravelBroSetup() {
       setMicrosites([{ id: 'rondreis-planner', name: 'Rondreis Planner', hasCredentials: true }]);
     } finally {
       setLoadingMicrosites(false);
+    }
+  };
+
+  const loadRoadbooks = async () => {
+    if (!db.supabase || !user?.brand_id) return;
+    setLoadingRoadbooks(true);
+    try {
+      const { data, error } = await db.supabase
+        .from('travel_roadbooks')
+        .select('id, title, client_name')
+        .eq('brand_id', user.brand_id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setRoadbooks(data || []);
+    } catch (error) {
+      console.error('Error loading roadbooks:', error);
+    } finally {
+      setLoadingRoadbooks(false);
     }
   };
 
@@ -1456,6 +1480,34 @@ export function TravelBroSetup() {
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Roadbook Selector */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <BookOpen className="inline w-4 h-4 mr-1" />
+                  Roadbook (optioneel)
+                </label>
+                <select
+                  value={selectedRoadbookId}
+                  onChange={(e) => setSelectedRoadbookId(e.target.value)}
+                  disabled={loadingRoadbooks}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white disabled:bg-gray-100"
+                >
+                  <option value="">Geen roadbook</option>
+                  {loadingRoadbooks ? (
+                    <option>Laden...</option>
+                  ) : (
+                    roadbooks.map((rb) => (
+                      <option key={rb.id} value={rb.id}>
+                        {rb.title} - {rb.client_name}
+                      </option>
+                    ))
+                  )}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Selecteer een roadbook uit Travel Docs om te koppelen aan deze TravelBro
+                </p>
               </div>
 
               {!editingTrip && (
