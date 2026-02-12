@@ -747,32 +747,8 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
         {items.length > 0 && templateType === 'auto-rondreis' && (
           <div className="bg-gray-50 py-8">
             <div className="max-w-7xl mx-auto px-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Jouw Reis Timeline</h2>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      if (carouselRef.current) {
-                        carouselRef.current.scrollBy({ left: -400, behavior: 'smooth' });
-                      }
-                    }}
-                    className="p-2 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors"
-                  >
-                    <ArrowLeft size={20} className="text-gray-600" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (carouselRef.current) {
-                        carouselRef.current.scrollBy({ left: 400, behavior: 'smooth' });
-                      }
-                    }}
-                    className="p-2 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors"
-                  >
-                    <ArrowLeft size={20} className="text-gray-600 rotate-180" />
-                  </button>
-                </div>
-              </div>
-              <div ref={carouselRef} className="flex gap-6 overflow-x-auto pb-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Jouw Reis Timeline</h2>
+              <div ref={carouselRef} className="flex gap-6 overflow-x-auto pb-4 mb-6" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {[...items].sort((a, b) => {
                   const dateA = a.date_start ? new Date(a.date_start).getTime() : 0;
                   const dateB = b.date_start ? new Date(b.date_start).getTime() : 0;
@@ -885,6 +861,30 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                     </div>
                   );
                 })}
+              </div>
+              
+              {/* Navigation arrows - centered below carousel */}
+              <div className="flex justify-center gap-3">
+                <button
+                  onClick={() => {
+                    if (carouselRef.current) {
+                      carouselRef.current.scrollBy({ left: -400, behavior: 'smooth' });
+                    }
+                  }}
+                  className="p-3 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors shadow-sm"
+                >
+                  <ArrowLeft size={20} className="text-gray-600" />
+                </button>
+                <button
+                  onClick={() => {
+                    if (carouselRef.current) {
+                      carouselRef.current.scrollBy({ left: 400, behavior: 'smooth' });
+                    }
+                  }}
+                  className="p-3 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors shadow-sm"
+                >
+                  <ArrowLeft size={20} className="text-gray-600 rotate-180" />
+                </button>
               </div>
             </div>
           </div>
