@@ -70,34 +70,82 @@ export function RoadbookList() {
     if (!db.supabase || !user?.brand_id) return;
     try {
       setSaving(true);
-      const roadbookData = {
-        ...roadbook,
+      // Check if this roadbook already exists in our list (= update) or is new (= insert)
+      const isExisting = roadbook.id && roadbooks.some(r => r.id === roadbook.id);
+
+      // Only include columns that exist in travel_roadbooks table
+      const roadbookData: Record<string, any> = {
         brand_id: user.brand_id,
-        updated_at: new Date().toISOString()
+        client_name: roadbook.client_name || '',
+        title: roadbook.title || 'Naamloos roadbook',
+        subtitle: roadbook.subtitle || null,
+        intro_text: roadbook.intro_text || null,
+        hero_image_url: roadbook.hero_image_url || null,
+        hero_images: roadbook.hero_images || null,
+        hero_video_url: roadbook.hero_video_url || null,
+        destinations: roadbook.destinations || [],
+        items: roadbook.items || [],
+        extra_costs: roadbook.extra_costs || [],
+        total_price: roadbook.total_price || 0,
+        price_per_person: roadbook.price_per_person || 0,
+        number_of_travelers: roadbook.number_of_travelers || 2,
+        currency: roadbook.currency || 'EUR',
+        price_display: roadbook.price_display || 'both',
+        status: roadbook.status || 'draft',
+        valid_until: roadbook.valid_until || null,
+        internal_notes: roadbook.internal_notes || null,
+        travel_compositor_id: roadbook.travel_compositor_id || null,
+        client_email: roadbook.client_email || null,
+        client_phone: roadbook.client_phone || null,
+        agent_id: roadbook.agent_id || null,
+        updated_at: new Date().toISOString(),
       };
-      
-      if (roadbook.id) {
-        const { data, error: dbError } = await db.supabase
-          .from('travel_roadbooks')
-          .update(roadbookData)
-          .eq('id', roadbook.id)
-          .select()
-          .single();
-        if (dbError) throw dbError;
-        setRoadbooks(prev => prev.map(r => r.id === data.id ? data : r));
-        setEditingRoadbook(data);
-      } else {
-        roadbookData.created_at = new Date().toISOString();
-        const { data, error: dbError } = await db.supabase
-          .from('travel_roadbooks')
-          .insert(roadbookData)
-          .select()
-          .single();
-        if (dbError) throw dbError;
-        setRoadbooks(prev => [data, ...prev]);
-        setEditingRoadbook(data);
+
+      const saveAttempt = async (includeExtras: boolean) => {
+        const payload = { ...roadbookData };
+        if (includeExtras) {
+          payload.template_type = roadbook.template_type || 'standard';
+          payload.departure_date = roadbook.departure_date || null;
+        }
+
+        if (isExisting) {
+          const { data, error: dbError } = await db.supabase!
+            .from('travel_roadbooks')
+            .update(payload)
+            .eq('id', roadbook.id)
+            .select()
+            .single();
+          if (dbError) throw dbError;
+          return data;
+        } else {
+          payload.created_at = new Date().toISOString();
+          const { data, error: dbError } = await db.supabase!
+            .from('travel_roadbooks')
+            .insert(payload)
+            .select()
+            .single();
+          if (dbError) throw dbError;
+          return data;
+        }
+      };
+
+      let data;
+      try {
+        // Try with template_type + departure_date columns
+        data = await saveAttempt(true);
+      } catch (firstErr: any) {
+        console.warn('Save with extra columns failed, retrying without:', firstErr.message);
+        // Retry without the extra columns (they may not exist in DB yet)
+        data = await saveAttempt(false);
       }
-      
+
+      if (isExisting) {
+        setRoadbooks(prev => prev.map(r => r.id === data.id ? data : r));
+      } else {
+        setRoadbooks(prev => [data, ...prev]);
+      }
+      setEditingRoadbook(data);
+
       if (!stayInEditor) {
         setView('list');
       }

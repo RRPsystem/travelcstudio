@@ -287,35 +287,40 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
     setDragIndex(null);
   };
 
+  // Build the data object without saving
+  const buildData = (): Offerte => ({
+    id: offerte?.id || '',
+    brand_id: offerte?.brand_id,
+    agent_id: offerte?.agent_id,
+    travel_compositor_id: travelCompositorId || undefined,
+    client_name: clientName,
+    client_email: clientEmail || undefined,
+    client_phone: clientPhone || undefined,
+    title,
+    subtitle: subtitle || undefined,
+    intro_text: introText || undefined,
+    hero_image_url: heroImages[0] || undefined,
+    hero_images: heroImages.length > 0 ? heroImages : undefined,
+    hero_video_url: heroVideo || undefined,
+    destinations,
+    items,
+    extra_costs: extraCosts.length > 0 ? extraCosts : undefined,
+    total_price: totalPrice,
+    price_per_person: pricePerPerson,
+    number_of_travelers: numberOfTravelers,
+    currency,
+    price_display: priceDisplay,
+    template_type: templateType as any,
+    departure_date: departureDate || undefined,
+    status: offerte?.status || 'draft',
+    valid_until: validUntil || undefined,
+    internal_notes: internalNotes || undefined,
+    created_at: offerte?.created_at || new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  });
+
   const handleSave = () => {
-    const data: Offerte = {
-      id: offerte?.id || crypto.randomUUID(),
-      brand_id: offerte?.brand_id,
-      agent_id: offerte?.agent_id,
-      travel_compositor_id: travelCompositorId || undefined,
-      client_name: clientName,
-      client_email: clientEmail || undefined,
-      client_phone: clientPhone || undefined,
-      title,
-      subtitle: subtitle || undefined,
-      intro_text: introText || undefined,
-      hero_image_url: heroImages[0] || undefined,
-      hero_images: heroImages.length > 0 ? heroImages : undefined,
-      hero_video_url: heroVideo || undefined,
-      destinations,
-      items,
-      extra_costs: extraCosts.length > 0 ? extraCosts : undefined,
-      total_price: totalPrice,
-      price_per_person: pricePerPerson,
-      number_of_travelers: numberOfTravelers,
-      currency,
-      price_display: priceDisplay,
-      status: offerte?.status || 'draft',
-      valid_until: validUntil || undefined,
-      internal_notes: internalNotes || undefined,
-      created_at: offerte?.created_at || new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+    const data = buildData();
     onSave?.(data);
     return data;
   };
@@ -326,34 +331,30 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
   };
 
   const handlePreview = async () => {
-    // Save first to ensure we have an ID and latest data
-    const data = handleSave();
-    if (!data || !data.id) {
-      alert('Kon offerte niet opslaan voor preview.');
-      return;
-    }
-    
-    // Call onSave to persist to database if callback is provided
-    // Pass stayInEditor=true to keep editor open after saving
-    if (onSave) {
-      try {
-        await (onSave as any)(data, true); // true = stayInEditor
-      } catch (err) {
-        console.error('Error saving for preview:', err);
-        alert('Fout bij opslaan voor preview');
+    const data = buildData();
+    if (!onSave) return;
+    try {
+      // Save with stayInEditor=true, then open preview
+      await (onSave as any)(data, true);
+      // After save, offerte prop may have been updated with the real ID
+      const savedId = offerte?.id || data.id;
+      if (!savedId) {
+        alert('Kon offerte niet opslaan voor preview.');
         return;
       }
+      window.open(`${window.location.origin}/offerte/${savedId}`, '_blank');
+    } catch (err) {
+      console.error('Error saving for preview:', err);
+      alert('Fout bij opslaan voor preview');
     }
-    
-    // Open preview in new tab
-    const url = `${window.location.origin}/offerte/${data.id}`;
-    window.open(url, '_blank');
   };
 
   const handleSend = async () => {
     // Save first
-    const data = handleSave();
-    if (!data) return;
+    const data = buildData();
+    if (onSave) {
+      try { await (onSave as any)(data, true); } catch { /* ignore */ }
+    }
 
     // Copy link to clipboard
     const url = getOfferteUrl();
