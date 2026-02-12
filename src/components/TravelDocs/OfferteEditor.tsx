@@ -132,6 +132,8 @@ export function OfferteEditor({ offerte, onBack, onSave }: Props) {
   const [validUntil, setValidUntil] = useState(offerte?.valid_until || '');
   const [internalNotes, setInternalNotes] = useState(offerte?.internal_notes || '');
   const [destinations, setDestinations] = useState<OfferteDestination[]>(offerte?.destinations || []);
+  const [departureDate, setDepartureDate] = useState(offerte?.departure_date || '');
+  const templateType = offerte?.template_type || 'standard';
 
   const [items, setItems] = useState<OfferteItem[]>(offerte?.items || []);
   const [addMenuIndex, setAddMenuIndex] = useState<number | null>(null);

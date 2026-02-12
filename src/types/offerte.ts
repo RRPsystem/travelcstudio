@@ -39,6 +39,8 @@ export interface OfferteItem {
   // Activity specific
   activity_duration?: string;
   included_items?: string[];
+  // Auto rondreis specific
+  distance?: string; // e.g. "250 km"
   sort_order: number;
 }
 
@@ -78,6 +80,9 @@ export interface Offerte {
   number_of_travelers?: number;
   currency: string;
   price_display: 'total' | 'per_person' | 'both' | 'hidden';
+  // Auto rondreis specific
+  departure_date?: string; // For countdown timer
+  template_type?: 'standard' | 'auto-rondreis';
   // Status
   status: 'draft' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'revised' | 'expired';
   sent_at?: string;

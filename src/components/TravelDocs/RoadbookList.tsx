@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BookOpen, Plus, Search, Filter, Eye, Copy, Trash2, MapPin, Calendar, Loader2 } from 'lucide-react';
 import { TravelDocsRoadbook } from './TravelDocsRoadbook';
-import { AutoRondreisEditor } from './AutoRondreisEditor';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/supabase';
 
@@ -55,7 +54,8 @@ export function RoadbookList() {
   };
 
   const handleTemplateSelect = (template: 'standard' | 'auto-rondreis') => {
-    setEditingRoadbook(undefined);
+    // Create a new roadbook with the template type
+    setEditingRoadbook({ template_type: template } as any);
     setSelectedTemplate(template);
     setView('editor');
   };
@@ -237,16 +237,6 @@ export function RoadbookList() {
 
   // Editor view
   if (view === 'editor') {
-    if (selectedTemplate === 'auto-rondreis') {
-      return (
-        <AutoRondreisEditor
-          roadbook={editingRoadbook as any}
-          onBack={() => setView('list')}
-          onSave={handleSaveRoadbook}
-        />
-      );
-    }
-    
     return (
       <TravelDocsRoadbook
         offerte={editingRoadbook as any}
