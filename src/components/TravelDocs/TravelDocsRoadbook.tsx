@@ -198,6 +198,7 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
   const [mapOpen, setMapOpen] = useState(false);
   const [detailItem, setDetailItem] = useState<OfferteItem | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
+  const [cardPhotoIdx, setCardPhotoIdx] = useState<Record<string, number>>({});
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [tcImporting, setTcImporting] = useState(false);
@@ -796,12 +797,45 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
                             </div>
                           </div>
                         ) : item.image_url ? (
-                          /* HOTEL / ITEM WITH IMAGE */
-                          <div className="relative h-48 bg-gray-100">
-                            <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
+                          /* HOTEL / ITEM WITH IMAGE + photo arrows */
+                          <div className="relative h-48 bg-gray-100 group">
+                            <img 
+                              src={(item.images && item.images.length > 0) ? (item.images[cardPhotoIdx[item.id] || 0] || item.image_url) : item.image_url} 
+                              alt={item.title} 
+                              className="w-full h-full object-cover" 
+                            />
                             <div className="absolute top-3 left-3 px-3 py-1.5 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: config.color }}>
                               {config.label}
                             </div>
+                            {/* Photo navigation arrows */}
+                            {item.images && item.images.length > 1 && (
+                              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCardPhotoIdx(prev => {
+                                      const cur = prev[item.id] || 0;
+                                      return { ...prev, [item.id]: cur > 0 ? cur - 1 : item.images!.length - 1 };
+                                    });
+                                  }}
+                                  className="w-8 h-8 rounded-full bg-white/90 shadow flex items-center justify-center hover:bg-white"
+                                >
+                                  <ArrowLeft size={14} className="text-gray-700" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCardPhotoIdx(prev => {
+                                      const cur = prev[item.id] || 0;
+                                      return { ...prev, [item.id]: cur < item.images!.length - 1 ? cur + 1 : 0 };
+                                    });
+                                  }}
+                                  className="w-8 h-8 rounded-full bg-white/90 shadow flex items-center justify-center hover:bg-white"
+                                >
+                                  <ArrowLeft size={14} className="text-gray-700 rotate-180" />
+                                </button>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           /* NO IMAGE - Colored header with large icon */

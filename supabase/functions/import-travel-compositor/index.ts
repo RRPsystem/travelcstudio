@@ -367,11 +367,16 @@ function buildTravelData(info: any, detail: any, travelId: string) {
       shortDescription: hd.shortDescription || "",
       highlights: hd.highlights || [],
       address: hd.address || "",
+      city: hd.city || h.destination || h.city || hd.destination || "",
+      destination: h.destination || hd.destination || "",
       nights: h.nights || 0,
       roomAmenities: [],
-      mealPlan: h.mealPlan || "",
-      mealPlanDescription: h.mealPlan || "",
+      mealPlan: h.mealPlan || h.mealPlanDescription || "",
+      mealPlanDescription: h.mealPlan || h.mealPlanDescription || "",
       mealsIncluded: [],
+      roomType: h.roomDescription || h.roomType || h.room || "",
+      checkIn: h.checkIn || h.startDate || h.dateFrom || "",
+      checkOut: h.checkOut || h.endDate || h.dateTo || "",
       facilities: hd.facilities || {},
       services: [],
       images: (hd.images || []).map((img: any) => typeof img === "string" ? img : img.url),
@@ -379,6 +384,8 @@ function buildTravelData(info: any, detail: any, travelId: string) {
       pricePerNight: h.nights > 0 ? Math.round((h.priceBreakdown?.totalPrice?.microsite?.amount || 0) / h.nights) : 0,
       checkInTime: hd.checkInTime || "",
       checkOutTime: hd.checkOutTime || "",
+      // Pass through all raw hotel fields for debugging
+      _raw: { checkIn: h.checkIn, checkOut: h.checkOut, startDate: h.startDate, endDate: h.endDate, dateFrom: h.dateFrom, dateTo: h.dateTo, roomType: h.roomType, roomDescription: h.roomDescription, room: h.room, destination: h.destination, city: h.city },
     };
   });
 

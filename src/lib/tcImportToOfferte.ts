@@ -65,7 +65,13 @@ export async function importTcTravel(travelId: string, micrositeId?: string): Pr
 
 function mapTcDataToOfferte(tc: any): TcImportResult {
   const items: OfferteItem[] = [];
-  let sortOrder = 0;
+
+  // Log raw data for debugging field names
+  console.log('[TC Map] Raw hotel keys:', tc.hotels?.[0] ? Object.keys(tc.hotels[0]) : 'none');
+  console.log('[TC Map] Raw hotel[0]._raw:', tc.hotels?.[0]?._raw);
+  console.log('[TC Map] Raw car keys:', tc.carRentals?.[0] ? Object.keys(tc.carRentals[0]) : 'none');
+  console.log('[TC Map] Raw cruise keys:', tc.cruises?.[0] ? Object.keys(tc.cruises[0]) : 'none');
+  console.log('[TC Map] Raw transfer keys:', tc.transfers?.[0] ? Object.keys(tc.transfers[0]) : 'none');
 
   // --- Flights ---
   const flights = tc.flights || [];
@@ -75,8 +81,8 @@ function mapTcDataToOfferte(tc: any): TcImportResult {
       type: 'flight',
       title: buildFlightTitle(f),
       subtitle: [f.company, f.transportNumber].filter(Boolean).join(' '),
-      departure_airport: f.departureCity || f.departure || '',
-      arrival_airport: f.arrivalCity || f.arrival || '',
+      departure_airport: f.departureCity || f.departure || f.originCode || '',
+      arrival_airport: f.arrivalCity || f.arrival || f.targetCode || '',
       departure_time: f.departureTime || '',
       arrival_time: f.arrivalTime || '',
       airline: f.company || '',
@@ -84,7 +90,7 @@ function mapTcDataToOfferte(tc: any): TcImportResult {
       date_start: f.departureDate || '',
       date_end: f.arrivalDate || '',
       price: extractPrice(f),
-      sort_order: sortOrder++,
+      sort_order: 0, // will be reassigned after chronological sort
     });
   }
 
@@ -107,7 +113,6 @@ function mapTcDataToOfferte(tc: any): TcImportResult {
     if (Array.isArray(rawFacilities)) {
       facilityList = rawFacilities.map((f: any) => typeof f === 'string' ? f : f.name || '').filter(Boolean);
     } else if (typeof rawFacilities === 'object') {
-      // TC API returns facilities as { "Pool": true, "WiFi": true, ... } or { category: [items] }
       for (const [key, val] of Object.entries(rawFacilities)) {
         if (Array.isArray(val)) {
           facilityList.push(...val.map((v: any) => typeof v === 'string' ? v : v.name || '').filter(Boolean));
@@ -119,6 +124,16 @@ function mapTcDataToOfferte(tc: any): TcImportResult {
       }
     }
 
+    // Extract location: try city, destination, address in that order
+    const location = h.city || hotelData.city || h.destination || hotelData.destination || hotelData.address || h.address || '';
+
+    // Extract dates: try multiple field names from TC API
+    const dateStart = h.checkIn || hotelData.checkIn || h.startDate || h.dateFrom || '';
+    const dateEnd = h.checkOut || hotelData.checkOut || h.endDate || h.dateTo || '';
+
+    // Extract room type
+    const roomType = h.roomType || hotelData.roomType || h.roomDescription || h.room || '';
+
     items.push({
       id: crypto.randomUUID(),
       type: 'hotel',
@@ -126,17 +141,17 @@ function mapTcDataToOfferte(tc: any): TcImportResult {
       hotel_name: name,
       description: stripHtml(hotelData.shortDescription || hotelData.description || h.description || ''),
       image_url: firstImage,
-      images: imageUrls.slice(0, 5),
+      images: imageUrls.slice(0, 10),
       facilities: facilityList.length > 0 ? facilityList : undefined,
-      location: hotelData.address || h.address || '',
+      location,
       nights,
       star_rating: stars,
-      board_type: h.mealPlan || hotelData.mealPlan || '',
-      room_type: h.roomType || '',
+      board_type: h.mealPlan || hotelData.mealPlan || h.mealPlanDescription || '',
+      room_type: roomType,
       price: extractPrice(h),
-      date_start: h.checkIn || '',
-      date_end: h.checkOut || '',
-      sort_order: sortOrder++,
+      date_start: dateStart,
+      date_end: dateEnd,
+      sort_order: 0,
     });
   }
 
@@ -147,47 +162,55 @@ function mapTcDataToOfferte(tc: any): TcImportResult {
       id: crypto.randomUUID(),
       type: 'transfer',
       title: buildTransferTitle(t),
-      transfer_type: t.transportType || 'transfer',
-      pickup_location: t.departureCity || t.departure || '',
-      dropoff_location: t.arrivalCity || t.arrival || '',
-      date_start: t.departureDate || '',
+      transfer_type: t.transportType || t.type || 'transfer',
+      pickup_location: t.departureCity || t.departure || t.origin || '',
+      dropoff_location: t.arrivalCity || t.arrival || t.target || '',
+      date_start: t.departureDate || t.startDate || '',
       departure_time: t.departureTime || '',
       arrival_time: t.arrivalTime || '',
       price: extractPrice(t),
-      sort_order: sortOrder++,
+      sort_order: 0,
     });
   }
 
   // --- Car rentals ---
   const cars = tc.carRentals || [];
   for (const c of cars) {
+    // Log all car fields for debugging
+    console.log('[TC Map] Car rental raw data:', JSON.stringify(c).substring(0, 500));
     items.push({
       id: crypto.randomUUID(),
       type: 'car_rental',
-      title: c.name || c.carType || 'Huurauto',
-      subtitle: c.company || c.supplier || '',
-      supplier: c.company || c.supplier || '',
-      date_start: c.pickupDate || '',
-      date_end: c.dropoffDate || '',
-      pickup_location: c.pickupLocation || '',
-      dropoff_location: c.dropoffLocation || '',
+      title: c.name || c.carType || c.vehicleType || c.category || 'Huurauto',
+      subtitle: c.company || c.supplier || c.rentalCompany || '',
+      supplier: c.company || c.supplier || c.rentalCompany || '',
+      date_start: c.pickupDate || c.startDate || c.dateFrom || c.checkIn || '',
+      date_end: c.dropoffDate || c.endDate || c.dateTo || c.checkOut || '',
+      pickup_location: c.pickupLocation || c.pickupOffice || c.pickup || c.departureCity || '',
+      dropoff_location: c.dropoffLocation || c.dropoffOffice || c.dropoff || c.arrivalCity || '',
       price: extractPrice(c),
-      sort_order: sortOrder++,
+      sort_order: 0,
     });
   }
 
   // --- Cruises ---
   const cruises = tc.cruises || [];
   for (const cr of cruises) {
+    // Log all cruise fields for debugging
+    console.log('[TC Map] Cruise raw data:', JSON.stringify(cr).substring(0, 500));
     items.push({
       id: crypto.randomUUID(),
       type: 'cruise',
       title: cr.name || cr.shipName || 'Cruise',
       subtitle: cr.cruiseLine || cr.company || '',
       supplier: cr.cruiseLine || cr.company || '',
-      nights: cr.nights || 0,
+      nights: cr.nights || cr.duration || 0,
+      date_start: cr.departureDate || cr.startDate || cr.dateFrom || cr.checkIn || '',
+      date_end: cr.arrivalDate || cr.endDate || cr.dateTo || cr.checkOut || '',
+      location: cr.departurePort || cr.embarkation || cr.departure || '',
+      description: stripHtml(cr.description || cr.itinerary || ''),
       price: extractPrice(cr),
-      sort_order: sortOrder++,
+      sort_order: 0,
     });
   }
 
@@ -200,12 +223,32 @@ function mapTcDataToOfferte(tc: any): TcImportResult {
       title: a.name || a.title || 'Activiteit',
       description: stripHtml(a.description || ''),
       location: a.destination || a.location || '',
-      date_start: a.date || '',
+      date_start: a.date || a.startDate || '',
       activity_duration: a.duration || '',
       price: extractPrice(a),
-      sort_order: sortOrder++,
+      sort_order: 0,
     });
   }
+
+  // --- CHRONOLOGICAL SORT ---
+  // Sort ALL items by their date_start, then reassign sort_order
+  // Items without dates keep their relative position within their category
+  items.sort((a, b) => {
+    const dateA = a.date_start ? new Date(a.date_start).getTime() : NaN;
+    const dateB = b.date_start ? new Date(b.date_start).getTime() : NaN;
+    
+    // Both have dates: sort by date
+    if (!isNaN(dateA) && !isNaN(dateB)) return dateA - dateB;
+    // Only A has date: A comes first (we know where it belongs)
+    if (!isNaN(dateA) && isNaN(dateB)) return -1;
+    // Only B has date: B comes first
+    if (isNaN(dateA) && !isNaN(dateB)) return 1;
+    // Neither has date: keep original order (flights first makes sense as fallback)
+    return 0;
+  });
+  
+  // Reassign sort_order after chronological sort
+  items.forEach((item, idx) => { item.sort_order = idx; });
 
   // --- Destinations ---
   const destinations: OfferteDestination[] = (tc.destinations || []).map((d: any, i: number) => ({
