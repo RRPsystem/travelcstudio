@@ -262,110 +262,103 @@ function mapTcDataToOfferte(tc: any): TcImportResult {
     });
   }
 
-  // --- DESTINATION-BASED ORDERING ---
-  // The TC API destinations array is in chronological trip order.
-  // Match hotels and cruises to destinations by name to get correct interleaving.
-  const destNames = (tc.destinations || []).map((d: any) =>
-    (d.name || '').toLowerCase().trim()
-  );
-  console.log('[TC Map] Destinations in order:', destNames);
+  // --- SORT BY 'day' FIELD ---
+  // The TC API provides a 'day' field on each item: which day of the trip (1-based).
+  // This is the single source of truth for chronological ordering.
+  const dayMap = new Map<string, number>();
 
-  // Separate items by type
-  const flightItems = items.filter(i => i.type === 'flight');
-  const hotelItems = items.filter(i => i.type === 'hotel');
-  const cruiseItems = items.filter(i => i.type === 'cruise');
-  const carItems = items.filter(i => i.type === 'car_rental');
-  const transferItems = items.filter(i => i.type === 'transfer');
-  const activityItems = items.filter(i => i.type === 'activity');
+  // Flights: raw TC transports have 'day'
+  const rawFlights = tc.flights || [];
+  items.filter(i => i.type === 'flight').forEach((item, idx) => {
+    const raw = rawFlights[idx];
+    const day = raw?.day || 0;
+    dayMap.set(item.id, day);
+    console.log(`[TC Map] Flight "${item.title}" → day ${day}`);
+  });
 
-  // Match accommodations to destinations by name
-  const unmatchedHotels = [...hotelItems];
-  const unmatchedCruises = [...cruiseItems];
-  const orderedAccommodations: OfferteItem[] = [];
+  // Hotels: formatted hotels have 'day' from buildTravelData
+  const fmtHotels = tc.hotels || [];
+  items.filter(i => i.type === 'hotel').forEach((item, idx) => {
+    const h = fmtHotels[idx];
+    const raw = rawHotels[idx];
+    const day = h?.day || raw?.day || 0;
+    dayMap.set(item.id, day);
+    console.log(`[TC Map] Hotel "${item.title}" → day ${day}, ${item.nights}n`);
+  });
 
-  for (const destName of destNames) {
-    if (!destName) continue;
+  // Cruises: raw TC data, check for 'day' field
+  const rawCruiseList = tc.cruises || [];
+  items.filter(i => i.type === 'cruise').forEach((item, idx) => {
+    const cr = rawCruiseList[idx];
+    const day = cr?.day || cr?.startDay || 0;
+    dayMap.set(item.id, day);
+    console.log(`[TC Map] Cruise "${item.title}" → day ${day}, ${item.nights}n, raw keys: ${cr ? Object.keys(cr).join(', ') : 'none'}`);
+  });
 
-    // Try hotel match first
-    const hIdx = unmatchedHotels.findIndex(h => {
-      const loc = (typeof h.location === 'string' ? h.location : '').toLowerCase().trim();
-      return loc && destName && (loc.includes(destName) || destName.includes(loc));
-    });
-    if (hIdx >= 0) {
-      orderedAccommodations.push(unmatchedHotels[hIdx]);
-      unmatchedHotels.splice(hIdx, 1);
-      continue;
-    }
+  // Transfers: raw TC transports have 'day'
+  const rawTransferList = tc.transfers || [];
+  items.filter(i => i.type === 'transfer').forEach((item, idx) => {
+    const t = rawTransferList[idx];
+    const day = t?.day || 0;
+    dayMap.set(item.id, day);
+    console.log(`[TC Map] Transfer "${item.title}" → day ${day}`);
+  });
 
-    // Try cruise match (by departure port)
-    const cIdx = unmatchedCruises.findIndex(c => {
-      const loc = (typeof c.location === 'string' ? c.location : '').toLowerCase().trim();
-      return loc && destName && (loc.includes(destName) || destName.includes(loc));
-    });
-    if (cIdx >= 0) {
-      orderedAccommodations.push(unmatchedCruises[cIdx]);
-      unmatchedCruises.splice(cIdx, 1);
-    }
-  }
+  // Car rentals: have 'pickupDay'
+  const rawCarList = tc.carRentals || [];
+  items.filter(i => i.type === 'car_rental').forEach((item, idx) => {
+    const c = rawCarList[idx];
+    const day = c?.pickupDay || c?.day || 0;
+    dayMap.set(item.id, day);
+    console.log(`[TC Map] Car "${item.title}" → day ${day} (pickupDay=${c?.pickupDay}, dropoffDay=${c?.dropoffDay})`);
+  });
 
-  // Append any unmatched accommodations at the end
-  orderedAccommodations.push(...unmatchedHotels, ...unmatchedCruises);
-  console.log('[TC Map] Accommodation order:', orderedAccommodations.map(a => `${a.type}: ${a.title} (${a.location})`));
+  // Activities
+  items.filter(i => i.type === 'activity').forEach((item, idx) => {
+    const a = (tc.activities || [])[idx];
+    const day = a?.day || 0;
+    dayMap.set(item.id, day);
+  });
 
-  // Identify outbound vs return flights using day field
-  const totalDays = tc.numberOfDays || tc.numberOfNights || 0;
-  const outboundFlights: OfferteItem[] = [];
-  const returnFlights: OfferteItem[] = [];
-  for (const f of flightItems) {
-    // Raw TC transports have a 'day' field
-    const fIdx = flightItems.indexOf(f);
-    const rawFlight = (tc.flights || [])[fIdx];
-    const day = rawFlight?.day || 0;
-    if (day > 1 && day >= totalDays - 1) {
-      returnFlights.push(f);
-    } else {
-      outboundFlights.push(f);
-    }
-  }
-
-  // Build final timeline
-  const timeline: OfferteItem[] = [
-    ...outboundFlights,
-    ...orderedAccommodations,
-    ...carItems,
-    ...transferItems,
-    ...activityItems,
-    ...returnFlights,
-  ];
+  // Sort all items by day number
+  items.sort((a, b) => {
+    const dayA = dayMap.get(a.id) || 0;
+    const dayB = dayMap.get(b.id) || 0;
+    if (dayA !== dayB) return dayA - dayB;
+    // Same day: flights before accommodations, accommodations before car
+    const typeOrder: Record<string, number> = { flight: 0, transfer: 1, cruise: 2, hotel: 2, car_rental: 3, activity: 4 };
+    return (typeOrder[a.type] || 5) - (typeOrder[b.type] || 5);
+  });
 
   // Assign sort_order
-  timeline.forEach((item, idx) => { item.sort_order = idx; });
+  items.forEach((item, idx) => { item.sort_order = idx; });
 
-  // --- CALCULATE DATES from trip start + cumulative nights ---
-  const tripStartDate = findTripStartDate(timeline, tc);
+  // --- CALCULATE DATES from trip start + day numbers ---
+  const tripStartDate = findTripStartDate(items, tc);
+  const totalDays = tc.numberOfDays || tc.numberOfNights || 0;
   if (tripStartDate) {
     console.log('[TC Map] Trip start date:', tripStartDate.toISOString().split('T')[0]);
-    let cumulativeDay = 1;
 
-    for (const item of timeline) {
-      if (item.type === 'hotel' || item.type === 'cruise') {
-        const nights = item.nights || 1;
-        if (!item.date_start || item.date_start === '') {
+    for (const item of items) {
+      const day = dayMap.get(item.id) || 0;
+
+      if ((item.type === 'hotel' || item.type === 'cruise') && (!item.date_start || item.date_start === '')) {
+        if (day > 0) {
           const checkIn = new Date(tripStartDate);
-          checkIn.setDate(checkIn.getDate() + cumulativeDay - 1);
+          checkIn.setDate(checkIn.getDate() + day - 1);
+          const nights = item.nights || 1;
           const checkOut = new Date(checkIn);
           checkOut.setDate(checkOut.getDate() + nights);
           item.date_start = checkIn.toISOString().split('T')[0];
           item.date_end = checkOut.toISOString().split('T')[0];
-          console.log(`[TC Map] Dates: ${item.title} → ${item.date_start} to ${item.date_end} (${nights}n)`);
+          console.log(`[TC Map] Dates: ${item.title} → ${item.date_start} to ${item.date_end} (day ${day}, ${nights}n)`);
         }
-        cumulativeDay += nights;
       }
 
       if (item.type === 'car_rental' && (!item.date_start || item.date_start === '')) {
-        const carIdx = carItems.indexOf(item);
-        const rawCar = (tc.carRentals || [])[carIdx];
-        const pickupDay = rawCar?.pickupDay || rawCar?.day || 1;
+        const carIdx = items.filter(i => i.type === 'car_rental').indexOf(item);
+        const rawCar = rawCarList[carIdx];
+        const pickupDay = rawCar?.pickupDay || rawCar?.day || day || 1;
         const dropoffDay = rawCar?.dropoffDay || (totalDays || 14);
         const pickupDate = new Date(tripStartDate);
         pickupDate.setDate(pickupDate.getDate() + pickupDay - 1);
@@ -376,10 +369,6 @@ function mapTcDataToOfferte(tc: any): TcImportResult {
       }
     }
   }
-
-  // Replace items array with correctly ordered timeline
-  items.length = 0;
-  items.push(...timeline);
 
   // --- Destinations ---
   const destinations: OfferteDestination[] = (tc.destinations || []).map((d: any, i: number) => ({
