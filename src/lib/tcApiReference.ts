@@ -189,8 +189,8 @@ export interface TcCruise {
   group: string;
   cabin: string;
   originPort: string;
-  departure: string;               // Departure port name
-  arrival: string;                 // Arrival port name
+  departure: string;               // CAN BE datetime "2026-09-13T16:00" OR port name — detect with regex!
+  arrival: string;                 // CAN BE datetime "2026-09-19T06:00" OR port name — detect with regex!
   nights: number;
   region: string;
   month: string;

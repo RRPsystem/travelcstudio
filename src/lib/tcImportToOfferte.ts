@@ -170,10 +170,11 @@ function mapTcDataToOfferte(tc: any): TcImportResult {
     );
     console.log(`[TC Map] Hotel "${name}" dates: checkIn="${dateStart}", checkOut="${dateEnd}", nights=${nights}, rawKeys=${Object.keys(raw).join(',')}`);
 
-    // Extract room type: formatted first, then raw
+    // Extract room type: Swagger field is roomTypes (PLURAL!), not roomType
     const roomType = safeStr(
-      h.roomType || hotelData.roomType || h.roomDescription || h.room ||
-      raw.roomDescription || raw.roomType || raw.room || raw.selectedRoom || raw.roomName || rawHd.roomType
+      h.roomTypes || h.roomType || hotelData.roomTypes || hotelData.roomType ||
+      raw.roomTypes || raw.roomType || h.roomDescription || raw.roomDescription ||
+      raw.selectedRoom || raw.roomName || rawHd.roomType
     );
 
     // Extract meal plan: formatted first, then raw
@@ -244,57 +245,78 @@ function mapTcDataToOfferte(tc: any): TcImportResult {
   }
 
   // --- Cruises ---
-  // TC API has TWO arrays: cruises (CruiseDataSheetVO, NO dates) and closedTours (HAS dates).
-  // Strategy: use closedTours as primary (has startDate/endDate), enrich with cruises array.
-  // If no closedTours, fall back to cruises array.
+  // TC API has TWO arrays: cruises (CruiseDataSheetVO) and closedTours (IdeaClosedTourVO).
+  // CruiseDataSheetVO: departure/arrival can be DATETIMES like "2026-09-13T16:00" (not port names!)
+  // closedTours: has startDate/endDate explicitly.
+  // Strategy: merge both, prefer closedTours dates, but CruiseDataSheetVO departure/arrival work too.
   const rawCruises = tc.cruises || [];
   const closedTours = tc.closedTours || [];
 
-  console.log(`[TC Map] Cruises array: ${rawCruises.length} items, keys: ${rawCruises[0] ? Object.keys(rawCruises[0]).join(',') : 'none'}`);
-  console.log(`[TC Map] ClosedTours array: ${closedTours.length} items, keys: ${closedTours[0] ? Object.keys(closedTours[0]).join(',') : 'none'}`);
+  // Helper: detect if a string looks like a date (starts with 4 digits)
+  const looksLikeDate = (s: string) => s && /^\d{4}-\d{2}-\d{2}/.test(s);
 
-  if (closedTours.length > 0) {
-    // Use closedTours — they have real dates
-    for (let ci = 0; ci < closedTours.length; ci++) {
-      const ct = closedTours[ci];
-      const matchingCruise = rawCruises[ci] || {}; // Try to match by index
-      const nights = (ct.dayTo && ct.dayFrom ? ct.dayTo - ct.dayFrom : 0) || matchingCruise.nights || 0;
-      items.push({
-        id: crypto.randomUUID(),
-        type: 'cruise',
-        title: safeStr(ct.name || matchingCruise.shipName || 'Cruise'),
-        subtitle: safeStr(ct.supplierName || matchingCruise.cruiseLine || ''),
-        supplier: safeStr(ct.supplierName || matchingCruise.cruiseLine || ''),
-        nights,
-        date_start: safeStr(ct.startDate || ''),
-        date_end: safeStr(ct.endDate || ''),
-        location: safeStr(ct.address || matchingCruise.departure || matchingCruise.originPort || ''),
-        description: stripHtml(ct.description || ''),
-        image_url: (ct.imageUrls || [])[0] || '',
-        images: ct.imageUrls || [],
-        price: extractPrice(ct),
-        sort_order: 0,
-      });
-    }
-  } else if (rawCruises.length > 0) {
-    // Fallback: cruises array (CruiseDataSheetVO — NO dates!)
-    for (const cr of rawCruises) {
-      console.log('[TC Map] Cruise (no dates!): ', JSON.stringify(cr).substring(0, 500));
-      items.push({
-        id: crypto.randomUUID(),
-        type: 'cruise',
-        title: safeStr(cr.shipName || cr.name || 'Cruise'),
-        subtitle: safeStr(cr.cruiseLine || ''),
-        supplier: safeStr(cr.cruiseLine || ''),
-        nights: cr.nights || 0,
-        date_start: '',  // CruiseDataSheetVO has NO dates
-        date_end: '',
-        location: safeStr(cr.departure || cr.originPort || ''),
-        description: '',
-        price: extractPrice(cr),
-        sort_order: 0,
-      });
-    }
+  // Cruise line code to name mapping
+  const cruiseLineNames: Record<string, string> = {
+    'RCC': 'Royal Caribbean', 'RCI': 'Royal Caribbean', 'NCL': 'Norwegian Cruise Line',
+    'MSC': 'MSC Cruises', 'CCL': 'Carnival Cruise Line', 'HAL': 'Holland America Line',
+    'CEL': 'Celebrity Cruises', 'CUN': 'Cunard', 'PRI': 'Princess Cruises',
+    'VIK': 'Viking', 'DIS': 'Disney Cruise Line', 'SIL': 'Silversea',
+    'AZA': 'Azamara', 'OCE': 'Oceania Cruises', 'SEA': 'Seabourn',
+  };
+
+  console.log(`[TC Map] Cruises: ${rawCruises.length}, ClosedTours: ${closedTours.length}`);
+
+  // Process cruises from CruiseDataSheetVO array (primary source for this trip type)
+  for (let ci = 0; ci < rawCruises.length; ci++) {
+    const cr = rawCruises[ci];
+    const ct = closedTours[ci] || {}; // Try to match closedTour by index for enrichment
+
+    // departure/arrival can be datetimes OR port names — detect which
+    const depDate = looksLikeDate(cr.departure) ? cr.departure : (ct.startDate || '');
+    const arrDate = looksLikeDate(cr.arrival) ? cr.arrival : (ct.endDate || '');
+    const cruiseLineFull = cruiseLineNames[cr.cruiseLine] || cr.cruiseLine || ct.supplierName || '';
+    const shipName = cr.shipName || ct.name || '';
+    const title = shipName ? `${cruiseLineFull} — ${shipName}` : `Cruise ${cruiseLineFull}`;
+
+    console.log(`[TC Map] Cruise "${title}" dates: dep="${depDate}", arr="${arrDate}", nights=${cr.nights}, category=${cr.selectedCategory}`);
+
+    items.push({
+      id: crypto.randomUUID(),
+      type: 'cruise',
+      title: safeStr(title),
+      subtitle: safeStr(cr.selectedCategory || cr.group || ct.modalityName || ''),
+      supplier: safeStr(cruiseLineFull),
+      nights: cr.nights || (ct.dayTo && ct.dayFrom ? ct.dayTo - ct.dayFrom : 0) || 0,
+      date_start: safeStr(depDate),
+      date_end: safeStr(arrDate),
+      location: safeStr(cr.originPort || (!looksLikeDate(cr.departure) ? cr.departure : '') || ct.address || ''),
+      description: stripHtml(ct.description || ''),
+      image_url: (ct.imageUrls || [])[0] || '',
+      images: ct.imageUrls || [],
+      price: extractPrice(cr.priceBreakdown ? cr : ct),
+      sort_order: 0,
+    });
+  }
+
+  // Process any remaining closedTours not matched to a cruise
+  for (let ci = rawCruises.length; ci < closedTours.length; ci++) {
+    const ct = closedTours[ci];
+    items.push({
+      id: crypto.randomUUID(),
+      type: 'cruise',
+      title: safeStr(ct.name || 'Pakketreis'),
+      subtitle: safeStr(ct.supplierName || ct.modalityName || ''),
+      supplier: safeStr(ct.supplierName || ''),
+      nights: (ct.dayTo && ct.dayFrom ? ct.dayTo - ct.dayFrom : 0) || 0,
+      date_start: safeStr(ct.startDate || ''),
+      date_end: safeStr(ct.endDate || ''),
+      location: safeStr(ct.address || ''),
+      description: stripHtml(ct.description || ''),
+      image_url: (ct.imageUrls || [])[0] || '',
+      images: ct.imageUrls || [],
+      price: extractPrice(ct),
+      sort_order: 0,
+    });
   }
 
   // --- Activities / Tickets ---
