@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { BookOpen, Plus, Search, Filter, Map, Car, Calendar, MapPin, Hotel, ChevronRight, Eye, Edit, Trash2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/supabase';
+import { RoadbookEditor } from './RoadbookEditor';
 
 interface RoadbookDay {
   day: number;
@@ -64,6 +65,21 @@ export function TravelDocsRoadbook() {
     rb.client_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     rb.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (showEditor) {
+    return (
+      <RoadbookEditor
+        roadbookId={selectedRoadbook?.id}
+        onClose={() => {
+          setShowEditor(false);
+          setSelectedRoadbook(null);
+        }}
+        onSave={() => {
+          loadRoadbooks();
+        }}
+      />
+    );
+  }
 
   if (previewRoadbook) {
     return <RoadbookPreview roadbook={previewRoadbook} onClose={() => setPreviewRoadbook(null)} />;
