@@ -982,7 +982,8 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave, brandColor = '#2e7
                             <div className="mt-auto">
                               <button 
                                 onClick={() => setDetailItem(item)}
-                                className="w-full bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                className="w-full text-white text-sm font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 hover:opacity-90"
+                                style={{ backgroundColor: brandColor }}
                               >
                                 <Star size={14} />
                                 Meer informatie

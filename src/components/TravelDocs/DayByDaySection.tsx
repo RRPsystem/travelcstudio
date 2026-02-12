@@ -170,10 +170,10 @@ export function DayByDaySection({ destinations, items, brandColor = '#2e7d32', c
               className="relative z-20 flex items-start justify-center pt-8"
             >
               <div
-                className="w-14 h-14 rounded-full border-4 border-white shadow-lg flex items-center justify-center"
+                className="w-20 h-20 rounded-full border-4 border-white shadow-lg flex items-center justify-center"
                 style={{ backgroundColor: brandColor }}
               >
-                <span className="text-white text-[10px] font-bold leading-tight text-center">
+                <span className="text-white text-xs font-bold leading-tight text-center">
                   Stop<br />{idx + 1}
                 </span>
               </div>
