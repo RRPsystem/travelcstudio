@@ -262,76 +262,124 @@ function mapTcDataToOfferte(tc: any): TcImportResult {
     });
   }
 
-  // --- CALCULATE MISSING DATES ---
-  // TC API often provides day-numbers (which day of the trip) instead of actual dates.
-  // We calculate real dates from the first flight's departure date + hotel day/nights.
-  const tripStartDate = findTripStartDate(items, tc);
+  // --- DESTINATION-BASED ORDERING ---
+  // The TC API destinations array is in chronological trip order.
+  // Match hotels and cruises to destinations by name to get correct interleaving.
+  const destNames = (tc.destinations || []).map((d: any) =>
+    (d.name || '').toLowerCase().trim()
+  );
+  console.log('[TC Map] Destinations in order:', destNames);
+
+  // Separate items by type
+  const flightItems = items.filter(i => i.type === 'flight');
+  const hotelItems = items.filter(i => i.type === 'hotel');
+  const cruiseItems = items.filter(i => i.type === 'cruise');
+  const carItems = items.filter(i => i.type === 'car_rental');
+  const transferItems = items.filter(i => i.type === 'transfer');
+  const activityItems = items.filter(i => i.type === 'activity');
+
+  // Match accommodations to destinations by name
+  const unmatchedHotels = [...hotelItems];
+  const unmatchedCruises = [...cruiseItems];
+  const orderedAccommodations: OfferteItem[] = [];
+
+  for (const destName of destNames) {
+    if (!destName) continue;
+
+    // Try hotel match first
+    const hIdx = unmatchedHotels.findIndex(h => {
+      const loc = (typeof h.location === 'string' ? h.location : '').toLowerCase().trim();
+      return loc && destName && (loc.includes(destName) || destName.includes(loc));
+    });
+    if (hIdx >= 0) {
+      orderedAccommodations.push(unmatchedHotels[hIdx]);
+      unmatchedHotels.splice(hIdx, 1);
+      continue;
+    }
+
+    // Try cruise match (by departure port)
+    const cIdx = unmatchedCruises.findIndex(c => {
+      const loc = (typeof c.location === 'string' ? c.location : '').toLowerCase().trim();
+      return loc && destName && (loc.includes(destName) || destName.includes(loc));
+    });
+    if (cIdx >= 0) {
+      orderedAccommodations.push(unmatchedCruises[cIdx]);
+      unmatchedCruises.splice(cIdx, 1);
+    }
+  }
+
+  // Append any unmatched accommodations at the end
+  orderedAccommodations.push(...unmatchedHotels, ...unmatchedCruises);
+  console.log('[TC Map] Accommodation order:', orderedAccommodations.map(a => `${a.type}: ${a.title} (${a.location})`));
+
+  // Identify outbound vs return flights using day field
+  const totalDays = tc.numberOfDays || tc.numberOfNights || 0;
+  const outboundFlights: OfferteItem[] = [];
+  const returnFlights: OfferteItem[] = [];
+  for (const f of flightItems) {
+    // Raw TC transports have a 'day' field
+    const fIdx = flightItems.indexOf(f);
+    const rawFlight = (tc.flights || [])[fIdx];
+    const day = rawFlight?.day || 0;
+    if (day > 1 && day >= totalDays - 1) {
+      returnFlights.push(f);
+    } else {
+      outboundFlights.push(f);
+    }
+  }
+
+  // Build final timeline
+  const timeline: OfferteItem[] = [
+    ...outboundFlights,
+    ...orderedAccommodations,
+    ...carItems,
+    ...transferItems,
+    ...activityItems,
+    ...returnFlights,
+  ];
+
+  // Assign sort_order
+  timeline.forEach((item, idx) => { item.sort_order = idx; });
+
+  // --- CALCULATE DATES from trip start + cumulative nights ---
+  const tripStartDate = findTripStartDate(timeline, tc);
   if (tripStartDate) {
     console.log('[TC Map] Trip start date:', tripStartDate.toISOString().split('T')[0]);
-    
-    // Calculate hotel dates from day number or cumulative nights
-    let cumulativeDay = 1; // Track current day for hotels without a day number
-    for (const item of items) {
-      if (item.type === 'hotel') {
-        const hotelNights = item.nights || 1;
-        // Find matching formatted hotel to get day number
-        const hotelIdx = items.filter(i => i.type === 'hotel').indexOf(item);
-        const formattedHotel = (tc.hotels || [])[hotelIdx];
-        const rawHotel = (tc.rawTcData?.hotels || [])[hotelIdx];
-        const dayNum = formattedHotel?.day || rawHotel?.day || 0;
-        
+    let cumulativeDay = 1;
+
+    for (const item of timeline) {
+      if (item.type === 'hotel' || item.type === 'cruise') {
+        const nights = item.nights || 1;
         if (!item.date_start || item.date_start === '') {
-          let checkIn: Date;
-          if (dayNum > 0) {
-            // Use day number from TC API
-            checkIn = new Date(tripStartDate);
-            checkIn.setDate(checkIn.getDate() + dayNum - 1);
-          } else {
-            // Calculate from cumulative days
-            checkIn = new Date(tripStartDate);
-            checkIn.setDate(checkIn.getDate() + cumulativeDay - 1);
-          }
+          const checkIn = new Date(tripStartDate);
+          checkIn.setDate(checkIn.getDate() + cumulativeDay - 1);
           const checkOut = new Date(checkIn);
-          checkOut.setDate(checkOut.getDate() + hotelNights);
-          
+          checkOut.setDate(checkOut.getDate() + nights);
           item.date_start = checkIn.toISOString().split('T')[0];
           item.date_end = checkOut.toISOString().split('T')[0];
-          console.log(`[TC Map] Calculated hotel dates: ${item.title} → ${item.date_start} to ${item.date_end} (day ${dayNum || cumulativeDay}, ${hotelNights}n)`);
+          console.log(`[TC Map] Dates: ${item.title} → ${item.date_start} to ${item.date_end} (${nights}n)`);
         }
-        cumulativeDay += hotelNights;
+        cumulativeDay += nights;
       }
-      
-      // Calculate car rental dates from pickupDay/dropoffDay
+
       if (item.type === 'car_rental' && (!item.date_start || item.date_start === '')) {
-        const carIdx = items.filter(i => i.type === 'car_rental').indexOf(item);
+        const carIdx = carItems.indexOf(item);
         const rawCar = (tc.carRentals || [])[carIdx];
         const pickupDay = rawCar?.pickupDay || rawCar?.day || 1;
-        const dropoffDay = rawCar?.dropoffDay || (tc.numberOfDays || 0);
-        
+        const dropoffDay = rawCar?.dropoffDay || (totalDays || 14);
         const pickupDate = new Date(tripStartDate);
         pickupDate.setDate(pickupDate.getDate() + pickupDay - 1);
         const dropoffDate = new Date(tripStartDate);
         dropoffDate.setDate(dropoffDate.getDate() + dropoffDay - 1);
-        
         item.date_start = pickupDate.toISOString().split('T')[0];
         item.date_end = dropoffDate.toISOString().split('T')[0];
-        console.log(`[TC Map] Calculated car dates: ${item.title} → ${item.date_start} to ${item.date_end}`);
       }
     }
   }
 
-  // --- CHRONOLOGICAL SORT ---
-  items.sort((a, b) => {
-    const dateA = a.date_start ? new Date(a.date_start).getTime() : NaN;
-    const dateB = b.date_start ? new Date(b.date_start).getTime() : NaN;
-    if (!isNaN(dateA) && !isNaN(dateB)) return dateA - dateB;
-    if (!isNaN(dateA) && isNaN(dateB)) return -1;
-    if (isNaN(dateA) && !isNaN(dateB)) return 1;
-    return 0;
-  });
-  
-  // Reassign sort_order after chronological sort
-  items.forEach((item, idx) => { item.sort_order = idx; });
+  // Replace items array with correctly ordered timeline
+  items.length = 0;
+  items.push(...timeline);
 
   // --- Destinations ---
   const destinations: OfferteDestination[] = (tc.destinations || []).map((d: any, i: number) => ({
