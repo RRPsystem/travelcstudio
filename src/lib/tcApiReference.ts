@@ -33,14 +33,15 @@
 export interface TcDayToDayResponse {
   destinations: TcDestination[];
   tripSpots: TcTripSpot[];
-  closedTours: TcClosedTour[];     // ← CRUISES LIVE HERE
+  closedTours: TcClosedTour[];     // ← CRUISES can also be here (package tours)
+  cruises: TcCruise[];             // ← CRUISES (CruiseDataSheetVO) — separate array!
   transports: TcTransport[];       // Flights (transportType='FLIGHT')
   transfers: TcTransfer[];         // Ground transfers (separate from transports!)
   hotels: TcHotel[];
   preferredHotels: TcPreferredHotel[];
   tickets: TcTicket[];             // Activities / excursions
-  // NOTE: No separate 'cruises' array — cruises are in closedTours
-  // NOTE: Cars are NOT in this schema — check raw data
+  cars: TcCarRental[];             // Car rentals (IdeaCarRentalVO)
+  manuals: TcManual[];             // Manual bookings (IdeaManualVO)
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -172,6 +173,100 @@ export interface TcClosedTour {
   mandatory: boolean;
   fixed: boolean;
   dataSheetId: string;
+}
+
+// ═══════════════════════════════════════════════════════════
+// CRUISE — CruiseDataSheetVO
+// ═══════════════════════════════════════════════════════════
+export interface TcCruise {
+  id: string;
+  shipId: string;
+  shipName: string;
+  cruiseLine: string;
+  stars: number;
+  selectedCategory: string;        // Cabin category
+  year: string;
+  group: string;
+  cabin: string;
+  originPort: string;
+  departure: string;               // Departure port name
+  arrival: string;                 // Arrival port name
+  nights: number;
+  region: string;
+  month: string;
+  mandatory: boolean;
+  fixed: boolean;
+  // NOTE: Cruises do NOT have checkInDate/checkOutDate or startDate/endDate!
+  // Use closedTours for date info, or calculate from hotel context.
+}
+
+// ═══════════════════════════════════════════════════════════
+// CAR RENTAL — IdeaCarRentalVO
+// ═══════════════════════════════════════════════════════════
+export interface TcCarRental {
+  id: string;
+  product: string;
+  company: string;
+  imageUrl: string;
+  pickupDay: number;               // Day of trip (1-based)
+  pickupDate: string;              // ← ACTUAL DATE ($date)!
+  pickupLocation: string;
+  pickupTime: string;
+  dropoffDay: number;              // Day of trip (1-based)
+  dropoffDate: string;             // ← ACTUAL DATE ($date)!
+  dropoffLocation: string;
+  dropoffTime: string;
+  priceBreakdown: TcPriceBreakdown;
+  mileage: number;
+  depositDescription: string;
+  fuelType: string;                // FuelType enum (9 values)
+  transmissionType: 'AUTOMATIC' | 'MANUAL';
+  minimumAge: number;
+  bookingReference: string;
+  charges: TcCarCharge[];
+  mandatory: boolean;
+  fixed: boolean;
+}
+
+export interface TcCarCharge {
+  id: number;
+  providerCode: string;
+  providerDescription: string;
+  money: { amount: number; currency?: string };
+}
+
+// ═══════════════════════════════════════════════════════════
+// MANUAL — IdeaManualVO (manual bookings)
+// ═══════════════════════════════════════════════════════════
+export interface TcManual {
+  bookingReference: string;
+  provider: string;
+  startDate: string;               // ← ACTUAL DATE ($date)
+  endDate: string;                 // ← ACTUAL DATE ($date)
+  country: string;
+  description: string;
+  pnr: string;
+  providerName: string;
+  paymentType: string;
+  promotionCode: boolean;
+  type: 'ACCOUNTING_ADJUSMENT' | 'PROMOTION_CODE' | 'PAYMENT_COMMISSION'
+    | 'REWARD_REDEMPTION' | 'OPERATOR_DISCOUNT' | 'AGENCY_EXPENSES'
+    | 'ON_SPOT_EXPENSES' | 'TRANSPORT' | 'HOTEL' | 'CLOSEDTOUR'
+    | 'TICKET' | 'INSURANCE' | 'TRANSFER' | 'CAR_RENTAL' | 'GIFT_BOX'
+    | 'GIFT_BOX_FEE' | 'GIFT_BOX_PURCHASE' | 'GROUP_COACH' | 'GIFT_CARD'
+    | 'ADMINISTRATIVE_FEE' | 'CRUISE' | 'MEMBERSHIP' | 'AMENDMENT'
+    | 'TRAVEL_CLUB' | 'TRAVEL_CLUB_TPV_FEE';
+  voucherDescription: string;
+  priceBreakdown: TcPriceBreakdown;
+  createdByAgency: string;
+  cancelPolicy: TcCancelPolicy[];
+}
+
+export interface TcCancelPolicy {
+  date: string;                    // $date
+  netPrice: { amount: number; currency?: string };
+  amount: { amount: number; currency?: string };
+  policyAmount: { amount: number; currency?: string };
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -353,7 +448,7 @@ export interface TcInfoResponse {
  * 3. ClosedTours (cruises) have startDate + endDate (REAL dates!) → sort by startDate
  * 4. Tickets have eventDate (REAL date!) → sort by eventDate
  * 5. Transfers have dateTime (REAL date-time!) → sort by dateTime
- * 6. Cars do NOT have dates — only pickupDay/dropoffDay (day numbers)
+ * 6. Cars have pickupDate + dropoffDate (REAL dates!) AND pickupDay/dropoffDay
  * 
  * SIMPLE: Just sort ALL items by their date field. Every item type has one.
  * Cars are the only exception — calculate from trip start + pickupDay.
@@ -366,9 +461,12 @@ export interface TcInfoResponse {
  *   - Hotels: hotelData.destination is an OBJECT { name, code } not a string
  *   - Hotels: hotelData.images is array of { url } objects, not string[]
  *   - Hotels: hotelData.facilities has .includedFacilities[] etc, not flat
- *   - Cruises: are in closedTours array   (NOT cruises)
+ *   - Cruises: CruiseDataSheetVO has NO dates! Only port names + nights
+ *   - Cruises may ALSO appear in closedTours (with dates: startDate/endDate)
  *   - ClosedTours: startDate/endDate      (NOT departureDate/arrivalDate)
  *   - ClosedTours: dayFrom/dayTo          (NOT day/nights)
+ *   - Cars: pickupDate/dropoffDate ARE real dates ($date)! Also have day numbers
+ *   - Cars: pickupLocation/dropoffLocation, pickupTime/dropoffTime
  *   - Transfers: separate array from transports!
  *   - Transfers: from/to are { name, lat, lng } objects
  */

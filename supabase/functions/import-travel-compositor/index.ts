@@ -594,8 +594,11 @@ async function processAndReturnTravel(data: any, rawTcData: any, travelId: strin
       t.transportType !== 'FLIGHT'
     ) || [],
     
-    // Cruises - may be in closedTours or cruises array
-    cruises: rawTcData.cruises || rawTcData.closedTours || [],
+    // Cruises (CruiseDataSheetVO) - NO dates, only ports/nights/ship info
+    cruises: rawTcData.cruises || [],
+    
+    // ClosedTours (IdeaClosedTourVO) - HAS dates (startDate/endDate), may contain cruises
+    closedTours: rawTcData.closedTours || [],
     
     // Car rentals - separate array in TC raw data
     carRentals: rawTcData.cars || data.car_rentals || [],

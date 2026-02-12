@@ -69,7 +69,7 @@ function mapTcDataToOfferte(tc: any): TcImportResult {
   // Access raw TC data for richer field extraction
   const rawHotels = tc.rawTcData?.hotels || [];
   const rawCars = tc.rawTcData?.cars || [];
-  const rawCruises = tc.rawTcData?.cruises || [];
+  const rawCruiseData = tc.rawTcData?.cruises || [];
   const rawTransports = tc.rawTcData?.transports || [];
 
   // Log ALL raw field names for debugging
@@ -78,8 +78,8 @@ function mapTcDataToOfferte(tc: any): TcImportResult {
   console.log('[TC Map] Raw TC hotel[0] full:', rawHotels[0] ? JSON.stringify(rawHotels[0]).substring(0, 800) : 'none');
   console.log('[TC Map] Raw TC car keys:', rawCars[0] ? Object.keys(rawCars[0]) : 'none');
   console.log('[TC Map] Raw TC car[0] full:', rawCars[0] ? JSON.stringify(rawCars[0]).substring(0, 500) : 'none');
-  console.log('[TC Map] Raw TC cruise keys:', rawCruises[0] ? Object.keys(rawCruises[0]) : 'none');
-  console.log('[TC Map] Raw TC cruise[0] full:', rawCruises[0] ? JSON.stringify(rawCruises[0]).substring(0, 500) : 'none');
+  console.log('[TC Map] Raw TC cruise keys:', rawCruiseData[0] ? Object.keys(rawCruiseData[0]) : 'none');
+  console.log('[TC Map] Raw TC cruise[0] full:', rawCruiseData[0] ? JSON.stringify(rawCruiseData[0]).substring(0, 500) : 'none');
   console.log('[TC Map] Raw TC transport keys:', rawTransports[0] ? Object.keys(rawTransports[0]) : 'none');
   console.log('[TC Map] Raw TC transport[0] full:', rawTransports[0] ? JSON.stringify(rawTransports[0]).substring(0, 500) : 'none');
 
@@ -206,50 +206,80 @@ function mapTcDataToOfferte(tc: any): TcImportResult {
     });
   }
 
-  // --- Car rentals ---
+  // --- Car rentals (IdeaCarRentalVO — see tcApiReference.ts) ---
   const cars = tc.carRentals || [];
   for (const c of cars) {
-    // Log all car fields for debugging
-    console.log('[TC Map] Car rental raw data:', JSON.stringify(c).substring(0, 500));
+    console.log('[TC Map] Car rental keys:', Object.keys(c).join(', '));
     items.push({
       id: crypto.randomUUID(),
       type: 'car_rental',
-      title: safeStr(c.name || c.carType || c.vehicleType || c.category || 'Huurauto'),
-      subtitle: safeStr(c.company || c.supplier || c.rentalCompany),
-      supplier: safeStr(c.company || c.supplier || c.rentalCompany),
-      date_start: safeStr(c.pickupDate || c.startDate || c.dateFrom || c.checkIn),
-      date_end: safeStr(c.dropoffDate || c.endDate || c.dateTo || c.checkOut),
-      pickup_location: safeStr(c.pickupLocation || c.pickupOffice || c.pickup || c.departureCity),
-      dropoff_location: safeStr(c.dropoffLocation || c.dropoffOffice || c.dropoff || c.arrivalCity),
+      title: safeStr(c.product || c.name || c.carType || c.category || 'Huurauto'),
+      subtitle: safeStr(c.company || c.supplier),
+      supplier: safeStr(c.company || c.supplier),
+      image_url: safeStr(c.imageUrl),
+      date_start: safeStr(c.pickupDate || c.pickupDay || ''),   // pickupDate = real date!
+      date_end: safeStr(c.dropoffDate || c.dropoffDay || ''),   // dropoffDate = real date!
+      pickup_location: safeStr(c.pickupLocation || ''),
+      dropoff_location: safeStr(c.dropoffLocation || ''),
+      departure_time: safeStr(c.pickupTime || ''),
+      arrival_time: safeStr(c.dropoffTime || ''),
       price: extractPrice(c),
       sort_order: 0,
     });
   }
 
-  // --- Cruises (may come from closedTours in TC API) ---
-  const cruises = tc.cruises || [];
-  for (const cr of cruises) {
-    console.log('[TC Map] Cruise raw keys:', Object.keys(cr).join(', '));
-    console.log('[TC Map] Cruise raw data:', JSON.stringify(cr).substring(0, 800));
-    // closedTours have: dayFrom, dayTo, startDate, endDate, name, supplierName, description, imageUrls
-    // classic cruises have: cruiseLine, shipId, nights, departure, arrival
-    const nights = cr.nights || (cr.dayTo && cr.dayFrom ? cr.dayTo - cr.dayFrom : 0) || cr.duration || 0;
-    items.push({
-      id: crypto.randomUUID(),
-      type: 'cruise',
-      title: safeStr(cr.name || cr.shipName || 'Cruise'),
-      subtitle: safeStr(cr.cruiseLine || cr.supplierName || cr.company),
-      supplier: safeStr(cr.cruiseLine || cr.supplierName || cr.company),
-      nights,
-      date_start: safeStr(cr.startDate || cr.departureDate || cr.dateFrom || cr.checkIn || ''),
-      date_end: safeStr(cr.endDate || cr.arrivalDate || cr.dateTo || cr.checkOut || ''),
-      location: safeStr(cr.departurePort || cr.embarkation || cr.departure || cr.address || ''),
-      description: stripHtml(cr.description || cr.itinerary || ''),
-      image_url: (cr.imageUrls || [])[0] || '',
-      images: cr.imageUrls || [],
-      price: extractPrice(cr),
-      sort_order: 0,
-    });
+  // --- Cruises ---
+  // TC API has TWO arrays: cruises (CruiseDataSheetVO, NO dates) and closedTours (HAS dates).
+  // Strategy: use closedTours as primary (has startDate/endDate), enrich with cruises array.
+  // If no closedTours, fall back to cruises array.
+  const rawCruises = tc.cruises || [];
+  const closedTours = tc.closedTours || [];
+
+  console.log(`[TC Map] Cruises array: ${rawCruises.length} items, keys: ${rawCruises[0] ? Object.keys(rawCruises[0]).join(',') : 'none'}`);
+  console.log(`[TC Map] ClosedTours array: ${closedTours.length} items, keys: ${closedTours[0] ? Object.keys(closedTours[0]).join(',') : 'none'}`);
+
+  if (closedTours.length > 0) {
+    // Use closedTours — they have real dates
+    for (let ci = 0; ci < closedTours.length; ci++) {
+      const ct = closedTours[ci];
+      const matchingCruise = rawCruises[ci] || {}; // Try to match by index
+      const nights = (ct.dayTo && ct.dayFrom ? ct.dayTo - ct.dayFrom : 0) || matchingCruise.nights || 0;
+      items.push({
+        id: crypto.randomUUID(),
+        type: 'cruise',
+        title: safeStr(ct.name || matchingCruise.shipName || 'Cruise'),
+        subtitle: safeStr(ct.supplierName || matchingCruise.cruiseLine || ''),
+        supplier: safeStr(ct.supplierName || matchingCruise.cruiseLine || ''),
+        nights,
+        date_start: safeStr(ct.startDate || ''),
+        date_end: safeStr(ct.endDate || ''),
+        location: safeStr(ct.address || matchingCruise.departure || matchingCruise.originPort || ''),
+        description: stripHtml(ct.description || ''),
+        image_url: (ct.imageUrls || [])[0] || '',
+        images: ct.imageUrls || [],
+        price: extractPrice(ct),
+        sort_order: 0,
+      });
+    }
+  } else if (rawCruises.length > 0) {
+    // Fallback: cruises array (CruiseDataSheetVO — NO dates!)
+    for (const cr of rawCruises) {
+      console.log('[TC Map] Cruise (no dates!): ', JSON.stringify(cr).substring(0, 500));
+      items.push({
+        id: crypto.randomUUID(),
+        type: 'cruise',
+        title: safeStr(cr.shipName || cr.name || 'Cruise'),
+        subtitle: safeStr(cr.cruiseLine || ''),
+        supplier: safeStr(cr.cruiseLine || ''),
+        nights: cr.nights || 0,
+        date_start: '',  // CruiseDataSheetVO has NO dates
+        date_end: '',
+        location: safeStr(cr.departure || cr.originPort || ''),
+        description: '',
+        price: extractPrice(cr),
+        sort_order: 0,
+      });
+    }
   }
 
   // --- Activities / Tickets ---
