@@ -1022,6 +1022,7 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave }: Props) {
             destinations={destinations}
             items={items}
             brandColor="#2e7d32"
+            carImageUrl="/auto.png"
           />
         )}
 
