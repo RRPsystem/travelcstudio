@@ -195,7 +195,7 @@ export function OfferteViewer({ offerteId }: Props) {
         .update(update)
         .eq('id', offerte.id);
 
-      setOfferte({ ...offerte, client_response: response, client_response_note: responseNote || undefined, status: update.status });
+      // Don't update offerte state to prevent re-renders - just update response flags
       setResponseSubmitted(true);
       setResponseMode('none');
     } catch (err) {
