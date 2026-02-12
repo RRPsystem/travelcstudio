@@ -430,6 +430,22 @@ export function SocialMediaManager() {
     }
   };
 
+  const toggleAgentAvailability = async (postId: string, currentValue: boolean) => {
+    try {
+      const { error } = await db.supabase
+        .from('social_media_posts')
+        .update({ enabled_for_agents: !currentValue })
+        .eq('id', postId);
+
+      if (error) throw error;
+      setSuccess(!currentValue ? 'Post beschikbaar gemaakt voor Agents!' : 'Post niet meer beschikbaar voor Agents');
+      await loadPosts();
+    } catch (err: any) {
+      console.error('Error toggling agent availability:', err);
+      setError('Fout bij bijwerken: ' + err.message);
+    }
+  };
+
   const handleUsePost = async (post: SocialMediaPost) => {
     try {
       // Copy the post content to the form
@@ -1439,17 +1455,7 @@ export function SocialMediaManager() {
                             <input
                               type="checkbox"
                               checked={post.enabled_for_agents || false}
-                              onChange={() => {
-                                db.supabase
-                                  ?.from('social_media_posts')
-                                  .update({ enabled_for_agents: !post.enabled_for_agents })
-                                  .eq('id', post.id)
-                                  .then(() => {
-                                    setSuccess('Post bijgewerkt!');
-                                    loadPosts();
-                                  })
-                                  .catch((err) => setError('Fout: ' + err.message));
-                              }}
+                              onChange={() => toggleAgentAvailability(post.id, post.enabled_for_agents || false)}
                               className="w-10 h-5 bg-gray-200 rounded-full peer appearance-none cursor-pointer checked:bg-blue-600 relative
                                 before:content-[''] before:absolute before:top-0.5 before:left-0.5 before:w-4 before:h-4 before:bg-white before:rounded-full before:transition-transform
                                 checked:before:translate-x-5"
