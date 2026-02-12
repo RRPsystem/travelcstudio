@@ -330,17 +330,24 @@ export function APISettings() {
         throw new Error('Niet geauthenticeerd');
       }
 
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://huaaogdxxdcakxryecnw.supabase.co';
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      console.log('[testGoogleSearch] Calling Edge Function:', `${supabaseUrl}/functions/v1/test-google-search`);
+      
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/test-google-search`,
+        `${supabaseUrl}/functions/v1/test-google-search`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            'apikey': supabaseKey,
           }
         }
       );
+      
+      console.log('[testGoogleSearch] Response status:', response.status);
       
       const data = await response.json();
       
