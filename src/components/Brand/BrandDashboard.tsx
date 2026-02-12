@@ -16,7 +16,7 @@ import { SocialMediaManager } from './SocialMediaManager';
 import { TravelBroSetup } from '../TravelBro/TravelBroSetup';
 import WordPressTemplateChooser from './WordPressTemplateChooser';
 import WordPressPageManager from './WordPressPageManager';
-import { Users, Settings, Plus, Bot, Sparkles, Import as FileImport, ChevronDown, ChevronRight, FileText, Globe, Newspaper, MapPin, Plane, Share2, Map, ArrowRight, ClipboardCheck, Video, BookOpen, Rocket, Wallet, ShoppingCart, Ticket, FolderOpen } from 'lucide-react';
+import { Users, Settings, Plus, Bot, Sparkles, Import as FileImport, ChevronDown, ChevronRight, FileText, Globe, Newspaper, MapPin, Plane, Share2, Map, ArrowRight, ClipboardCheck, Video, BookOpen, Rocket, Wallet, Ticket, FolderOpen } from 'lucide-react';
 import { TravelDocsOffertes } from '../TravelDocs/TravelDocsOffertes';
 import { TravelDocsRoadbook } from '../TravelDocs/TravelDocsRoadbook';
 import { TravelDocsVouchers } from '../TravelDocs/TravelDocsVouchers';
@@ -25,7 +25,6 @@ import TestDashboard from '../Testing/TestDashboard';
 import CreditWallet from '../shared/CreditWallet';
 import AgentPodcastViewer from '../Podcast/AgentPodcastViewer';
 import VideoLibrary from './VideoLibrary';
-import { BookingRequestsDashboard } from './BookingRequestsDashboard';
 import { QuoteRequestsDashboard } from './QuoteRequestsDashboard';
 
 export function BrandDashboard() {
@@ -257,7 +256,6 @@ export function BrandDashboard() {
   const aiToolsItems = [
     { id: 'ai-content', label: 'AI Content Generator', icon: Sparkles },
     { id: 'ai-travelbro', label: 'AI TravelBRO', icon: Bot },
-    { id: 'ai-booking-requests', label: 'Boekingsverzoeken', icon: ShoppingCart },
     { id: 'ai-import', label: 'AI TravelImport', icon: FileImport },
     { id: 'ai-video', label: 'AI Travel Video', icon: Video },
   ];
@@ -689,7 +687,6 @@ export function BrandDashboard() {
                   {activeSection === 'content' && 'Nieuwsberichten'}
                   {activeSection === 'ai-content' && 'AI Content Generator'}
                   {activeSection === 'ai-travelbro' && 'AI TravelBRO'}
-                  {activeSection === 'ai-booking-requests' && 'Boekingsverzoeken'}
                   {activeSection === 'ai-import' && 'AI TravelImport'}
                   {activeSection === 'ai-video' && 'AI Travel Video'}
                   {activeSection === 'social-media' && 'Social Media Manager'}
@@ -705,7 +702,6 @@ export function BrandDashboard() {
                   {activeSection === 'wordpress-plugin' && 'Download de WordPress plugin voor nieuwsintegratie'}
                   {activeSection === 'ai-content' && 'Generate travel content with AI'}
                   {activeSection === 'ai-travelbro' && 'Your AI travel assistant'}
-                  {activeSection === 'ai-booking-requests' && 'Beheer boekingsverzoeken van reizigers via TravelBRO'}
                   {activeSection === 'ai-import' && 'Import travel data with AI'}
                   {activeSection === 'ai-video' && 'Create engaging travel videos with AI'}
                   {activeSection === 'social-media' && 'Maak en beheer social media posts'}
@@ -887,7 +883,6 @@ export function BrandDashboard() {
           {activeSection === 'ai-video' && <VideoLibrary />}
           {activeSection === 'ai-content' && <AIContentGenerator />}
           {activeSection === 'ai-travelbro' && <TravelBroSetup />}
-          {activeSection === 'ai-booking-requests' && <BookingRequestsDashboard />}
           {activeSection === 'social-media' && <SocialMediaManager />}
           {activeSection === 'agents' && <AgentManagement />}
           {activeSection === 'testing' && <TestDashboard />}
