@@ -769,7 +769,7 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave, brandColor = '#2e7
               className="w-full flex items-center justify-center gap-2 py-3 bg-gray-900/80 backdrop-blur-sm text-white hover:bg-gray-900/90 transition-all text-sm font-medium"
             >
               <MapPin size={16} />
-              Bekijk route · {destinations.length} bestemmingen
+              Open de routekaart
               <ChevronDown size={16} className={`transition-transform duration-300 ${mapOpen ? 'rotate-180' : ''}`} />
             </button>
 
