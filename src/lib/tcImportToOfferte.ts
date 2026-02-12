@@ -151,10 +151,12 @@ function mapTcDataToOfferte(tc: any): TcImportResult {
     }
     console.log(`[TC Map] Hotel "${name}" facilities (${facilityList.length}):`, facilityList.slice(0, 10).join(', '));
 
-    // Extract location: formatted first, then raw TC data
+    // Extract location: hotelData.destination is OBJECT {name, code} per Swagger!
+    const destName = typeof hotelData.destination === 'object' ? hotelData.destination?.name : hotelData.destination;
+    const rawDestName = typeof rawHd.destination === 'object' ? rawHd.destination?.name : rawHd.destination;
     const location = safeStr(
-      h.city || hotelData.city || h.destination || hotelData.destination || hotelData.address || h.address ||
-      rawHd.city || raw.destination || rawHd.destination || rawHd.address || raw.city
+      h.city || hotelData.city || destName || rawDestName || hotelData.address || h.address ||
+      rawHd.city || rawHd.address || raw.city || raw.destination
     );
 
     // Extract dates: TC API uses checkInDate/checkOutDate (from Swagger IdeaHotelVO)
