@@ -156,6 +156,10 @@ export function ChatEmbed({ tripId, shareToken }: ChatEmbedProps) {
     setSelectedImage(null);
     setSending(true);
 
+    // Add empty assistant message that we'll stream into
+    const assistantMsg: Message = { role: 'assistant', content: '', timestamp: new Date() };
+    setMessages(prev => [...prev, assistantMsg]);
+
     try {
       const requestBody: any = {
         tripId: trip.id,
@@ -167,8 +171,6 @@ export function ChatEmbed({ tripId, shareToken }: ChatEmbedProps) {
       if (imageToSend) requestBody.imageBase64 = imageToSend;
       if (userLocation) requestBody.userLocation = userLocation;
 
-      console.log('[ChatEmbed] Sending message:', { tripId: trip.id, message: messageToSend });
-
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/travelbro-chat`, {
         method: 'POST',
         headers: {
@@ -178,37 +180,65 @@ export function ChatEmbed({ tripId, shareToken }: ChatEmbedProps) {
         body: JSON.stringify(requestBody),
       });
 
-      console.log('[ChatEmbed] Response status:', response.status);
-
       if (!response.ok) {
         const errorText = await response.text();
         console.error('[ChatEmbed] Error response:', errorText);
         throw new Error(`Failed to get response: ${response.status}`);
       }
 
-      const data = await response.json();
-      console.log('[ChatEmbed] Response data:', JSON.stringify(data, null, 2));
+      const contentType = response.headers.get('content-type') || '';
 
-      // Extract text from various possible response formats
-      const responseText = data.text || data.message || data.response || data.reply || 
-                          (data.choices && data.choices[0]?.message?.content) ||
-                          'Geen antwoord ontvangen';
+      if (contentType.includes('text/event-stream')) {
+        // ⚡ STREAMING: read SSE chunks and update message in real-time
+        const reader = response.body!.getReader();
+        const decoder = new TextDecoder();
+        let accumulated = '';
 
-      console.log('[ChatEmbed] Extracted text:', responseText);
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: responseText,
-        timestamp: new Date(),
-        response: data,
-      }]);
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
+
+          for (const line of lines) {
+            const data = line.slice(6).trim();
+            if (data === '[DONE]') continue;
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.text) {
+                accumulated += parsed.text;
+                // Update the last message (assistant) with accumulated text
+                setMessages(prev => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = { ...updated[updated.length - 1], content: accumulated };
+                  return updated;
+                });
+              }
+            } catch (e) {
+              // Skip unparseable chunks
+            }
+          }
+        }
+      } else {
+        // Fallback: non-streaming JSON response
+        const data = await response.json();
+        const responseText = data.text || data.message || data.response || data.reply ||
+                            (data.choices && data.choices[0]?.message?.content) ||
+                            'Geen antwoord ontvangen';
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { ...updated[updated.length - 1], content: responseText, response: data };
+          return updated;
+        });
+      }
     } catch (error) {
       console.error('Error:', error);
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'Sorry, er ging iets mis. Probeer het opnieuw.',
-        timestamp: new Date(),
-      }]);
+      setMessages(prev => {
+        const updated = [...prev];
+        updated[updated.length - 1] = { ...updated[updated.length - 1], content: 'Sorry, er ging iets mis. Probeer het opnieuw.' };
+        return updated;
+      });
     } finally {
       setSending(false);
     }
