@@ -20,6 +20,7 @@ import { OfferteViewer } from './components/Public/OfferteViewer';
 import { RoadbookPreview } from './components/Public/RoadbookPreview';
 import { OfferteViewerSimple } from './components/Public/OfferteViewerSimple';
 import { LandingPage } from './components/Landing/LandingPage';
+import { SiteRenderer } from './components/Site/SiteRenderer';
 
 function AppContent() {
   console.log('🚀 AppContent component rendering');
@@ -115,6 +116,13 @@ function AppContent() {
   if (tripViewerMatch) {
     console.log('[App] Matched trip viewer route');
     return <TripViewer shareToken={tripViewerMatch[1]} />;
+  }
+
+  // Site Renderer route: /site/{brandId}
+  const siteMatch = path.match(/^\/site\/([a-f0-9-]+)/);
+  if (siteMatch) {
+    console.log('[App] Rendering SiteRenderer for brand:', siteMatch[1]);
+    return <SiteRenderer brandId={siteMatch[1]} />;
   }
 
   const pagePreviewMatch = path.match(/^\/preview\/([a-f0-9-]+)$/);

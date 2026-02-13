@@ -541,6 +541,20 @@ export function BrandDashboard() {
 
             <li>
               <button
+                onClick={() => {
+                  if (effectiveBrandId) {
+                    window.open(`${window.location.origin}/site/${effectiveBrandId}`, '_blank');
+                  }
+                }}
+                className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors text-green-400 hover:text-white hover:bg-green-700 font-medium"
+              >
+                <Globe size={20} />
+                <span>Bekijk Website</span>
+              </button>
+            </li>
+
+            <li>
+              <button
                 onClick={handleTravelStudioClick}
                 className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors text-gray-300 hover:text-white hover:bg-gray-700"
               >
