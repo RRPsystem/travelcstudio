@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Save, AlertCircle, Settings, Globe, Copy, Check, FileText } from 'lucide-react';
+import { Upload, Save, AlertCircle, Settings, Globe, Copy, Check, FileText, Wallet, Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { DomainSettings } from './DomainSettings';
 import WebsiteIntakeForm from './WebsiteIntakeForm';
+import CreditWallet from '../shared/CreditWallet';
+import { AgentManagement } from './AgentManagement';
 
-type TabType = 'general' | 'domains' | 'intake';
+type TabType = 'general' | 'domains' | 'intake' | 'credits' | 'agents';
 
 export function BrandSettings() {
   const { user, effectiveBrandId } = useAuth();
@@ -317,7 +319,37 @@ Plak deze gegevens in WordPress > Instellingen > AI News Plugin`;
           >
             <div className="flex items-center space-x-2">
               <FileText size={18} />
-              <span>Intake Formulier Website</span>
+              <span>Intake Formulier</span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('credits')}
+            className={`px-6 py-3 font-medium text-sm transition-colors ${
+              activeTab === 'credits'
+                ? 'border-b-2 border-orange-600 text-orange-600'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <Wallet size={18} />
+              <span>Mijn Credits</span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('agents')}
+            className={`px-6 py-3 font-medium text-sm transition-colors ${
+              activeTab === 'agents'
+                ? 'border-b-2 border-orange-600 text-orange-600'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <Users size={18} />
+              <span>Mijn Agenten</span>
             </div>
           </button>
         </div>
@@ -332,6 +364,12 @@ Plak deze gegevens in WordPress > Instellingen > AI News Plugin`;
           <div className="p-6">
             <WebsiteIntakeForm />
           </div>
+        ) : activeTab === 'credits' ? (
+          <div className="p-6">
+            <CreditWallet />
+          </div>
+        ) : activeTab === 'agents' ? (
+          <AgentManagement />
         ) : (
           <div className="p-6 max-w-4xl mx-auto">
             <div className="bg-white rounded-lg shadow-sm border">

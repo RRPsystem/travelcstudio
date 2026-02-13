@@ -35,13 +35,13 @@ export function BrandDashboard() {
     if (hash.includes('/brand/content/news')) return 'nieuwsbeheer';
     if (hash.includes('/brand/website/pages')) return 'pages';
     if (hash.includes('brand-settings')) return 'settings';
-    return 'dashboard';
+    return 'settings';
   };
 
   const getInitialSubmenus = () => {
     const hash = window.location.hash;
     return {
-      showContentSubmenu: hash.includes('/brand/content/news'),
+      showWebsiteSubmenu2: hash.includes('/brand/content/news'),
       showWebsiteSubmenu: hash.includes('/brand/website/')
     };
   };
@@ -49,8 +49,7 @@ export function BrandDashboard() {
   const initialSubmenus = getInitialSubmenus();
   const [activeSection, setActiveSection] = useState(getInitialSection());
   const [showAISubmenu, setShowAISubmenu] = useState(false);
-  const [showWebsiteSubmenu, setShowWebsiteSubmenu] = useState(initialSubmenus.showWebsiteSubmenu);
-  const [showContentSubmenu, setShowContentSubmenu] = useState(initialSubmenus.showContentSubmenu);
+  const [showWebsiteSubmenu, setShowWebsiteSubmenu] = useState(initialSubmenus.showWebsiteSubmenu || initialSubmenus.showWebsiteSubmenu2);
   const [showTravelDocsSubmenu, setShowTravelDocsSubmenu] = useState(false);
   const [websites, setWebsites] = useState<any[]>([]);
   const [brandData, setBrandData] = useState<any>(null);
@@ -71,7 +70,7 @@ export function BrandDashboard() {
       } else if (hash.includes('/brand/content/news')) {
         console.log('Hash routing: Navigating to news section');
         setActiveSection('nieuwsbeheer');
-        setShowContentSubmenu(true);
+        setShowWebsiteSubmenu(true);
       } else if (hash.includes('brand-settings')) {
         console.log('Hash routing: Navigating to settings section');
         setActiveSection('settings');
@@ -230,7 +229,7 @@ export function BrandDashboard() {
       setShowAISubmenu(true);
     }
     if (['nieuwsbeheer', 'destinations', 'trips'].includes(activeSection)) {
-      setShowContentSubmenu(true);
+      setShowWebsiteSubmenu(true);
     }
     if (activeSection === 'websites') {
       loadWebsites();
@@ -238,9 +237,6 @@ export function BrandDashboard() {
   }, [activeSection, effectiveBrandId]);
 
   const sidebarItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Sparkles },
-    { id: 'credits', label: 'Mijn Credits', icon: Wallet },
-    { id: 'agents', label: 'Agents', icon: Users },
     { id: 'social-media', label: 'Social Media', icon: Share2 },
     { id: 'testing', label: 'Test Dashboard', icon: ClipboardCheck },
   ];
@@ -248,9 +244,15 @@ export function BrandDashboard() {
   const websiteManagementItems = isWordPressMode ? [
     { id: 'wordpress-page-manager', label: 'Pagina Beheer', icon: FileText },
     { id: 'wordpress-quote-requests', label: 'Offerte Aanvragen', icon: ClipboardCheck },
+    { id: 'nieuwsbeheer', label: 'Nieuwsbeheer', icon: Newspaper },
+    { id: 'destinations', label: 'Bestemmingen', icon: MapPin },
+    { id: 'trips', label: 'Reizen', icon: Plane },
   ] : [
     { id: 'new-page', label: 'Quick Start', icon: Rocket },
     { id: 'pages', label: 'Pagina Beheer', icon: FileText },
+    { id: 'nieuwsbeheer', label: 'Nieuwsbeheer', icon: Newspaper },
+    { id: 'destinations', label: 'Bestemmingen', icon: MapPin },
+    { id: 'trips', label: 'Reizen', icon: Plane },
   ];
 
   const aiToolsItems = [
@@ -266,15 +268,6 @@ export function BrandDashboard() {
     { id: 'docs-vouchers', label: 'Vouchers', icon: Ticket },
   ];
 
-  const contentItems = isWordPressMode ? [
-    { id: 'nieuwsbeheer', label: 'Nieuwsbeheer', icon: Newspaper },
-    { id: 'destinations', label: 'Bestemmingen', icon: MapPin },
-    { id: 'trips', label: 'Reizen', icon: Plane },
-  ] : [
-    { id: 'nieuwsbeheer', label: 'Nieuwsbeheer', icon: Newspaper },
-    { id: 'destinations', label: 'Bestemmingen', icon: MapPin },
-    { id: 'trips', label: 'Reizen', icon: Plane },
-  ];
 
   const handleTravelStudioClick = () => {
     window.open('https://travelstudio.travelstudio-accept.bookunited.com/login', '_blank');
@@ -413,14 +406,14 @@ export function BrandDashboard() {
               <button
                 onClick={() => setShowWebsiteSubmenu(!showWebsiteSubmenu)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                  ['quickstart', 'pages', 'new-page'].includes(activeSection)
+                  ['quickstart', 'pages', 'new-page', 'nieuwsbeheer', 'destinations', 'trips', 'wordpress-page-manager', 'wordpress-quote-requests'].includes(activeSection)
                     ? 'bg-gray-700 text-white'
                     : 'text-gray-300 hover:text-white hover:bg-gray-700'
                 }`}
               >
                 <div className="flex items-center space-x-3">
                   <Globe size={20} />
-                  <span>{isWordPressMode ? 'WordPress Management' : 'Website Management'}</span>
+                  <span>Web Management</span>
                 </div>
                 {showWebsiteSubmenu ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
               </button>
@@ -428,46 +421,6 @@ export function BrandDashboard() {
               {showWebsiteSubmenu && (
                 <ul className="mt-2 ml-6 space-y-1">
                   {websiteManagementItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <li key={item.id}>
-                        <button
-                          onClick={() => setActiveSection(item.id)}
-                          className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors text-sm ${
-                            activeSection === item.id
-                              ? 'bg-gray-700 text-white'
-                              : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                          }`}
-                        >
-                          <Icon size={16} />
-                          <span>{item.label}</span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </li>
-
-            <li>
-              <button
-                onClick={() => setShowContentSubmenu(!showContentSubmenu)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                  ['nieuwsbeheer', 'destinations', 'trips'].includes(activeSection)
-                    ? 'bg-gray-700 text-white'
-                    : 'text-gray-300 hover:text-white hover:bg-gray-700'
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <FileText size={20} />
-                  <span>Content</span>
-                </div>
-                {showContentSubmenu ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-              </button>
-
-              {showContentSubmenu && (
-                <ul className="mt-2 ml-6 space-y-1">
-                  {contentItems.map((item) => {
                     const Icon = item.icon;
                     return (
                       <li key={item.id}>
