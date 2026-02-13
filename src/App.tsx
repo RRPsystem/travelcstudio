@@ -147,8 +147,8 @@ function AppContent() {
     return <PreviewPage />;
   }
 
-  const { user, loading, isAdmin, isBrand, isOperator, isAgent } = useAuth();
-  console.log('🔐 Auth state:', { user: user?.email, loading, isAdmin, isBrand, isOperator, isAgent });
+  const { user, loading, isAdmin, isBrand, isOperator, isAgent, isFranchise } = useAuth();
+  console.log('🔐 Auth state:', { user: user?.email, loading, isAdmin, isBrand, isOperator, isAgent, isFranchise });
 
   if (loading) {
     return (
@@ -170,7 +170,7 @@ function AppContent() {
     return <AdminDashboard />;
   }
 
-  if (isBrand) {
+  if (isBrand || isFranchise) {
     return <BrandDashboard />;
   }
 

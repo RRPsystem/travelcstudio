@@ -1,7 +1,7 @@
 export interface User {
   id: string;
   email: string;
-  role: 'admin' | 'brand' | 'operator' | 'agent';
+  role: 'admin' | 'brand' | 'operator' | 'agent' | 'franchise';
   brand_id?: string;
   created_at: string;
   updated_at: string;

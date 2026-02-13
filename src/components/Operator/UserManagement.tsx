@@ -158,7 +158,7 @@ export function UserManagement() {
           email: formData.email,
           password: formData.password,
           role: formData.role,
-          brand_id: formData.role === 'brand' ? formData.brand_id : null
+          brand_id: (formData.role === 'brand' || formData.role === 'franchise') ? formData.brand_id : null
         })
       });
 
@@ -269,6 +269,8 @@ export function UserManagement() {
         return <Shield className="w-5 h-5 text-orange-600" />;
       case 'brand':
         return <Building className="w-5 h-5 text-blue-600" />;
+      case 'franchise':
+        return <Building className="w-5 h-5 text-purple-600" />;
       case 'agent':
         return <User className="w-5 h-5 text-green-600" />;
       default:
@@ -284,6 +286,8 @@ export function UserManagement() {
         return 'bg-orange-100 text-orange-700';
       case 'brand':
         return 'bg-blue-100 text-blue-700';
+      case 'franchise':
+        return 'bg-purple-100 text-purple-700';
       case 'agent':
         return 'bg-green-100 text-green-700';
       default:
@@ -386,13 +390,14 @@ export function UserManagement() {
                   required
                 >
                   <option value="brand">Brand</option>
+                  <option value="franchise">Franchise</option>
                   <option value="agent">Agent</option>
                   <option value="operator">Operator</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>
 
-              {formData.role === 'brand' && (
+              {(formData.role === 'brand' || formData.role === 'franchise') && (
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Brand *
@@ -531,13 +536,14 @@ export function UserManagement() {
                   className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="brand">Brand</option>
+                  <option value="franchise">Franchise</option>
                   <option value="agent">Agent</option>
                   <option value="operator">Operator</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>
 
-              {editingUser.role === 'brand' && (
+              {(editingUser.role === 'brand' || editingUser.role === 'franchise') && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Brand
@@ -561,7 +567,7 @@ export function UserManagement() {
                 <button
                   onClick={() => handleUpdateUser(editingUser.id, {
                     role: editingUser.role,
-                    brand_id: editingUser.role === 'brand' ? editingUser.brand_id : null
+                    brand_id: (editingUser.role === 'brand' || editingUser.role === 'franchise') ? editingUser.brand_id : null
                   })}
                   className="flex-1 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
@@ -633,6 +639,7 @@ export function UserManagement() {
               <li><strong>Admin:</strong> Volledige toegang tot alle systemen</li>
               <li><strong>Operator:</strong> Beheer van systeem instellingen en content</li>
               <li><strong>Brand:</strong> Beheer van eigen merk website en content</li>
+              <li><strong>Franchise:</strong> Website en content beheer voor franchise bedrijven</li>
               <li><strong>Agent:</strong> Toegang tot reisagent functionaliteit</li>
             </ul>
           </div>

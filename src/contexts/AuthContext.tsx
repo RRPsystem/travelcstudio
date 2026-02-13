@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { User } from '../types/database';
 
 interface ImpersonationContext {
-  role: 'operator' | 'admin' | 'brand' | 'agent';
+  role: 'operator' | 'admin' | 'brand' | 'agent' | 'franchise';
   brandId?: string;
   brandName?: string;
   agentId?: string;
@@ -11,7 +11,7 @@ interface ImpersonationContext {
 }
 
 interface AvailableContext {
-  type: 'operator' | 'admin' | 'brand' | 'agent';
+  type: 'operator' | 'admin' | 'brand' | 'agent' | 'franchise';
   id?: string;
   name: string;
   brandId?: string;
@@ -26,6 +26,7 @@ interface AuthContextType {
   isBrand: boolean;
   isOperator: boolean;
   isAgent: boolean;
+  isFranchise: boolean;
   impersonationContext: ImpersonationContext | null;
   availableContexts: AvailableContext[];
   switchContext: (context: ImpersonationContext) => void;
@@ -188,6 +189,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             name: brand.name,
             brandId: brand.id
           });
+          contexts.push({
+            type: 'franchise',
+            id: brand.id,
+            name: `${brand.name} (Franchise)`,
+            brandId: brand.id
+          });
         });
       }
 
@@ -227,6 +234,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isBrand = impersonationContext ? impersonationContext.role === 'brand' : user?.role === 'brand';
   const isOperator = impersonationContext ? impersonationContext.role === 'operator' : user?.role === 'operator';
   const isAgent = impersonationContext ? impersonationContext.role === 'agent' : user?.role === 'agent';
+  const isFranchise = impersonationContext ? impersonationContext.role === 'franchise' : user?.role === 'franchise';
 
   const effectiveBrandId = impersonationContext?.brandId || user?.brand_id || null;
   const effectiveAgentId = impersonationContext?.agentId || null;
@@ -243,6 +251,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isBrand,
       isOperator,
       isAgent,
+      isFranchise,
       impersonationContext,
       availableContexts,
       switchContext,

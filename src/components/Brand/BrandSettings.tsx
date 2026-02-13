@@ -10,7 +10,7 @@ import { AgentManagement } from './AgentManagement';
 type TabType = 'general' | 'domains' | 'intake' | 'credits' | 'agents';
 
 export function BrandSettings() {
-  const { user, effectiveBrandId } = useAuth();
+  const { user, effectiveBrandId, isFranchise } = useAuth();
   const getInitialTab = (): TabType => {
     const hash = window.location.hash;
     if (hash.includes('domains')) return 'domains';
@@ -323,6 +323,7 @@ Plak deze gegevens in WordPress > Instellingen > AI News Plugin`;
             </div>
           </button>
 
+          {!isFranchise && (
           <button
             type="button"
             onClick={() => setActiveTab('credits')}
@@ -337,6 +338,7 @@ Plak deze gegevens in WordPress > Instellingen > AI News Plugin`;
               <span>Mijn Credits</span>
             </div>
           </button>
+          )}
 
           <button
             type="button"
@@ -349,7 +351,7 @@ Plak deze gegevens in WordPress > Instellingen > AI News Plugin`;
           >
             <div className="flex items-center space-x-2">
               <Users size={18} />
-              <span>Mijn Agenten</span>
+              <span>{isFranchise ? 'Franchisenemers' : 'Mijn Agenten'}</span>
             </div>
           </button>
         </div>

@@ -28,7 +28,7 @@ import VideoLibrary from './VideoLibrary';
 import { QuoteRequestsDashboard } from './QuoteRequestsDashboard';
 
 export function BrandDashboard() {
-  const { user, signOut, isOperator, impersonationContext, resetContext, effectiveBrandId } = useAuth();
+  const { user, signOut, isOperator, isFranchise, impersonationContext, resetContext, effectiveBrandId } = useAuth();
 
   const getInitialSection = () => {
     const hash = window.location.hash;
@@ -497,6 +497,7 @@ export function BrandDashboard() {
               )}
             </li>
 
+            {!isFranchise && (
             <li>
               <button
                 onClick={() => setShowTravelDocsSubmenu(!showTravelDocsSubmenu)}
@@ -536,6 +537,7 @@ export function BrandDashboard() {
                 </ul>
               )}
             </li>
+            )}
 
             <li>
               <button
@@ -559,7 +561,7 @@ export function BrandDashboard() {
             }`}
           >
             <Settings size={20} />
-            <span>Brand Settings</span>
+            <span>{isFranchise ? 'Franchise Settings' : 'Brand Settings'}</span>
           </button>
           <button
             onClick={() => setActiveSection('roadmap')}
@@ -597,7 +599,7 @@ export function BrandDashboard() {
               </span>
             )}
           </button>
-          {isOperator && impersonationContext?.role === 'brand' && (
+          {isOperator && (impersonationContext?.role === 'brand' || impersonationContext?.role === 'franchise') && (
             <button
               onClick={() => resetContext()}
               className="w-full flex items-center space-x-3 px-3 py-2 text-orange-400 hover:text-white hover:bg-orange-600 rounded-lg transition-colors font-medium"
