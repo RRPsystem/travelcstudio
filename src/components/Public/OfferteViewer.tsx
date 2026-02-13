@@ -490,8 +490,8 @@ export function OfferteViewer({ offerteId }: Props) {
         </div>
       )}
 
-      {/* ITINERARY — hidden for auto-rondreis (items shown in DayByDay) */}
-      {offerte.template_type !== 'auto-rondreis' && <div className="max-w-4xl mx-auto px-6 py-10">
+      {/* ITINERARY */}
+      <div className="max-w-4xl mx-auto px-6 py-10">
         <h2 className="text-2xl font-bold text-gray-900 mb-1">Reisopbouw</h2>
         <p className="text-sm text-gray-500 mb-8">{items.length} onderdelen</p>
 
@@ -588,7 +588,7 @@ export function OfferteViewer({ offerteId }: Props) {
             );
           })}
         </div>
-      </div>}
+      </div>
 
       {/* PRICE BREAKDOWN */}
       {priceDisplay !== 'hidden' && items.some(i => !i.price_hidden && i.price && i.price > 0) && (

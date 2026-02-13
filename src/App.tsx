@@ -17,6 +17,7 @@ import TravelJournal from './components/TravelJournal/TravelJournal';
 import QuestionSubmission from './components/Podcast/QuestionSubmission';
 import { TripViewer } from './components/Public/TripViewer';
 import { OfferteViewer } from './components/Public/OfferteViewer';
+import { RoadbookPreview } from './components/Public/RoadbookPreview';
 import { OfferteViewerSimple } from './components/Public/OfferteViewerSimple';
 import { LandingPage } from './components/Landing/LandingPage';
 
@@ -195,6 +196,13 @@ function App() {
   if (tripViewMatch) {
     console.log('[App] Rendering public trip viewer (outside AuthProvider)');
     return <TripViewer shareToken={tripViewMatch[1]} />;
+  }
+
+  // Public roadbook preview route
+  const roadbookViewMatch = path.match(/^\/roadbook\/([a-f0-9-]+)$/);
+  if (roadbookViewMatch) {
+    console.log('[App] Rendering public roadbook preview (outside AuthProvider)');
+    return <RoadbookPreview roadbookId={roadbookViewMatch[1]} />;
   }
 
   // Public offerte viewer route

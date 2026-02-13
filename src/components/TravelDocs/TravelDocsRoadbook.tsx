@@ -472,7 +472,7 @@ export function TravelDocsRoadbook({ offerte, onBack, onSave, brandColor = '#2e7
         alert('Kon offerte niet opslaan voor preview.');
         return;
       }
-      window.open(`${window.location.origin}/offerte/${savedId}`, '_blank');
+      window.open(`${window.location.origin}/roadbook/${savedId}`, '_blank');
     } catch (err) {
       console.error('Error saving for preview:', err);
       alert('Fout bij opslaan voor preview');
