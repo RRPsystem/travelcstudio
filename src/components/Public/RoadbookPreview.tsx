@@ -35,31 +35,39 @@ export function RoadbookPreview({ roadbookId }: RoadbookPreviewProps) {
   }, [roadbookId]);
 
   const loadRoadbook = async () => {
+    console.log('[RoadbookPreview] Loading roadbook:', roadbookId);
     if (!supabase) { setError('Configuratiefout'); setLoading(false); return; }
     try {
       const { data: rb, error: rbErr } = await supabase
         .from('travel_roadbooks')
         .select('*')
         .eq('id', roadbookId)
-        .single();
+        .maybeSingle();
+      console.log('[RoadbookPreview] Query result:', { rb: !!rb, rbErr });
       if (rbErr) throw rbErr;
       if (!rb) throw new Error('Roadbook niet gevonden');
       setData(rb);
 
       if (rb.brand_id) {
-        const [brandResult, waResult] = await Promise.all([
-          supabase.from('brands').select('name, logo_url, primary_color').eq('id', rb.brand_id).maybeSingle(),
-          supabase.from('api_settings').select('twilio_whatsapp_number')
-            .or(`brand_id.eq.${rb.brand_id},provider.eq.system`)
-            .order('brand_id', { ascending: false }).limit(1).maybeSingle(),
-        ]);
-        setBrand({
-          ...brandResult.data,
-          whatsapp_number: waResult.data?.twilio_whatsapp_number,
-        });
+        try {
+          const [brandResult, waResult] = await Promise.all([
+            supabase.from('brands').select('name, logo_url, primary_color').eq('id', rb.brand_id).maybeSingle(),
+            supabase.from('api_settings').select('twilio_whatsapp_number')
+              .or(`brand_id.eq.${rb.brand_id},provider.eq.system`)
+              .order('brand_id', { ascending: false }).limit(1).maybeSingle(),
+          ]);
+          setBrand({
+            name: brandResult.data?.name || '',
+            logo_url: brandResult.data?.logo_url || '',
+            primary_color: brandResult.data?.primary_color || '#2e7d32',
+            whatsapp_number: waResult.data?.twilio_whatsapp_number || null,
+          });
+        } catch (brandErr) {
+          console.warn('[RoadbookPreview] Brand load failed:', brandErr);
+        }
       }
     } catch (err: any) {
-      console.error('Error loading roadbook:', err);
+      console.error('[RoadbookPreview] Error:', err);
       setError(err.message || 'Laden mislukt');
     } finally {
       setLoading(false);
