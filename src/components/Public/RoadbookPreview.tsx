@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
-import { MapPin, ChevronDown, ArrowLeft, Phone, ExternalLink } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { MapPin, ChevronDown, ArrowLeft, Phone, ExternalLink, Plane, Car, Building2, Compass, CarFront, Ship, Train, Shield, StickyNote, Star, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { OfferteDestination, OfferteItem } from '../../types/offerte';
+import { OfferteDestination, OfferteItem, OfferteItemType, OFFERTE_ITEM_TYPES } from '../../types/offerte';
+import React from 'react';
 import { RouteMap } from '../shared/RouteMap';
 import { DayByDaySection } from '../TravelDocs/DayByDaySection';
 import { ChatEmbed } from '../TravelBro/ChatEmbed';
@@ -14,6 +15,21 @@ function getYouTubeEmbedUrl(url: string): string | null {
   const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   return match ? `https://www.youtube.com/embed/${match[1]}?autoplay=1&mute=1&loop=1&playlist=${match[1]}&controls=0&showinfo=0` : null;
 }
+
+const iconMap: Record<string, React.ComponentType<any>> = {
+  Plane, Car, Building2, Compass, CarFront, Ship, Train, Shield, StickyNote,
+};
+
+const getItemConfig = (type: OfferteItemType) => {
+  return OFFERTE_ITEM_TYPES.find(t => t.type === type)!;
+};
+
+const getItemIcon = (type: OfferteItemType) => {
+  const config = OFFERTE_ITEM_TYPES.find(t => t.type === type);
+  if (!config) return null;
+  const Icon = iconMap[config.icon];
+  return Icon ? <Icon size={18} style={{ color: config.color }} /> : null;
+};
 
 interface RoadbookPreviewProps {
   roadbookId: string;
@@ -28,6 +44,9 @@ export function RoadbookPreview({ roadbookId }: RoadbookPreviewProps) {
   const [heroSlideIndex, setHeroSlideIndex] = useState(0);
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [cardPhotoIdx, setCardPhotoIdx] = useState<Record<string, number>>({});
+  const [detailItem, setDetailItem] = useState<OfferteItem | null>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -191,6 +210,214 @@ export function RoadbookPreview({ roadbookId }: RoadbookPreviewProps) {
         </div>
       )}
 
+      {/* REIS TIMELINE CAROUSEL */}
+      {items.length > 0 && (
+        <div className="bg-gray-50 py-8">
+          <div className="max-w-7xl mx-auto px-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Jouw Reis Timeline</h2>
+            <div className="relative">
+              <div ref={carouselRef} className="flex gap-5 overflow-x-auto pb-4 mb-2 scroll-smooth snap-x snap-mandatory scrollbar-hide">
+                {[...items].sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999)).map((item) => {
+                  const config = getItemConfig(item.type);
+                  const isFlight = item.type === 'flight';
+                  const isHotel = item.type === 'hotel';
+                  const isCruise = item.type === 'cruise';
+                  const isTransfer = item.type === 'transfer';
+                  const isCarRental = item.type === 'car_rental';
+
+                  return (
+                    <div key={item.id} className="w-72 flex-shrink-0 snap-start">
+                      <div className="bg-white rounded-xl border border-gray-200 shadow-md hover:shadow-xl transition-all overflow-hidden flex flex-col h-full">
+
+                        {/* HEADER */}
+                        {isFlight ? (
+                          <div className="p-3">
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <div className="w-6 h-6 bg-green-500 rounded-md flex items-center justify-center flex-shrink-0">
+                                <Plane size={12} className="text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-[11px] font-medium text-blue-600 truncate">
+                                  {item.airline || 'Airline'} {item.flight_number || ''}
+                                </div>
+                                <div className="text-[10px] text-gray-400">{item.date_start ? new Date(item.date_start).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</div>
+                              </div>
+                            </div>
+                            <div className="bg-gray-50 rounded-lg p-2">
+                              <div className="flex items-center justify-between">
+                                <div className="text-center">
+                                  <div className="text-[10px] text-gray-500">{item.departure_airport || 'DEP'}</div>
+                                  <div className="text-sm font-bold text-gray-900">{item.departure_time ? item.departure_time.substring(0, 5) : '--:--'}</div>
+                                </div>
+                                <div className="flex-1 flex items-center justify-center px-1">
+                                  <div className="h-px bg-gray-300 flex-1"></div>
+                                  <Plane size={10} className="mx-0.5 text-green-500" />
+                                  <div className="h-px bg-gray-300 flex-1"></div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-[10px] text-gray-500">{item.arrival_airport || 'ARR'}</div>
+                                  <div className="text-sm font-bold text-gray-900">{item.arrival_time ? item.arrival_time.substring(0, 5) : '--:--'}</div>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-center gap-3 mt-1.5 text-[10px] text-gray-500">
+                              {item.details?.duration && <span>⏱ {item.details.duration}</span>}
+                              {item.details?.baggage && <span>🧳 {item.details.baggage}</span>}
+                              <span>{item.details?.isDirect !== false ? '→ Rechtstreeks' : `↔ ${item.details?.stops || 1} overstap`}</span>
+                            </div>
+                          </div>
+                        ) : (isTransfer && !item.image_url) ? (
+                          <div className="p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0" style={{ backgroundColor: config.color }}>
+                                {(() => { const I = iconMap[config.icon]; return I ? <I size={14} className="text-white" /> : null; })()}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-medium" style={{ color: config.color }}>{item.transfer_type || 'Transfer'}</div>
+                                <div className="text-[10px] text-gray-400">{item.date_start ? new Date(item.date_start).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</div>
+                              </div>
+                            </div>
+                            {(item.pickup_location || item.dropoff_location) && (
+                              <div className="bg-gray-50 rounded-lg p-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="text-center flex-1">
+                                    <div className="text-[10px] text-gray-500">Van</div>
+                                    <div className="text-xs font-bold text-gray-900 truncate">{item.pickup_location || '—'}</div>
+                                  </div>
+                                  <div className="flex items-center justify-center px-2">
+                                    <div className="h-px bg-gray-300 w-4"></div>
+                                    <ArrowLeft size={10} className="mx-0.5 text-gray-400 rotate-180" />
+                                    <div className="h-px bg-gray-300 w-4"></div>
+                                  </div>
+                                  <div className="text-center flex-1">
+                                    <div className="text-[10px] text-gray-500">Naar</div>
+                                    <div className="text-xs font-bold text-gray-900 truncate">{item.dropoff_location || '—'}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : item.image_url ? (
+                          <div className="relative h-48 bg-gray-100 group">
+                            <img
+                              src={(item.images && item.images.length > 0) ? (item.images[cardPhotoIdx[item.id] || 0] || item.image_url) : item.image_url}
+                              alt={item.title}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute top-3 left-3 px-3 py-1.5 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: config.color }}>
+                              {config.label}
+                            </div>
+                            {item.images && item.images.length > 1 && (
+                              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setCardPhotoIdx(prev => ({ ...prev, [item.id]: ((prev[item.id] || 0) > 0 ? (prev[item.id] || 0) - 1 : item.images!.length - 1) })); }}
+                                  className="w-8 h-8 rounded-full bg-white/90 shadow flex items-center justify-center hover:bg-white"
+                                >
+                                  <ArrowLeft size={14} className="text-gray-700" />
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setCardPhotoIdx(prev => ({ ...prev, [item.id]: ((prev[item.id] || 0) < item.images!.length - 1 ? (prev[item.id] || 0) + 1 : 0) })); }}
+                                  className="w-8 h-8 rounded-full bg-white/90 shadow flex items-center justify-center hover:bg-white"
+                                >
+                                  <ArrowLeft size={14} className="text-gray-700 rotate-180" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="h-12 flex items-center justify-center gap-2 px-4" style={{ backgroundColor: config.bgColor || '#f3f4f6' }}>
+                            <div className="w-7 h-7 rounded-full bg-white/80 flex items-center justify-center shadow-sm">
+                              {getItemIcon(item.type)}
+                            </div>
+                            <span className="text-xs font-semibold" style={{ color: config.color }}>{config.label}</span>
+                          </div>
+                        )}
+
+                        {/* CONTENT */}
+                        {isFlight ? (
+                          <div className="px-3 pb-2 pt-0.5">
+                            <h4 className="font-semibold text-gray-900 text-xs">{String(item.title || '')}</h4>
+                          </div>
+                        ) : isTransfer && !item.image_url ? (
+                          <div className="px-4 pb-3 pt-1">
+                            <h4 className="font-semibold text-gray-900 text-sm">{String(item.title || '')}</h4>
+                            {item.subtitle && item.subtitle !== item.transfer_type && (
+                              <p className="text-[11px] text-gray-400">{item.subtitle}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="p-4 flex flex-col flex-1">
+                            <h4 className="font-bold text-gray-900 text-base mb-0.5">{String(item.title || '')}</h4>
+                            {isHotel && item.location && (
+                              <p className="text-sm text-gray-500 mb-2">📍 {typeof item.location === 'object' ? (item.location as any).name || JSON.stringify(item.location) : item.location}</p>
+                            )}
+                            {isCarRental && (item.pickup_location || item.dropoff_location) && (
+                              <p className="text-sm text-gray-500 mb-2">{[item.pickup_location, item.dropoff_location].filter(Boolean).map(v => typeof v === 'object' ? (v as any).name || '' : v).join(' → ')}</p>
+                            )}
+                            <div className="space-y-1.5 text-xs text-gray-600 mb-3">
+                              {!isFlight && !isTransfer && item.date_start && (
+                                <div className="flex items-center gap-2">
+                                  <span>📅</span>
+                                  <span>{new Date(item.date_start).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}{item.date_end ? ` - ${new Date(item.date_end).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}` : ''}</span>
+                                </div>
+                              )}
+                              {item.nights ? (
+                                <div className="flex items-center gap-2"><span>🌙</span><span>{item.nights} nachten</span></div>
+                              ) : null}
+                              {item.room_type && (
+                                <div className="flex items-center gap-2"><span>🛏️</span><span>{typeof item.room_type === 'object' ? (item.room_type as any).name || '' : item.room_type}</span></div>
+                              )}
+                              {item.board_type && (
+                                <div className="flex items-center gap-2"><span>🍽️</span><span>{typeof item.board_type === 'object' ? (item.board_type as any).name || '' : item.board_type}</span></div>
+                              )}
+                              {isCarRental && item.date_start && item.date_end && (
+                                <div className="flex items-center gap-2">
+                                  <span>📅</span>
+                                  <span>{new Date(item.date_start).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })} - {new Date(item.date_end).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}</span>
+                                </div>
+                              )}
+                            </div>
+                            {(isHotel || isCruise) && (item.description || (item.images && item.images.length > 1)) && (
+                              <div className="mt-auto">
+                                <button
+                                  onClick={() => setDetailItem(item)}
+                                  className="w-full text-white text-sm font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 hover:opacity-90"
+                                  style={{ backgroundColor: brandColor }}
+                                >
+                                  <Star size={14} />
+                                  Meer informatie
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Carousel navigation */}
+              <div className="flex items-center justify-center gap-4 mt-2">
+                <button
+                  onClick={() => { if (carouselRef.current) carouselRef.current.scrollBy({ left: -320, behavior: 'smooth' }); }}
+                  className="w-10 h-10 rounded-full bg-white border border-gray-300 shadow-sm flex items-center justify-center hover:bg-gray-50 transition-colors"
+                >
+                  <ArrowLeft size={18} className="text-gray-600" />
+                </button>
+                <span className="text-sm text-gray-400">{items.length} items</span>
+                <button
+                  onClick={() => { if (carouselRef.current) carouselRef.current.scrollBy({ left: 320, behavior: 'smooth' }); }}
+                  className="w-10 h-10 rounded-full bg-white border border-gray-300 shadow-sm flex items-center justify-center hover:bg-gray-50 transition-colors"
+                >
+                  <ArrowLeft size={18} className="text-gray-600 rotate-180" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* DAY BY DAY SECTION */}
       {destinations.length > 0 && destinations.some(d => d.description || (d.images && d.images.length > 0)) && (
         <DayByDaySection
@@ -257,6 +484,52 @@ export function RoadbookPreview({ roadbookId }: RoadbookPreviewProps) {
           )}
         </div>
       </div>
+
+      {/* DETAIL MODAL */}
+      {detailItem && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setDetailItem(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: getItemConfig(detailItem.type).bgColor }}>
+                  {getItemIcon(detailItem.type)}
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">{detailItem.title}</h3>
+                  <p className="text-sm text-gray-500">{getItemConfig(detailItem.type).label}</p>
+                </div>
+              </div>
+              <button onClick={() => setDetailItem(null)} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-6">
+              {detailItem.images && detailItem.images.length > 0 && (
+                <div className="grid grid-cols-2 gap-2 mb-6">
+                  {detailItem.images.map((img, i) => (
+                    <img key={i} src={img} alt="" className="w-full h-40 object-cover rounded-lg cursor-pointer hover:brightness-90 transition-all" onClick={() => { setLightboxImages(detailItem.images!); setLightboxIndex(i); }} />
+                  ))}
+                </div>
+              )}
+              {detailItem.description && (
+                <div className="prose prose-sm max-w-none text-gray-700 mb-4">
+                  <p>{detailItem.description}</p>
+                </div>
+              )}
+              {detailItem.facilities && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Faciliteiten</h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(Array.isArray(detailItem.facilities) ? detailItem.facilities : []).map((f: string, i: number) => (
+                      <span key={i} className="px-2 py-1 bg-gray-100 rounded-full text-xs text-gray-600">{f}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Lightbox */}
       {lightboxImages.length > 0 && (
