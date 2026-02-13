@@ -67,7 +67,7 @@ export function SiteHomepage({ brand, primaryColor, destinations, travels, agent
   ];
 
   return (
-    <div className="min-h-screen bg-white" style={brandStyle}>
+    <div className="h-screen overflow-y-auto bg-white" style={brandStyle}>
       {/* ===== NAVIGATION ===== */}
       <nav className="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-black/20 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -152,7 +152,7 @@ export function SiteHomepage({ brand, primaryColor, destinations, travels, agent
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url(${HERO_IMAGES[0]})` }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/10 to-black/40" />
+        <div className="absolute inset-0" style={{ background: `linear-gradient(to bottom, ${primaryColor}90 0%, ${primaryColor}50 40%, ${primaryColor}70 100%)` }} />
 
         {/* Content */}
         <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
