@@ -28,6 +28,8 @@ export function BrandForm({ onBack, onSuccess, editingBrand }: BrandFormProps) {
     logo_url: ''
   });
 
+  const [brandType, setBrandType] = useState<'brand' | 'franchise'>('brand');
+
   const [loginData, setLoginData] = useState({
     email: '',
     password: ''
@@ -165,7 +167,8 @@ export function BrandForm({ onBack, onSuccess, editingBrand }: BrandFormProps) {
             body: JSON.stringify({
               email: loginData.email,
               password: loginData.password,
-              brandData
+              brandData,
+              userRole: brandType
             })
           }
         );
@@ -178,7 +181,7 @@ export function BrandForm({ onBack, onSuccess, editingBrand }: BrandFormProps) {
 
         setLoading(false);
 
-        alert(`✅ Brand aangemaakt!\n\n📧 Inloggegevens:\nEmail: ${loginData.email}\nWachtwoord: ${loginData.password}\n\n⚠️ Deze gegevens worden maar 1x getoond!\n\nDe brand gebruiker kan nu inloggen.`);
+        alert(`✅ ${brandType === 'franchise' ? 'Franchise' : 'Brand'} aangemaakt!\n\n📧 Inloggegevens:\nEmail: ${loginData.email}\nWachtwoord: ${loginData.password}\n\n⚠️ Deze gegevens worden maar 1x getoond!\n\nDe ${brandType} gebruiker kan nu inloggen.`);
 
         onSuccess();
       }
@@ -230,10 +233,44 @@ export function BrandForm({ onBack, onSuccess, editingBrand }: BrandFormProps) {
               <p className="text-sm text-gray-600">Configureer de basis instellingen voor de nieuwe travel agency</p>
             </div>
 
+            {!isEditing && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Type <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setBrandType('brand')}
+                    className={`flex-1 px-4 py-3 rounded-lg border-2 text-center font-medium transition-all ${
+                      brandType === 'brand'
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    🏢 Brand
+                    <p className="text-xs font-normal mt-1 opacity-70">Regulier reisbureau</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBrandType('franchise')}
+                    className={`flex-1 px-4 py-3 rounded-lg border-2 text-center font-medium transition-all ${
+                      brandType === 'franchise'
+                        ? 'border-purple-500 bg-purple-50 text-purple-700'
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    🔗 Franchise
+                    <p className="text-xs font-normal mt-1 opacity-70">Franchise keten met website</p>
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-6 mb-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Brand Name <span className="text-red-500">*</span>
+                  {brandType === 'franchise' ? 'Franchise Naam' : 'Brand Name'} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"

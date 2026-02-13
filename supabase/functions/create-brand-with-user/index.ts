@@ -53,16 +53,21 @@ Deno.serve(async (req: Request) => {
       .eq('id', user.id)
       .single();
 
-    if (dbError || !userData || userData.role !== 'admin') {
-      throw new Error('Unauthorized: Admin access required');
+    if (dbError || !userData || (userData.role !== 'admin' && userData.role !== 'operator')) {
+      throw new Error('Unauthorized: Admin or Operator access required');
     }
 
     const body = await req.json();
     const {
       email,
       password,
-      brandData
+      brandData,
+      userRole = 'brand'
     } = body;
+
+    // Validate role
+    const allowedRoles = ['brand', 'franchise'];
+    const finalRole = allowedRoles.includes(userRole) ? userRole : 'brand';
 
     if (!email || !password || !brandData) {
       throw new Error('Missing required fields: email, password, brandData');
@@ -107,7 +112,7 @@ Deno.serve(async (req: Request) => {
       password,
       email_confirm: true,
       user_metadata: {
-        role: 'brand'
+        role: finalRole
       }
     });
 
@@ -119,7 +124,7 @@ Deno.serve(async (req: Request) => {
     console.log('Inserting user into public.users table:', {
       id: authData.user.id,
       email,
-      role: 'brand',
+      role: finalRole,
       brand_id: brandId
     });
 
@@ -128,7 +133,7 @@ Deno.serve(async (req: Request) => {
       .insert({
         id: authData.user.id,
         email,
-        role: 'brand',
+        role: finalRole,
         brand_id: brandId
       });
 
